@@ -1,0 +1,25 @@
+schema: spec-driven
+
+context: |
+  项目：安全管控指挥系统后端服务（backend-scaffold），与前端库 frontend-scaffold 平级双库、非 monorepo。
+  技术栈：Spring Boot 3.2.5 + Java 17 + MyBatis-Plus 3.5.5 + PostgreSQL（生产）/ H2（dev 兜底）+ JJWT 0.12.5 + WebSocket。
+  关键约束：
+    - 零下行控制红线：后端不提供下行控制写接口，HardControlInterceptor 服务端兜底拒绝（code=503）
+    - B3 统一响应包络 common/Result<T>（code/message/data/traceId），code=0 为成功
+    - 20 位中石化 MDM 设备编码，禁止自创对外物理主键（@DeviceCode 校验，违反 301）
+    - 防重放签名：生产强制 HmacFilter 校验 X-Timestamp / X-Nonce / X-Signature
+    - 无状态 JWT：服务端不落盘、不写 Cookie；密钥只走环境变量
+    - 分层：controller/service/mapper/entity/dto/config/security/common/websocket 九包
+    - 跨库契约：机器可读真源在 frontend-scaffold/docs/api/*.openapi.json，本库不复制第二份
+  测试：先补零依赖单测（JUnit5 + Mockito + standalone MockMvc），TDD 先红后绿；
+       集成测试待引入 Testcontainers；接口链路以 scripts/smoke-test.ps1 为准。
+
+rules:
+  proposal:
+    - 必须含 Why / What Changes / Capabilities / Impact 四节
+    - 控制在 500 字内，聚焦单一变更
+    - 涉及对外接口时必须写明「前端 docs/api/*.openapi.json 同步范围」
+    - 涉及数据结构时必须写明存量影响与回退方案
+  tasks:
+    - 任务拆为可勾选清单，单条不超过 2 小时工作量
+    - 标注 [TDD] 的任务须先写失败测试再实现

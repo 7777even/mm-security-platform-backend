@@ -1,0 +1,50 @@
+---
+description: 后端工程红线——分层职责与禁写项、安全过滤器链顺序、密钥与日志脱敏、数据库变更与迁移、dev/prod 环境差异、Windows 下 mvnw 与进程管理。改 Java 代码、SQL、配置、依赖前必读。
+alwaysApply: true
+---
+
+# 后端工程红线
+
+## 1. 分层职责（禁止越界）
+
+| 包            | 只能做                                    | 禁止                                                     |
+| ------------- | ----------------------------------------- | -------------------------------------------------------- |
+| `controller/` | 路由、参数绑定、`@Valid`、调 Service      | 写业务逻辑、自定义响应外壳、直接注入 Mapper               |
+| `service/`    | 业务规则、事务边界                        | 感知 `HttpServletRequest`、吞异常、自行放行硬控           |
+| `mapper/`     | 数据访问                                  | 写业务判断；自定义 SQL 须同步 schema 与 IT                |
+| `entity/`     | 与表 1:1 的持久化对象                     | 直接作为出参返回；改动不同步 `resources/db/*.sql`         |
+| `dto/`        | 出入参对象                                | 复用 Entity 做出参；字段无中文注释                        |
+| `config/`     | 装配 Bean、声明过滤器顺序                 | 写业务规则                                                |
+| `security/`   | JWT / HMAC / 硬控 / 鉴权 / UserContext    | 局部放宽；改动前走 L4 人工确认                            |
+| `common/`     | Result / ResultCode / 异常 / TraceContext | 局部改写包络与错误码                                      |
+| `websocket/`  | 只读事件推送                              | 借 WS 通道下发控制指令                                    |
+
+## 2. 安全过滤器链（顺序不可乱）
+
+`HmacFilter`(1，仅生产) → `JwtFilter`(2) → `HardControlInterceptor`(3) → `RequireAuthInterceptor`(4)。
+新增过滤器必须在 `config/SecurityBeans` 显式声明顺序；变更顺序属 L4。
+
+## 3. 密钥与日志
+
+- 密钥只从环境变量注入：`JWT_SECRET`、`DB_PASSWORD`、`SIGNATURE_SECRET`；`application*.yml` 只保留占位默认值。
+- 禁止打印令牌、口令、签名三头、完整请求体敏感字段；`traceId` 由 `TraceContext` 透传，作为前后端联调对齐依据。
+- 禁止字符串拼接 SQL；MyBatis-Plus 条件构造器优先，`${}` 一律禁用。
+
+## 4. 数据库变更
+
+- 禁止直接操作生产数据库。结构变更属 L3，索引/字段类型/约束变更属 L4。
+- dev 用 H2 快照 `src/main/resources/schema.sql`（当前最新结构）+ `data.sql`；生产 PostgreSQL 迁移脚本待引入 Flyway/Liquibase。
+- 引入 Flyway 前，DDL 变更必须：更新 `schema.sql` 快照 + 在 `resources/db/` 新增日期前缀增量 SQL + proposal 写明存量影响与回退方案。
+- 逻辑删除统一 `deleted`（0/1），新表带审计字段并在查询链路生效。
+
+## 5. 环境与运行
+
+- dev profile：H2 内存库，`signature.enabled=false`，启动自动写默认账号 `admin` / `admin@2026`。
+- prod：PostgreSQL + 签名开启；`SPRING_PROFILES_ACTIVE=prod DB_PASSWORD=... JWT_SECRET=...`。
+- 端口 `8080`；冒烟 `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1`（health → login → dashboard → devices → 错密码 401）。
+
+## 6. Windows 工程注记
+
+- 一律用 `./mvnw`（Git-Bash）或 `mvnw.cmd`（PowerShell/CMD），禁止裸 `mvn`；清理用 `./mvnw clean`，禁止 `rm -rf target`。
+- 结束 Java 进程：`taskkill /PID <winpid> /F /T`；Git-Bash `kill` 无效。验活看 `curl -s -m 4 http://localhost:8080/api/v1/health` 是否拒绝连接。
+- Java 统一 4 空格缩进、UTF-8、关键处中文注释；新增对外接口必须同步前端契约。

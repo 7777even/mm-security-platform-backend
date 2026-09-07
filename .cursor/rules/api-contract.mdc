@@ -1,0 +1,30 @@
+---
+description: 后端脚手架的 API 契约红线——零下行控制服务端兜底、B3 Result 包络、20 位 MDM 设备编码、HMAC 防重放、无状态 JWT、错误码分段、跨库契约四同步。任何涉及 Controller / DTO / 安全过滤器 / 对外接口的改动前必读。
+alwaysApply: true
+---
+
+# API 契约规则
+
+（提炼自 `frontend-scaffold/AGENTS.md` §3 + `common/Result.java` + `security/*` + `common/DeviceCode`）
+
+1. **零下行控制红线**：后端不提供任何下行控制写接口；`security/HardControlInterceptor.HARD_CONTROL_PATHS` 名单内的 POST/PUT/DELETE 一律以 `code=503 HARD_CONTROL_BLOCKED` 拒绝。新增下行能力只能在名单外且经人工评审。名单变更属 L4。
+2. **B3 统一响应包络**：所有业务响应统一 `common/Result<T>`（`code`/`message`/`data`/`traceId`），`code=0` 为成功；非 0 由 `GlobalExceptionHandler` 统一转包络。禁止自定义第二套响应外壳或裸返实体。
+3. **20 位中石化 MDM 设备编码**：设备物理主键固定 20 位 MDM 编码，禁止自创对外物理主键；用 `@DeviceCode` 校验，违反返回 `code=301`。
+4. **防重放签名**：生产 `signature.enabled=true`，`security/HmacFilter` 校验 `X-Timestamp`/`X-Nonce`/`X-Signature`（HMAC-SHA256，payload = `ts\n nonce\n method\n uri`）。Dev 可挂起，生产禁止旁路。
+5. **无状态令牌**：JWT 不落盘、不写 Cookie；只签发 access（2h）与 refresh（7d）；`jwt.secret` 走环境变量，禁止硬编码提交。
+6. **错误码分段**：`1xx` 通用 / `2xx` 鉴权 / `3xx` 设备 / `5xx` 硬控。新增码同步 `ResultCode` + 前端契约 + 调用方分支。
+7. **分层目录**：`controller/service/mapper/entity/dto/config/security/common/websocket` 九包；Controller 不写业务、Service 不感知 HTTP、Mapper 不写业务判断。
+
+## 跨库协作须知
+
+- 契约机器可读真源在**前端库** `frontend-scaffold/docs/api/*.openapi.json`；本库 `docs/api/` 只放实现映射与同步纪律，**不复制第二份契约**。
+- 改对外接口必须同交付走四同步：openspec → 前端契约 → 后端实现（跑 `check-api-contract.mjs`）→ 通知前端重生成类型。
+- 契约与实现冲突时，先改契约 + 人工确认，再改代码；禁止先改代码后补契约。
+- 数据权限由服务端按用户/组织过滤后返回；前端 `v-permission` 只管显隐，后端不得依赖前端过滤。
+
+## L4 硬门禁（命中即升 L4，实施前须人工确认）
+
+- `Result` 包络结构、`ResultCode` 错误码分段与语义、`/api/v1` 前缀变更。
+- `JwtFilter` / `RequireAuthInterceptor` / `@RequireAuth` 语义、免鉴权白名单、权限模型。
+- `HmacFilter` 签名算法与容忍窗口、`HardControlInterceptor.HARD_CONTROL_PATHS` 名单。
+- WebSocket 端点 `/ws/alarm` 与推送协议（只推只读事件，禁止借 WS 下发控制指令）。

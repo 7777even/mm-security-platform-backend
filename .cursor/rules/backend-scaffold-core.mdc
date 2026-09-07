@@ -1,0 +1,52 @@
+---
+description: 安全管控指挥系统后端脚手架的核心 AI 约束入口——改动分级 L0–L4、openspec 唯一规格源、跨库契约真源、验证矩阵、提交规范、完成标准与权限边界。修改任何代码/文档/接口前必须先读本规则与根 AGENTS.md。
+alwaysApply: true
+---
+
+# 后端脚手架核心 AI 约束
+
+本仓库是安全管控指挥系统**后端服务**（Spring Boot 3.2.5 + Java 17 + MyBatis-Plus + PostgreSQL/H2 + JJWT + WebSocket），与前端库 `frontend-scaffold` **平级双库、非 monorepo**。根包 `com.sinopec.mmsecurity`，REST 前缀 `/api/v1`，端口 `8080`。
+
+完整约束以根 `AGENTS.md` 为准。以下是 AI 动手前必须在脑中建立的优先级与红线。
+
+## 1. 先判级，再动手（L0–L4）
+
+- **L0 问答/只读**：直接完成；不建文件、不起子 Agent、不调 openspec。
+- **L1 微小修改**（四门槛全满足：不改业务能力/接口契约/权限语义/数据库结构、≤3 文件、5 分钟内可验证、不新增生产依赖）：直接改 + 最小验证。
+- **L2 工程维护**（依赖/构建/配置/脚手架/非业务技术债，或 L1 门槛缺一）：说明方案与影响 → 执行 → 跑受影响目标验证。
+- **L3 业务能力**（接口能力/业务规则/状态流转/权限语义/数据模型）：openspec 提案 → 人工确认 → TDD → 验收 → 归档。
+- **L4 高风险**（契约语义/权限模型/数据库结构/安全过滤器链/部署配置基线/框架升级）：按 L3 且**实施前取得人工确认**。
+- L1/L2 **禁止**创建 openspec Change、计划文档或子 Agent。
+
+## 2. 唯一规格源（禁止平行体系）
+
+- 业务规格与任务真源：`openspec/changes/<name>/`（proposal/design/tasks/spec-delta，tasks.md 是唯一任务真源，状态只回填勾选框）。
+- 系统现状 `docs/`、短期过程 `engineering/`，职责不混。
+- **跨库契约唯一真源在前端** `frontend-scaffold/docs/api/*.openapi.json`；本库**禁止**复制第二份 OpenAPI 主契约。改动接口必须同交付同步前端契约（AGENTS §11 四同步）。
+
+## 3. 最小验证矩阵（只跑对应一行）
+
+- 文档/规范/注释：`git diff --check`
+- 单个 Controller/Service/DTO：`./mvnw -q compile`
+- `common/`、`security/`、`config/` 横切层：`./mvnw test`
+- Entity/Mapper/`resources/db/*.sql`/分页/逻辑删除：`./mvnw test` + `scripts/smoke-test.ps1`
+- `pom.xml`/依赖/构建：`./mvnw clean package -DskipTests`
+- 对外接口增删改：`node scripts/check-api-contract.mjs` + `./mvnw test`
+- L3/L4：按 tasks.md 验收全量；禁止 L1/L2 后连跑 compile+test+package 三套。
+
+Windows 环境：一律用 `./mvnw`（Git-Bash）或 `mvnw.cmd`（PowerShell）；杀 Java 进程用 `taskkill /PID <winpid> /F /T`，Git-Bash 的 `kill` 杀不掉 Windows JVM。
+
+## 4. 提交与完成标准
+
+- 提交：`type(scope): 描述`；scope 固定 `auth/device/alarm/dashboard/security/common/db/config/docs/chore`，禁止自造；横切层先行、业务域跟随；单行成句、禁分点列表；禁提交临时输出。
+- 完成（L3/L4）：验收标准达成 + 回归全绿 + 文档与前端契约同步 + 提交按 scope 拆分。
+- Review 结论三选一：通过 / 需修改 / 需人工决策（禁止"基本可以"等模糊结论）。
+
+## 5. 权限边界
+
+- AI 负责分析/设计/编码/测试/Review/文档；需求确认、架构决策、权限确认、数据库结构确认、最终合并由人负责。
+- AI 禁操作生产、改生产数据、自造业务规则、自建权限模型、未经批准改数据库结构、未确认引依赖、新建第二套契约或任务体系。
+
+## 6. 分层读取链
+
+改哪读哪：`controller/service/dto` → `docs/api/README.md` + 前端 `<domain>.openapi.json`；`security/config` 与 `mapper/entity/resources` → `docs/architecture/README.md`；`docs` → `docs/AGENTS.md`。根 `AGENTS.md` 高于分层，分层只能加严。
