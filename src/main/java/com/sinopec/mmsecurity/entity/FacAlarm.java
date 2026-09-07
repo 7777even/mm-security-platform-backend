@@ -9,13 +9,20 @@ import java.time.LocalDateTime;
 @TableName("fac_alarm")
 public class FacAlarm {
     private Long id;
+    /** 业务展示 ID（如 AE-2026-001），非物理主键；对齐前端 AlarmItem.alarmId */
+    private String alarmId;
     private String deviceCode;
     private Integer level;
     private String type;
     private String title;
     private String content;
+    /** 后端 int 语义：0=ACTIVE/1=ACKED/2=DISPATCHED/3=CLOSED；由 AlarmAssembler 映射为 string 枚举 */
     private Integer status;
     private LocalDateTime occurredAt;
+    private String location;
+    private String category;
+    private Boolean warned;
+    private String planId;
     private LocalDateTime createdAt;
     private Integer deleted;
 }
