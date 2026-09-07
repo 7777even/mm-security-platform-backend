@@ -1,0 +1,24 @@
+# 开发环境：启用 H2 内存库兜底（无需本地 PostgreSQL 即可启动）
+spring:
+  datasource:
+    url: jdbc:h2:mem:mm_security;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: embedded
+
+jwt:
+  secret: dev-secret-not-for-production-please-change-me-please-please
+
+signature:
+  enabled: false
+
+logging:
+  level:
+    com.sinopec.mmsecurity: TRACE
