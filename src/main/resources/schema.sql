@@ -63,3 +63,12 @@ CREATE TABLE IF NOT EXISTS fac_workstation (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS fac_audit_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    action VARCHAR(128) NOT NULL,
+    module VARCHAR(128),
+    detail_json CLOB,
+    event_at BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

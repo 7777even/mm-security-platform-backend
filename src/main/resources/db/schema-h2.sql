@@ -56,3 +56,13 @@ CREATE TABLE IF NOT EXISTS fac_alarm (
 -- 默认账号 admin/admin@2026
 MERGE INTO sys_user (id, username, password_hash, real_name, role) KEY(id) VALUES
 (1, 'admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '系统管理员', 'ADMIN');
+
+-- 审计日志（uplink /audit/log 落库）
+CREATE TABLE IF NOT EXISTS fac_audit_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    action VARCHAR(128) NOT NULL,
+    module VARCHAR(128),
+    detail_json CLOB,
+    event_at BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
