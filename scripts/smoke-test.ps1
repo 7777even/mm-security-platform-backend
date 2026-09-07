@@ -35,7 +35,9 @@ try {
 Write-Host "=== 4. /api/v1/devices (page, with token) ==="
 try {
     $r = Call-Rest GET "/api/v1/devices?page=1&size=5" $null @{ Authorization = "Bearer $token" }
-    Write-Host "   > code=$($r.code) total=$($r.data.total) mock=$($r.data.mock)"
+    $listCount = ($r.data.list | Measure-Object).Count
+    Write-Host "   > code=$($r.code) total=$($r.data.total) listCount=$listCount"
+    if ($r.code -ne 0 -or $null -eq $r.data.list) { throw "devices 列表缺失" }
 } catch { Write-Host "   [FAIL] $($_.Exception.Message)"; exit 1 }
 
 Write-Host "=== 5. wrong pwd expect 401 ==="

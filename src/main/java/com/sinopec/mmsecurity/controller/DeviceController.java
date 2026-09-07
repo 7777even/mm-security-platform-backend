@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.common.DeviceCode;
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.dto.DevicePageResult;
 import com.sinopec.mmsecurity.entity.FacDevice;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.DeviceService;
@@ -13,9 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/v1/devices")
 @RequireAuth
@@ -25,19 +23,19 @@ public class DeviceController {
     private final DeviceService deviceService;
 
     @GetMapping
-    public Result<Map<String, Object>> page(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size,
+    public Result<DevicePageResult> page(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String zone,
             @RequestParam(required = false) String deviceCode) {
         Page<FacDevice> p = deviceService.page(page, size, status, zone, deviceCode);
-        // 兼容空库：查不到数据时回落到模拟值，便于开发联调
-        if (p.getTotal() == 0) {
-            List<FacDevice> fallback = deviceService.devFallbackList(12);
-            return Result.ok(Map.of("list", fallback, "total", fallback.size(), "page", 1, "size", size, "mock", true));
-        }
-        return Result.ok(Map.of("list", p.getRecords(), "total", p.getTotal(), "page", p.getCurrent(), "size", p.getSize()));
+        DevicePageResult result = new DevicePageResult();
+        result.setList(p.getRecords());
+        result.setTotal(p.getTotal());
+        result.setPage(p.getCurrent());
+        result.setSize(p.getSize());
+        return Result.ok(result);
     }
 
     @GetMapping("/{code}")
