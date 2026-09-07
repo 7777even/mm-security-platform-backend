@@ -31,3 +31,10 @@ INSERT INTO fac_alarm (alarm_id, device_code, level, type, title, content, statu
 ('AE-2026-007', NULL,                    3, 'SOS',   '现场应急呼叫',                '巡检人员触发 SOS 按钮',       0, '2026-09-07 07:15:00', '全厂范围',  'WEATHER',    true,  NULL),
 ('AE-2026-008', NULL,                    2, 'TEMP',  '装置C温度异常',               '反应器温度梯度异常',          0, '2026-09-07 08:30:00', '装置C',    'OTHER',      false, NULL);
 
+-- 工位主数据：替代原 DashboardService.workstations() 的硬编码 Map 列表，使态势页工位卡片读取真实数据。
+-- 前端 Workstation 字段：id / name / zone / online；id 由 workstation_id 映射。
+INSERT INTO fac_workstation (workstation_id, name, zone, online) VALUES
+('WS-01', '中控室工位-01',   '罐区A',    TRUE),
+('WS-02', '罐区值班室工位',  '罐区A',    TRUE),
+('WS-03', '应急指挥中心工位', '全厂范围', FALSE);
+
