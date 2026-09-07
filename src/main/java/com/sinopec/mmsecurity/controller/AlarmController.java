@@ -5,6 +5,7 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.AlarmPageResult;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.security.RequireAuth;
+import com.sinopec.mmsecurity.service.AlarmAssembler;
 import com.sinopec.mmsecurity.service.AlarmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AlarmController {
 
     private final AlarmService alarmService;
+    private final AlarmAssembler assembler;
 
     @GetMapping
     public Result<AlarmPageResult> page(
@@ -29,7 +31,7 @@ public class AlarmController {
             @RequestParam(required = false) String deviceCode) {
         Page<FacAlarm> p = alarmService.page(page, size, level, status, deviceCode);
         AlarmPageResult result = new AlarmPageResult();
-        result.setList(p.getRecords());
+        result.setList(p.getRecords().stream().map(assembler::toItem).toList());
         result.setTotal(p.getTotal());
         result.setPage(p.getCurrent());
         result.setSize(p.getSize());
