@@ -12,6 +12,9 @@ spring:
   sql:
     init:
       mode: embedded
+      # 强制脚本以 UTF-8 读取：中文 Windows 下 JVM 默认字符集为 GBK，
+      # 若不显式指定，data.sql 内的中文会被按 GBK 解码而乱码。
+      encoding: UTF-8
 
 jwt:
   secret: dev-secret-not-for-production-please-change-me-please-please
