@@ -49,7 +49,7 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"admin\",\"password\":\"WRONG\"}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
     }
 }
