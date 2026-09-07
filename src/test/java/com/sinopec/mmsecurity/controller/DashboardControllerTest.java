@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.service.DashboardService;
@@ -64,5 +65,25 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.data[0].name").value("中控室工位-01"))
                 .andExpect(jsonPath("$.data[0].zone").value("罐区A"))
                 .andExpect(jsonPath("$.data[0].online").value(true));
+    }
+
+    @Test
+    void alarmTrend_returnsTrendPoints() throws Exception {
+        AlarmTrendPoint p1 = new AlarmTrendPoint();
+        p1.setHour("08:00");
+        p1.setCount(3);
+        AlarmTrendPoint p2 = new AlarmTrendPoint();
+        p2.setHour("09:00");
+        p2.setCount(12);
+        when(service.trend24h(org.mockito.ArgumentMatchers.any(java.time.LocalDateTime.class)))
+                .thenReturn(List.of(p1, p2));
+
+        mockMvc.perform(get("/api/v1/dashboard/alarm-trend"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].hour").value("08:00"))
+                .andExpect(jsonPath("$.data[0].count").value(3))
+                .andExpect(jsonPath("$.data[1].hour").value("09:00"))
+                .andExpect(jsonPath("$.data[1].count").value(12));
     }
 }

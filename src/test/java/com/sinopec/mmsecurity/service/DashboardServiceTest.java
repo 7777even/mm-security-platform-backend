@@ -1,15 +1,20 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
 import com.sinopec.mmsecurity.dto.Workstation;
+import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacWorkstation;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,6 +79,47 @@ class DashboardServiceTest {
         assertEquals("中控室工位-01", list.get(0).getName());
         assertEquals("罐区A", list.get(0).getZone());
         assertEquals(true, list.get(0).isOnline());
+    }
+
+    @Test
+    void trend24h_bucketsByHourWithZeroPadding() {
+        // 固定 now = 2026-09-07 11:30 → 窗口 [09-06 12:00, 09-07 12:00)
+        LocalDateTime now = LocalDateTime.of(2026, 9, 7, 11, 30);
+        when(alarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                alarmAt(2026, 9, 7, 8, 0),   // 桶 20 → "08:00"
+                alarmAt(2026, 9, 7, 9, 0),   // 桶 21 → "09:00"
+                alarmAt(2026, 9, 7, 9, 45),  // 桶 21 → "09:00"（同桶累加）
+                alarmAt(2026, 9, 7, 11, 15)  // 桶 23 → "11:00"
+        ));
+
+        List<AlarmTrendPoint> points = service.trend24h(now);
+        assertEquals(24, points.size());
+
+        Map<String, Integer> byHour = points.stream()
+                .collect(Collectors.toMap(AlarmTrendPoint::getHour, AlarmTrendPoint::getCount));
+        assertEquals(1, byHour.get("08:00"));
+        assertEquals(2, byHour.get("09:00"));
+        assertEquals(1, byHour.get("11:00"));
+        // 其余 21 个桶补 0
+        assertEquals(0, byHour.get("00:00"));
+        assertEquals(0, byHour.get("07:00"));
+        assertEquals(0, byHour.get("23:00"));
+    }
+
+    @Test
+    void trend24h_emptyWindow_returnsAllZeros() {
+        LocalDateTime now = LocalDateTime.of(2026, 9, 7, 11, 30);
+        when(alarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        List<AlarmTrendPoint> points = service.trend24h(now);
+        assertEquals(24, points.size());
+        assertEquals(0, points.stream().mapToInt(AlarmTrendPoint::getCount).sum());
+    }
+
+    private FacAlarm alarmAt(int y, int mo, int d, int h, int mi) {
+        FacAlarm a = new FacAlarm();
+        a.setOccurredAt(LocalDateTime.of(y, mo, d, h, mi));
+        return a;
     }
 
     private FacWorkstation ws(String id, String name, String zone, boolean online) {
