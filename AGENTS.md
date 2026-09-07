@@ -142,7 +142,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 - 端口 `8080`；REST 前缀 `/api/v1`；WS 端点 `/ws/alarm`（告警实时推送）。
 - 过滤器 / 拦截器顺序：`HmacFilter`(1，生产) → `JwtFilter`(2) → `HardControlInterceptor`(3) → `RequireAuthInterceptor`(4)。
-- dev profile 走 H2 内存库（`schema.sql` 自动建表 + `data.sql` 默认菜单），启动即由 `AuthService.ensureAdmin()` 写入默认账号 `admin` / `admin@2026`。
+- dev profile 走 H2 内存库（Flyway 迁移 `db/migration/h2` 自动建表＋种子，不再用 `schema.sql`/`data.sql`），启动即由 `AuthService.ensureAdmin()` 写入默认账号 `admin` / `admin@2026`。
 
 ### 6.2 目录职责与红线
 
@@ -157,7 +157,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 | `security/`               | JWT / HMAC / 硬控 / 鉴权注解与拦截器 / UserContext     | 属 L4 门禁区，改动前须人工确认（§8）                       |
 | `common/`                 | `Result` / `ResultCode` / `BusinessException` / `TraceContext` / `DeviceCode` | 包络与错误码是跨端契约，禁止局部改写        |
 | `websocket/`              | 告警推送与模拟器                                       | 只推只读事件，禁止借 WS 通道下发控制指令                    |
-| `resources/`              | `application*.yml`、`schema.sql`、`data.sql`、`db/`     | 密钥一律 `${ENV:默认值}`，禁止提交真实生产口令              |
+| `resources/`              | `application*.yml`、`db/migration/**`                  | 密钥一律 `${ENV:默认值}`，禁止提交真实生产口令；V 迁移文件禁止改/删 |
 
 ### 6.3 安全红线
 
@@ -170,10 +170,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ### 6.4 数据库变更规则
 
 1. **禁止直接操作生产数据库**；任何结构变更属 **L3**，索引 / 字段类型 / 约束变更属 **L4**。
-2. dev 的 H2 快照 `src/main/resources/schema.sql` 反映**当前最新结构**，供本地启动与冒烟使用；`src/main/resources/db/schema-h2.sql` 为 H2 兼容版。
-3. 生产 PostgreSQL 迁移脚本待引入 Flyway / Liquibase；在引入之前，任何 DDL 变更必须：①更新 `schema.sql` 快照；②在 `src/main/resources/db/` 下新增带日期前缀的增量 SQL；③在 proposal 中写明对存量数据的影响与回退方案。
-4. 引入 Flyway 后沿用双轨：完整快照（空库直达最新）+ 版本化增量 `V<yyyyMMddHHmmss>__<lower_snake_case>.sql`；已进入共享环境的 `V` 文件禁止修改、重命名或删除。
+2. **数据库版本化迁移由 Flyway 接管**（`application.yml` 中 `spring.flyway.enabled=true`、`spring.sql.init.enabled=false`）；不再维护 `schema.sql`/`data.sql` 快照。三套方言迁移位于 `src/main/resources/db/migration/{h2,postgresql,dameng}/`，由 `spring.flyway.locations` 按 profile 指向（dev→h2、prod→postgresql、dm→dameng）。
+3. **双轨策略**：`V1__init_schema.sql` 为完整快照（空库直达最新结构），后续 DDL 一律新增版本化增量 `V<yyyyMMddHHmmss>__<lower_snake_case>.sql`；已进入共享环境的 `V` 文件**禁止修改、重命名或删除**。
+4. 任何结构变更须：①新增增量 V 文件（不得改 V1）；②在 proposal 中写明对存量数据的影响与回退方案；③若 dev 快照（h2 V1）涉及结构变化，同步更新 `postgresql/`、`dameng/` 两套方言的同版本/对应增量文件，保持三库列定义一致。
 5. 逻辑删除统一 `deleted` 字段（`0` 未删 / `1` 已删，`application.yml` 全局配置）；新表必须带该字段与审计字段，并在 Mapper 查询链路生效。
+6. 达梦 DM8 为信创生产选定库（Oracle 兼容）；**Flyway 社区版无官方达梦 database 模块**，达梦迁移脚本按 Oracle 兼容方言编写，必须在达梦实例上复核执行（PG / H2 迁移则可由本地 Flyway 实跑验证）。
 
 ### 6.5 工程约定（Git / 提交）
 

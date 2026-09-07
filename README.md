@@ -52,23 +52,33 @@
 # 构建
 ./mvnw clean package -DskipTests
 
-# 启动（默认 dev 环境，H2 兜底，无需本地 PostgreSQL）
+# 启动（默认 dev 环境，H2 兜底，无需本地 PostgreSQL；Flyway 自动建表+种子）
 ./mvnw spring-boot:run
 
-# 生产（PostgreSQL）
+# 生产（PostgreSQL，兼容/回退）
 SPRING_PROFILES_ACTIVE=prod DB_PASSWORD=... JWT_SECRET=... ./mvnw spring-boot:run
+
+# 生产（达梦 DM8，信创选定；需先 install 达梦驱动，见 application-dm.yml）
+SPRING_PROFILES_ACTIVE=dm DB_PASSWORD=... JWT_SECRET=... SIGNATURE_SECRET=... ./mvnw spring-boot:run -Pdm
 ```
 
 ## 3. 环境配置
 
 `src/main/resources/application.yml` 通过 `spring.profiles.active` 切换：
 
-| Profile | 数据库 | 签名校验 |
-|---|---|---|
-| `dev` | H2 内存库（DDL 自动加载 classpath:schema.sql） | 关闭（`signature.enabled=false`） |
-| `prod` | PostgreSQL | 开启（`signature.enabled=true`） |
+| Profile | 数据库 | 签名校验 | Flyway 迁移位置 |
+|---|---|---|---|
+| `dev` | H2 内存库 | 关闭（`signature.enabled=false`） | `classpath:db/migration/h2` |
+| `prod` | PostgreSQL（兼容/回退） | 开启（`signature.enabled=true`） | `classpath:db/migration/postgresql` |
+| `dm` | 达梦 DM8（信创生产选定） | 开启（`signature.enabled=true`） | `classpath:db/migration/dameng` |
 
-### 3.1 生产 PostgreSQL 连接（必须设置环境变量）
+> 数据库版本化迁移由 **Flyway** 接管（不再用 `spring.sql.init` 加载 schema.sql/data.sql）。
+> 双轨策略：V1 全量快照（空库直达最新）＋ `V<yyyyMMddHHmmss>__<snake>.sql` 增量；已进入共享环境的 V 文件禁止修改/重命名/删除。
+> 三套方言迁移脚本位于 `src/main/resources/db/migration/{h2,postgresql,dameng}/`。
+
+### 3.1 生产数据库连接（必须设置环境变量）
+
+PostgreSQL（`prod`）：
 
 ```yaml
 spring.datasource.url=jdbc:postgresql://localhost:5432/mm_security
@@ -76,7 +86,14 @@ spring.datasource.username=postgres
 spring.datasource.password=${DB_PASSWORD}
 ```
 
-首次建表：`src/main/resources/db/schema-h2.sql` 为 H2 兼容版；生产请另外维护 PostgreSQL 迁移脚本（Flyway/Liquibase），本 scaffold 暂不内置。
+达梦 DM8（`dm`，信创生产选定），启用前需先本地安装驱动（见 `application-dm.yml` 注释）：
+
+```yaml
+spring.datasource.url=jdbc:dm://localhost:5236/mm_security
+spring.datasource.username=${DB_USERNAME:SYSDBA}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=dm.jdbc.driver.DmDriver
+```
 
 ## 4. 接口清单
 
@@ -143,9 +160,13 @@ backend-scaffold/
 │   │   ├── security/             # JwtUtil / JwtFilter / UserContext / RequireAuth / HardControl / Hmac
 │   │   └── websocket/            # AlarmWebSocketHandler / AlarmSimulator
 │   └── resources/
-│       ├── application.yml       # 主配置
-│       ├── application-dev.yml   # dev（H2 兜底）
-│       ├── schema.sql            # H2 自动加载 DDL（含 sys_user / fac_device / fac_alarm）
-│       └── data.sql              # 默认菜单
+│       ├── application.yml       # 主配置（Flyway 启用、sql.init 关闭）
+│       ├── application-dev.yml   # dev（H2 兜底，Flyway 位置 = h2）
+│       ├── application-prod.yml  # PostgreSQL（Flyway 位置 = postgresql）
+│       ├── application-dm.yml    # 达梦 DM8（Flyway 位置 = dameng，信创生产选定）
+│       └── db/migration/
+│           ├── h2/               # V1 全量快照 + V2 种子（H2 方言，本地可验证）
+│           ├── postgresql/       # V1 + V2（PG 方言，兼容/回退）
+│           └── dameng/           # V1 + V2（DM8 Oracle 兼容方言，需实例验证）
 └── .mvn/wrapper/                 # Maven Wrapper（mvnw）
 ```

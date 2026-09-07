@@ -63,10 +63,13 @@ HTTP 请求
 
 ## 5. 数据层与迁移
 
-- dev：H2 内存库，启动时加载 `src/main/resources/schema.sql`（当前最新结构快照）+ `data.sql`（默认菜单）；`AuthService.ensureAdmin()` 写入默认账号 `admin` / `admin@2026`。
-- H2 兼容版脚本：`src/main/resources/db/schema-h2.sql`。
-- 生产：PostgreSQL；**迁移脚本尚未引入 Flyway / Liquibase**。在此之前，DDL 变更必须三件套：①更新 `schema.sql` 快照；②在 `src/main/resources/db/` 新增日期前缀增量 SQL；③proposal 写明存量影响与回退方案。
-- 引入 Flyway 后沿用双轨：完整快照（空库直达最新）+ 版本化增量 `V<yyyyMMddHHmmss>__<lower_snake_case>.sql`；已进入共享环境的 `V` 禁止修改 / 重命名 / 删除。
+- 数据库版本化迁移由 **Flyway** 接管（不再用 `spring.sql.init` 加载 schema.sql/data.sql）。`spring.flyway.enabled=true`、`spring.sql.init.enabled=false` 在 `application.yml` 统一设定。
+- 三套方言迁移脚本位于 `src/main/resources/db/migration/{h2,postgresql,dameng}/`，按 profile 由 `spring.flyway.locations` 指向：
+  - `dev` → `h2`（H2 内存库，本地可实跑验证：V1 全量快照＋V2 种子）。
+  - `prod` → `postgresql`（PostgreSQL，兼容/回退）。
+  - `dm` → `dameng`（达梦 DM8，信创生产选定；DM 为 Oracle 兼容库，迁移按 Oracle 兼容方言编写，**Flyway 社区版无官方达梦 database 模块**，须到达梦实例复核）。
+- `AuthService.ensureAdmin()` 在 Flyway 建好的 `sys_user` 上写入默认账号 `admin` / `admin@2026`（不进种子脚本，避免与业务初始化重复）。
+- 双轨策略：完整快照（V1，空库直达最新）＋版本化增量 `V<yyyyMMddHHmmss>__<lower_snake_case>.sql`；已进入共享环境的 `V` 禁止修改 / 重命名 / 删除。后续任何 DDL 变更：①新增增量 V 文件；②proposal 写明存量影响与回退方案。
 - 逻辑删除统一 `deleted`（`0` 未删 / `1` 已删），新表须带审计字段并在查询链路生效。
 
 ## 6. 环境与运行
