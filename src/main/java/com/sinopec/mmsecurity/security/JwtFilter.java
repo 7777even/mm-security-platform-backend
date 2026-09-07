@@ -8,9 +8,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -21,13 +19,19 @@ import java.io.IOException;
  *
  * 令牌内存态：服务端不持久存 token（无状态），前端脚手架要求前端走 HttpOnly Cookie / 内存，
  * 本过滤器只校验签名有效性 + 过期，不在服务端落成 localStorage 明文。
+ *
+ * 注册：本类不再使用 @Component 自动注册（顺序不可控），改由
+ * {@code SecurityBeans#jwtFilterRegistration} 通过 FilterRegistrationBean 显式装配，
+ * 顺序固定为 HIGHEST_PRECEDENCE + 10（在 HmacFilter 之后、拦截器链之前）。
  */
 @Slf4j
-@Component
-@RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+
+    public JwtFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
 
     public static final String AUTH_HEADER = "Authorization";
     public static final String TOKEN_PREFIX = "Bearer ";

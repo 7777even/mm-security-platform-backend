@@ -7,8 +7,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.crypto.Mac;
@@ -32,19 +30,23 @@ import java.util.Base64;
  * 1. 三个头必须齐全
  * 2. 时间戳与服务器时间偏差超过 maxSkewSeconds 拒绝（防重放）
  * 3. HMAC 签名匹配
+ *
+ * 注册：本类不再使用 @Component 自动注册（顺序不可控），改由
+ * {@code SecurityBeans#hmacFilterRegistration} 通过 FilterRegistrationBean 显式装配，
+ * 顺序固定为 HIGHEST_PRECEDENCE（先于 JwtFilter 执行）。
  */
 @Slf4j
-@Component
 public class HmacFilter extends OncePerRequestFilter {
 
-    @Value("${signature.enabled}")
-    private boolean enabled;
+    private final boolean enabled;
+    private final String secret;
+    private final long maxSkewSeconds;
 
-    @Value("${signature.secret}")
-    private String secret;
-
-    @Value("${signature.max-skew-seconds}")
-    private long maxSkewSeconds;
+    public HmacFilter(boolean enabled, String secret, long maxSkewSeconds) {
+        this.enabled = enabled;
+        this.secret = secret;
+        this.maxSkewSeconds = maxSkewSeconds;
+    }
 
     private static final String H = "HmacSHA256";
 

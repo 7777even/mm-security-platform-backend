@@ -1,0 +1,49 @@
+# =============================================================================
+# 生产环境配置（--spring.profiles.active=prod 激活）
+#
+# 安全基线（对应 AGENTS.md §8 L4 门禁）：
+#   1. 防重放签名强制开启（不允许 dev 的挂起态进入生产）
+#   2. jwt.secret 必须经由环境变量注入，无默认值 —— 缺失即启动失败，
+#      杜绝"忘记配密钥却带着弱占位密钥上线"
+#   3. 关闭 H2 Console（生产不得暴露数据库控制台）
+#   4. 关闭 MyBatis-Plus SQL 打印（避免生产日志膨胀与敏感数据落盘）
+#   5. CORS 必须显式注入白名单（不回退到 dev 的 localhost 默认）
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mm_security}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  h2:
+    console:
+      enabled: false
+
+# JWT：生产必须注入 JWT_SECRET（≥ 256bit），无默认值
+jwt:
+  secret: ${JWT_SECRET}
+
+# 防重放签名：生产强制开启
+signature:
+  enabled: true
+  secret: ${SIGNATURE_SECRET}
+
+# CORS：生产必须显式注入白名单（覆盖 dev 的 localhost 默认）。
+# 多个域名用逗号分隔，例如 CORS_ALLOWED_ORIGINS=https://a.example.com,https://b.example.com
+# 含 * 时才会退化为通配（通常不应当出现于生产）。
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+# 日志：生产收紧到 INFO
+logging:
+  level:
+    root: INFO
+    com.sinopec.mmsecurity: INFO
+    org.springframework.web: INFO
+
+# 关闭 SQL 打印
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
