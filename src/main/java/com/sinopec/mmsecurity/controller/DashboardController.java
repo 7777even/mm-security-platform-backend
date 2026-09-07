@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.controller;
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
+import com.sinopec.mmsecurity.dto.RiskHeatItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.DashboardService;
@@ -35,5 +36,10 @@ public class DashboardController {
     @GetMapping("/workstations")
     public Result<List<Workstation>> workstations() {
         return Result.ok(dashboardService.workstations());
+    }
+
+    @GetMapping("/risk-heatmap")
+    public Result<List<RiskHeatItem>> riskHeatmap() {
+        return Result.ok(dashboardService.riskHeatmap());
     }
 }

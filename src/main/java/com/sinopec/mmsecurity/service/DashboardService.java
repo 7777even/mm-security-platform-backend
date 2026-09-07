@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
+import com.sinopec.mmsecurity.dto.RiskHeatItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacDevice;
@@ -116,5 +117,64 @@ public class DashboardService {
         ws.setZone(w.getZone());
         ws.setOnline(Boolean.TRUE.equals(w.getOnline()));
         return ws;
+    }
+
+    /**
+     * 风险热力图：按设备主数据的 zone 分区，基于真实数据聚合风险评分。
+     * <ul>
+     *   <li>设备离线数（status=0）× 0.5</li>
+     *   <li>设备告警数（status=2）× 1.5</li>
+     *   <li>该 zone 内活动报警数（fac_alarm status=0，经 device_code 关联 zone）× 1.0</li>
+     * </ul>
+     * 评分四舍五入 1 位小数，按分值降序。无随机、无硬编码，DB 无关（Java 侧聚合）。
+     *
+     * @return 各分区风险评分列表
+     */
+    public List<RiskHeatItem> riskHeatmap() {
+        List<FacDevice> devices = deviceMapper.selectList(
+                new LambdaQueryWrapper<FacDevice>().eq(FacDevice::getDeleted, 0));
+
+        Map<String, ZoneStat> zoneStat = new HashMap<>();
+        Map<String, String> deviceZone = new HashMap<>();
+        for (FacDevice d : devices) {
+            String zone = d.getZone() == null || d.getZone().isEmpty() ? "未知" : d.getZone();
+            ZoneStat s = zoneStat.computeIfAbsent(zone, k -> new ZoneStat());
+            s.total++;
+            Integer st = d.getStatus();
+            if (st != null) {
+                if (st == 0) s.offline++;
+                else if (st == 2) s.alarm++;
+            }
+            if (d.getDeviceCode() != null) deviceZone.put(d.getDeviceCode(), zone);
+        }
+
+        List<FacAlarm> activeAlarms = alarmMapper.selectList(new LambdaQueryWrapper<FacAlarm>()
+                .eq(FacAlarm::getDeleted, 0).eq(FacAlarm::getStatus, 0));
+        Map<String, Integer> alarmByZone = new HashMap<>();
+        for (FacAlarm a : activeAlarms) {
+            if (a.getDeviceCode() == null) continue;
+            String zone = deviceZone.get(a.getDeviceCode());
+            if (zone != null) alarmByZone.merge(zone, 1, Integer::sum);
+        }
+
+        List<RiskHeatItem> items = new ArrayList<>();
+        for (Map.Entry<String, ZoneStat> e : zoneStat.entrySet()) {
+            ZoneStat s = e.getValue();
+            double raw = s.offline * 0.5 + s.alarm * 1.5 + alarmByZone.getOrDefault(e.getKey(), 0) * 1.0;
+            RiskHeatItem it = new RiskHeatItem();
+            it.setZone(e.getKey());
+            it.setScore(Math.round(raw * 10.0) / 10.0);
+            items.add(it);
+        }
+        items.sort((a, b) -> Double.compare(b.getScore() == null ? 0 : b.getScore(),
+                a.getScore() == null ? 0 : a.getScore()));
+        return items;
+    }
+
+    /** 分区聚合临时统计（不落库） */
+    private static final class ZoneStat {
+        int total;
+        int offline;
+        int alarm;
     }
 }

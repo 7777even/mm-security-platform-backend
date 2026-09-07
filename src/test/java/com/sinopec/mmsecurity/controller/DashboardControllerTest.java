@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.controller;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
+import com.sinopec.mmsecurity.dto.RiskHeatItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.service.DashboardService;
 import org.junit.jupiter.api.Test;
@@ -85,5 +86,19 @@ class DashboardControllerTest {
                 .andExpect(jsonPath("$.data[0].count").value(3))
                 .andExpect(jsonPath("$.data[1].hour").value("09:00"))
                 .andExpect(jsonPath("$.data[1].count").value(12));
+    }
+
+    @Test
+    void riskHeatmap_returnsZoneScores() throws Exception {
+        RiskHeatItem it = new RiskHeatItem();
+        it.setZone("罐区");
+        it.setScore(4.2);
+        when(service.riskHeatmap()).thenReturn(List.of(it));
+
+        mockMvc.perform(get("/api/v1/dashboard/risk-heatmap"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].zone").value("罐区"))
+                .andExpect(jsonPath("$.data[0].score").value(4.2));
     }
 }

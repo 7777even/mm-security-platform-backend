@@ -3,8 +3,10 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
+import com.sinopec.mmsecurity.dto.RiskHeatItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.FacDevice;
 import com.sinopec.mmsecurity.entity.FacWorkstation;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
@@ -129,5 +131,44 @@ class DashboardServiceTest {
         w.setZone(zone);
         w.setOnline(online);
         return w;
+    }
+
+    @Test
+    void riskHeatmap_aggregatesZoneScoresFromRealData() {
+        // 罐区A：2 设备（1 离线）；装置C：2 设备（1 离线 1 告警）
+        when(deviceMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                dev("DC-01", "罐区A", 0),
+                dev("DC-02", "罐区A", 1),
+                dev("DC-03", "装置C", 2),
+                dev("DC-04", "装置C", 0)
+        ));
+        // 活动报警（status=0）各 1 条关联到 罐区A(DC-01) 与 装置C(DC-04)
+        when(alarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                alarmOnDevice("DC-01"),
+                alarmOnDevice("DC-04")
+        ));
+
+        List<RiskHeatItem> items = service.riskHeatmap();
+        Map<String, Double> byZone = items.stream()
+                .collect(Collectors.toMap(RiskHeatItem::getZone, RiskHeatItem::getScore));
+        // 装置C = 离线1*0.5 + 告警1*1.5 + 活动报警1*1.0 = 3.0
+        assertEquals(3.0, byZone.get("装置C"), 0.0001);
+        // 罐区A = 离线1*0.5 + 活动报警1*1.0 = 1.5
+        assertEquals(1.5, byZone.get("罐区A"), 0.0001);
+    }
+
+    private FacDevice dev(String code, String zone, int status) {
+        FacDevice d = new FacDevice();
+        d.setDeviceCode(code);
+        d.setZone(zone);
+        d.setStatus(status);
+        return d;
+    }
+
+    private FacAlarm alarmOnDevice(String code) {
+        FacAlarm a = new FacAlarm();
+        a.setDeviceCode(code);
+        a.setStatus(0);
+        return a;
     }
 }
