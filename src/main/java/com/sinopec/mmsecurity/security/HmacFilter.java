@@ -54,7 +54,9 @@ public class HmacFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();
         // 探针路径免签名：K8s liveness/readiness 探针无法携带 HMAC 头，必须放行
-        return !enabled || uri.startsWith("/h2-console") || uri.startsWith("/actuator");
+        // OPTIONS 预检亦放行：与 JwtFilter 同理，避免预检在签名校验阶段被拒导致缺 CORS 头
+        return !enabled || uri.startsWith("/h2-console") || uri.startsWith("/actuator")
+                || "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
     @Override

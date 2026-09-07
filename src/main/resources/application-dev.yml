@@ -17,6 +17,13 @@ spring:
   # 迁移脚本位置：classpath:db/migration/h2（继承自 application.yml base，dev 即 H2 方言）。
   # Flyway 默认编码 UTF-8，中文脚本在中文 Windows 下不会乱码。
 
+# 开发期 CORS：前端 dev server 端口由 vite 动态分配（5173/5174/5175…），
+# 用通配来源（allowedOriginPatterns("*") + allowCredentials）兼容任意 localhost 端口，
+# 避免再加白名单。生产环境务必在 application-prod.yml / application-dm.yml 注入真实域名白名单。
+app:
+  cors:
+    allowed-origins: "*"
+
 jwt:
   secret: dev-secret-not-for-production-please-change-me-please-please
 

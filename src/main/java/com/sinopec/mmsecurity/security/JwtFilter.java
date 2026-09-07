@@ -36,6 +36,17 @@ public class JwtFilter extends OncePerRequestFilter {
     public static final String AUTH_HEADER = "Authorization";
     public static final String TOKEN_PREFIX = "Bearer ";
 
+    /**
+     * 浏览器预检(OPTIONS)不带 Authorization 头。若在此阶段就做鉴权，会被 401 拦截，
+     * 而 CORS 响应头由 DispatcherServlet 内的 CORS 拦截器添加——预检在到达它之前就被拒，
+     * 浏览器会报「No 'Access-Control-Allow-Origin' header」。故 OPTIONS 必须直接放行，
+     * 让其直达 CORS 拦截器完成预检握手。
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return "OPTIONS".equalsIgnoreCase(request.getMethod());
+    }
+
     /** 免鉴权路径白名单 */
     private static final String[] WHITELIST = {
             "/api/v1/auth/login",

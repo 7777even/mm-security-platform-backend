@@ -30,7 +30,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final RequireAuthInterceptor requireAuthInterceptor;
 
     /** 来源白名单；缺省为前端脚手架 dev 端口，生产须由 application-prod.yml 注入真实域名 */
-    @Value("#{'${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://localhost:5180,http://localhost:4173}'.split(',')}")
+    @Value("#{'${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5180,http://localhost:4173}'.split(',')}")
     private List<String> allowedOrigins;
 
     @Override
