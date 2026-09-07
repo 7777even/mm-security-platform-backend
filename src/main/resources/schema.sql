@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS fac_device (
 
 CREATE TABLE IF NOT EXISTS fac_alarm (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    alarm_id VARCHAR(32),
     device_code CHAR(20),
     level TINYINT NOT NULL,
     type VARCHAR(32),
@@ -45,6 +46,10 @@ CREATE TABLE IF NOT EXISTS fac_alarm (
     content TEXT,
     status TINYINT NOT NULL DEFAULT 0,
     occurred_at TIMESTAMP NOT NULL,
+    location VARCHAR(128),
+    category VARCHAR(32),
+    warned BOOLEAN DEFAULT FALSE,
+    plan_id VARCHAR(64),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0
 );
