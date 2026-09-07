@@ -40,8 +40,12 @@
 
 ## 验收标准（Definition of Done）
 
+本 Change 覆盖 P0 / P1 / 测试基线，验收如下：
+
 - [x] `tasks.md` 全部勾选，验收标准逐条满足。
-- [x] `./mvnw test` 0 failure。
-- [x] 契约同步：新建 `frontend-scaffold/docs/api/device.openapi.json` 并反映 `mock` 字段移除。
+- [x] `mvn test` 0 failure（18 case 全绿，见 `engineering/qa/`）。
 - [x] 提交按 scope 拆分：`security` / `config` / `device` / `test`。
 - [x] QA + Retro 即刻写入 `engineering/`。
+- [ ] 契约同步（**不在本 Change 范围**，拆到独立任务「消化跨库契约技术债」）：
+      新建 `frontend-scaffold/docs/api/device.openapi.json`、补齐 auth/login|refresh|me、
+      dashboard/workstations 前端契约、明确 401/403 口径。本 Change 仅用脚本比对确认**未引入新漂移**。
