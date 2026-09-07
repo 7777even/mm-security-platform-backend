@@ -1,0 +1,56 @@
+# =============================================================================
+# 达梦 DM8 生产环境配置（--spring.profiles.active=dm 激活）
+#
+# 信创国产化选定生产库（设计稿意图）。本 profile 与 prod(PostgreSQL) 同构的安全基线，
+# 仅数据源与 Flyway 迁移方言不同。
+#
+# 启用前置条件（本机无达梦实例，以下为到环境上的操作）：
+#   1. 安装达梦 JDBC 驱动到本地 Maven 仓库（驱动 jar 不在中央仓库）：
+#        mvn install:install-file -Dfile=DmJdbcDriver18.jar \
+#            -DgroupId=com.dameng -DartifactId=DmJdbcDriver18 -Dversion=8.1.3 -Dpackaging=jar
+#      pom.xml 的 <profiles><dm> 已声明该依赖（仅在 dm profile 激活时解析，不影响 dev/默认构建）。
+#   2. Flyway 社区版无官方达梦 database 模块，迁移 SQL（db/migration/dameng）按 DM8(Oracle 兼容)
+#      方言编写，须在达梦实例上复核执行；若 Flyway 报「Unsupported Database」，需引入达梦兼容的
+#      Flyway database 插件，或将 Flyway 的数据库探测配置为兼容模式后重试。
+#
+# 安全基线（与 prod 一致）：防重放签名强制开启、JWT_SECRET 必须注入、关闭 H2 Console、关闭 SQL 打印、CORS 显式白名单。
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:dm://${DB_HOST:localhost}:${DB_PORT:5236}/${DB_NAME:mm_security}
+    username: ${DB_USERNAME:SYSDBA}
+    password: ${DB_PASSWORD}
+    driver-class-name: dm.jdbc.driver.DmDriver
+  h2:
+    console:
+      enabled: false
+  # Flyway 迁移位置：达梦 DM8 方言（classpath:db/migration/dameng）。
+  flyway:
+    locations: classpath:db/migration/dameng
+
+# JWT：生产必须注入 JWT_SECRET（≥ 256bit），无默认值
+jwt:
+  secret: ${JWT_SECRET}
+
+# 防重放签名：生产强制开启
+signature:
+  enabled: true
+  secret: ${SIGNATURE_SECRET}
+
+# CORS：生产必须显式注入白名单（覆盖 dev 的 localhost 默认）
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+# 日志：生产收紧到 INFO
+logging:
+  level:
+    root: INFO
+    com.sinopec.mmsecurity: INFO
+    org.springframework.web: INFO
+
+# 关闭 SQL 打印
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl

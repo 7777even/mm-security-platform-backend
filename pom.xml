@@ -15,7 +15,7 @@
     <artifactId>mm-security-backend</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <name>mm-security-backend</name>
-    <description>安全管控指挥系统后端服务（Spring Boot 3 + MyBatis-Plus + PostgreSQL + JWT）</description>
+    <description>安全管控指挥系统后端服务（Spring Boot 3 + MyBatis-Plus + 达梦/H2 + JWT，Flyway 版本化迁移）</description>
 
     <properties>
         <java.version>17</java.version>
@@ -57,6 +57,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Flyway 数据库版本化迁移（生产在线迁移；dev 用 H2 方言可本地验证） -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
         </dependency>
         <!-- MyBatis-Plus -->
         <dependency>
@@ -142,4 +147,22 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- 达梦 DM8 profile：生产选定库（信创）。仅激活 dm 时解析达梦驱动，不影响 dev/默认构建。
+         启用前需先本地 install 驱动 jar：
+           mvn install:install-file -Dfile=DmJdbcDriver18.jar -DgroupId=com.dameng \
+               -DartifactId=DmJdbcDriver18 -Dversion=8.1.3 -Dpackaging=jar -->
+    <profiles>
+        <profile>
+            <id>dm</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.dameng</groupId>
+                    <artifactId>DmJdbcDriver18</artifactId>
+                    <version>8.1.3</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

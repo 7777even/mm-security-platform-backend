@@ -19,6 +19,10 @@ spring:
   h2:
     console:
       enabled: false
+  # Flyway 迁移位置：PostgreSQL 方言（classpath:db/migration/postgresql）。
+  # 注：生产选定库为达梦 DM8（信创），对应 profile 为 `dm`；本 PostgreSQL profile 保留为兼容/回退。
+  flyway:
+    locations: classpath:db/migration/postgresql
 
 # JWT：生产必须注入 JWT_SECRET（≥ 256bit），无默认值
 jwt:
