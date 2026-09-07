@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.security.RequireAuth;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -23,6 +25,11 @@ public class DashboardController {
     @GetMapping("/overview")
     public Result<DashboardOverview> overview() {
         return Result.ok(dashboardService.overview());
+    }
+
+    @GetMapping("/alarm-trend")
+    public Result<List<AlarmTrendPoint>> alarmTrend() {
+        return Result.ok(dashboardService.trend24h(LocalDateTime.now()));
     }
 
     @GetMapping("/workstations")
