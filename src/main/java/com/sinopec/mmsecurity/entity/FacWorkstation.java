@@ -1,5 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -13,7 +15,8 @@ import java.time.LocalDateTime;
 @TableName("fac_workstation")
 public class FacWorkstation {
 
-    /** 工位业务 ID（如 WS-01），物理主键 */
+    /** 工位业务 ID（如 WS-01），物理主键（业务侧显式赋值，非自增） */
+    @TableId(type = IdType.INPUT)
     private String workstationId;
 
     private String name;
