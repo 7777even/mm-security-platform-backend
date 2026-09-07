@@ -62,3 +62,32 @@ mybatis-plus:
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+# =============================================================================
+# Actuator 可观测性（健康/就绪/存活/信息探针）
+#   - 暴露 health、info 两个 Web 端点；health 下含 /liveness 与 /readiness 子探针
+#     （probes.enabled=true，供 K8s startupProbe/readinessProbe/livenessProbe）
+#   - show-details=when_authorized：匿名探针只拿到 UP/DOWN 状态，鉴权后可看组件明细，
+#     避免把数据源等内部细节暴露给公网
+#   - /actuator/** 已在 JwtFilter/HmacFilter 白名单放行，探针免 JWT/免签名
+#   - 注意：探针路径是 /actuator/health（非既有自定义 /api/v1/health）
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: false
+
+info:
+  app:
+    name: mm-security-backend
+    description: 石化园区安全风险管控平台后端服务
+

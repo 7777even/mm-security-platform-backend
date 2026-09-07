@@ -41,6 +41,7 @@ public class JwtFilter extends OncePerRequestFilter {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/health",
+            "/actuator",
             "/h2-console",
             "/ws",
             "/error"
