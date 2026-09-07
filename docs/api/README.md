@@ -10,7 +10,7 @@ frontend-scaffold/docs/api/
 ├── auth.openapi.json
 ├── alarm.openapi.json
 ├── dashboard.openapi.json
-├── device.openapi.json     # 待补（后端 /api/v1/devices 已实现，契约尚未落盘）
+├── device.openapi.json     # 设备台账（已与 DeviceController 对齐）
 ├── map.openapi.json
 ├── emergency.openapi.json
 ├── uplink.openapi.json
@@ -27,15 +27,15 @@ frontend-scaffold/docs/api/
 | Controller              | 基础路径            | 已实现端点                                          | 前端契约文件                    | 状态                                   |
 | ----------------------- | ------------------- | --------------------------------------------------- | ------------------------------- | -------------------------------------- |
 | `HealthController`      | `/api/v1`           | `GET /health`                                       | （健康检查不入契约，已豁免）     | 免鉴权                                 |
-| `AuthController`        | `/api/v1/auth`      | `POST /login`、`POST /refresh`、`GET /me`、`GET /menus` | `auth.openapi.json`         | 仅 `GET /menus` 已入契约，其余三项待补 |
-| `DashboardController`   | `/api/v1/dashboard` | `GET /overview`、`GET /workstations`                 | `dashboard.openapi.json`        | `overview` 已对齐；`workstations` 待补 |
-| `DeviceController`      | `/api/v1/devices`   | `GET`（分页）、`GET /{code}`                         | `device.openapi.json`（**缺失**）| 契约文件待建                           |
+| `AuthController`        | `/api/v1/auth`      | `POST /login`、`POST /refresh`、`GET /me`、`GET /menus` | `auth.openapi.json`         | 已对齐（login/refresh/me 已补入契约） |
+| `DashboardController`   | `/api/v1/dashboard` | `GET /overview`、`GET /workstations`                 | `dashboard.openapi.json`        | 已对齐（workstations 已补入契约） |
+| `DeviceController`      | `/api/v1/devices`   | `GET`（分页）、`GET /{code}`                         | `device.openapi.json`            | 已对齐（契约文件已建）              |
 | `AlarmController`       | `/api/v1/alarms`    | `GET`（分页）                                        | `alarm.openapi.json`            | 查询已对齐；契约的 POST/PUT/DELETE 未实现 |
 | `AlarmWebSocketHandler` | `/ws/alarm`         | 订阅推送（dev 每 12s 模拟一条）                      | `realtime.openapi.json`         | 已对齐                                 |
 | `gis.openapi.json`      | —                   | 外部网关（`https://gateway.example.com/gis`）         | 前瞻性桩                        | **不由本服务实现**                     |
 | `map` / `emergency` / `uplink` | —            | 尚未实现                                            | 真实契约                        | 待实现（技术债）                       |
 
-> 契约域与实现的差异（契约有 / 实现无，或反之）由 `scripts/check-api-contract.mjs` 检出，差异属**技术债**，须在 openspec Change 中消化，不得静默。
+> 契约域与实现的差异（契约有 / 实现无）由 `scripts/check-api-contract.mjs` 检出。截至 2026-09-07，「实现有 / 契约无」已归零；剩余差异均为前端超前、后端尚未实现的前瞻桩（`alarm` 的 POST/PUT/DELETE、`dashboard/alarm-trend`、`risk-heatmap`、`emergency/*`、`map/*`、`uplink/*` 及 `gis` 外部网关），属**待实现技术债**，须在 openspec Change 中消化，不得静默。
 
 ## 同步纪律（改接口必走四同步）
 
