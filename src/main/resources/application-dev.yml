@@ -1,4 +1,8 @@
 # 开发环境：启用 H2 内存库兜底（无需本地 PostgreSQL 即可启动）
+server:
+  # 端口对齐前端脚手架 .env.development 的 VITE_API_BASE（localhost:8787），
+  # 前端 dev 关掉 mock 后即可直连本后端，无需额外改前端配置。
+  port: 8787
 spring:
   datasource:
     url: jdbc:h2:mem:mm_security;DB_CLOSE_DELAY=-1
