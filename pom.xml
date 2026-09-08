@@ -157,6 +157,20 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <!-- 测试分层：standalone *Test（无 Spring 上下文，答逻辑/契约）+
+                 *IT（启动真实上下文 + H2+Flyway，答真实 SQL/落库/逻辑删除/乐观锁）。
+                 两者都在 `mvn test` 阶段执行，保证 CI 覆盖。*IT 复用 db/migration/h2 的 V 文件作为唯一 schema 来源。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
             <!-- 覆盖率门禁：mvn test 采集并生成报告，jacoco:check 按红线卡口 -->
             <plugin>
                 <groupId>org.jacoco</groupId>
