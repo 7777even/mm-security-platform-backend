@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.controller;
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.MenuVO;
+import com.sinopec.mmsecurity.dto.RefreshRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.service.AuthService;
 import jakarta.validation.Valid;
@@ -33,8 +34,8 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public Result<TokenResponse> refresh(@RequestBody Map<String, String> body) {
-        return Result.ok(authService.refresh(body.get("refreshToken")));
+    public Result<TokenResponse> refresh(@Valid @RequestBody RefreshRequest req) {
+        return Result.ok(authService.refresh(req.getRefreshToken()));
     }
 
     @GetMapping("/me")

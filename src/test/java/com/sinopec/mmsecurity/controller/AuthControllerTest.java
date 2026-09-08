@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.service.AuthService;
@@ -49,6 +50,38 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"admin\",\"password\":\"WRONG\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void refresh_success_returnsToken() throws Exception {
+        when(authService.refresh("rt")).thenReturn(TokenResponse.of("at", "rt2", 7200));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"rt\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.accessToken").value("at"));
+    }
+
+    @Test
+    void refresh_missingToken_returnsParamInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID));
+    }
+
+    @Test
+    void refresh_invalidToken_returns401() throws Exception {
+        when(authService.refresh("bad")).thenThrow(new BusinessException(401, "刷新令牌无效"));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"bad\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
     }
