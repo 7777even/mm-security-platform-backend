@@ -29,6 +29,8 @@ jwt:
 
 signature:
   enabled: false
+  # dev 签名挂起，但占位密钥仍需给定以便配置绑定（绝不用于生产）
+  secret: dev-sign-secret-not-for-production-please-change-me
 
 logging:
   level:

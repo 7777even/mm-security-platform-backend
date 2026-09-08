@@ -40,6 +40,12 @@ public class FieldReportItem implements Serializable {
     @NotBlank(message = "status 必填")
     private String status;
 
+    /**
+     * 回传提交人（服务端信任值，由 UplinkService 按当前登录态覆盖，
+     * 客户端传入无效——防水平越权/身份冒用）。
+     */
+    private String reporter;
+
     /** 已尝试次数 */
     private int attempts;
 

@@ -47,8 +47,12 @@ public class CorsConfig {
     private List<String> allowedOrigins;
 
     /**
-     * 启动期安全校验：非 dev profile 禁止 CORS 通配。
-     * 触发条件：prod/dm 等环境 {@code app.cors.allowed-origins} 含 {@code *}。
+     * 启动期安全校验：非 dev profile 禁止 CORS 通配，且白名单不得为空。
+     * <ul>
+     *   <li>含 {@code *}：prod/dm 等环境 {@code app.cors.allowed-origins} 配通配 → 失败；</li>
+     *   <li>为空/含空白项：{@code CORS_ALLOWED_ORIGINS} 缺失时解析为空串 → {@code ['']}，
+     *       绝不能静默退化为空源 → 失败。</li>
+     * </ul>
      * 抛异常让 Spring 上下文初始化失败，fail-fast 早于任何请求。
      */
     @PostConstruct
@@ -56,11 +60,22 @@ public class CorsConfig {
         boolean isDev = Arrays.stream(activeProfiles.split(","))
                 .map(String::trim)
                 .anyMatch("dev"::equalsIgnoreCase);
-        if (!isDev && allowedOrigins.contains("*")) {
+        if (isDev) {
+            return;
+        }
+        if (allowedOrigins.contains("*")) {
             throw new IllegalStateException(
                     "CORS 通配(*) 仅允许 dev profile；当前 profile=[" + activeProfiles
                             + "] 禁止通配。请在 application-" + activeProfiles
                             + ".yml 通过 CORS_ALLOWED_ORIGINS 注入真实前端域名白名单（逗号分隔，不含 *）。");
+        }
+        boolean empty = allowedOrigins == null || allowedOrigins.isEmpty()
+                || allowedOrigins.stream().anyMatch(o -> o == null || o.isBlank());
+        if (empty) {
+            throw new IllegalStateException(
+                    "生产环境 CORS 白名单不得为空。必须在 application-" + activeProfiles
+                            + ".yml 通过 CORS_ALLOWED_ORIGINS 显式注入真实前端域名（逗号分隔，不含 *），"
+                            + "缺失即启动失败，杜绝静默退化为空源。");
         }
     }
 

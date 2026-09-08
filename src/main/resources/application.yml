@@ -38,8 +38,10 @@ spring:
       add-mappings: false
 
 # JWT 配置
+# 注意：jwt.secret 不得在此提供默认占位值——任何默认都会让「忘记注入真实密钥」的上线带着弱密钥运行。
+# 生产/信创（prod/dm）已声明为 ${JWT_SECRET}（无默认，缺失即启动失败）；dev profile 单独给定 dev 密钥。
 jwt:
-  secret: ${JWT_SECRET:mm-security-backend-secret-key-change-in-production-min-256-bits}
+  secret: ${JWT_SECRET}
   # access token 有效期（秒）= 2h
   access-ttl: 7200
   # refresh token 有效期（秒）= 7d
@@ -47,9 +49,10 @@ jwt:
   issuer: mm-security-backend
 
 # 防重放签名（生产环境启用 HMAC-SHA256，dev/gateway-bypass 可挂起）
+# signature.secret 同理不得提供默认占位；prod/dm 为 ${SIGNATURE_SECRET}（无默认），dev 单独给定。
 signature:
   enabled: ${SIGNATURE_ENABLED:false}
-  secret: ${SIGNATURE_SECRET:sign-secret-change-in-production}
+  secret: ${SIGNATURE_SECRET}
   # timestamp 容忍偏差（秒）= 5min
   max-skew-seconds: 300
 

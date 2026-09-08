@@ -48,11 +48,13 @@ public class AlarmController {
     }
 
     @PostMapping
+    @RequireAuth(role = "ADMIN")
     public Result<AlarmItem> create(@Valid @RequestBody EmergencyEventPayload payload) {
         return Result.ok(alarmService.create(payload));
     }
 
     @PutMapping("/{alarmId}")
+    @RequireAuth(role = "ADMIN")
     public Result<AlarmItem> update(
             @PathVariable String alarmId,
             @Valid @RequestBody EmergencyEventPayload payload) {
@@ -60,6 +62,7 @@ public class AlarmController {
     }
 
     @DeleteMapping("/{alarmId}")
+    @RequireAuth(role = "ADMIN")
     public Result<DeleteResult> delete(@PathVariable String alarmId) {
         return Result.ok(alarmService.delete(alarmId));
     }
