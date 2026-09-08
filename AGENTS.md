@@ -208,6 +208,12 @@ L3 / L4 改动动手前必须完成并闭环以下四件套（位于 `openspec/c
 
 四者须闭环：`proposal` 的 Capabilities ↔ `spec-delta` 的 Requirement ↔ `tasks` 的验收标准一一对应。禁止 L1 / L2 建立 OpenSpec Change。
 
+**归档闭环（全勾必归档）**：`tasks.md` 全部勾选后，必须在**同一次交付内**完成收尾，不允许滞留 `changes/`：
+
+1. **spec 回填**：将 `spec-delta.md` 合入 `openspec/specs/<capability>/spec.md`（新建或扩充 capability，Requirement/Scenario 格式）。
+2. **归档**：`git mv openspec/changes/<name> openspec/archive/<YYYY-MM-DD>-<name>`（日期前缀必带）。
+3. **守门**：CI 跑 `node scripts/check-openspec-hygiene.mjs`（全勾未归档 / 四件套缺失 / 归档缺日期前缀即失败）；纪律细则见 `openspec/changes/README.md`。
+
 ### 7.2 QA / Retro 即刻记录
 
 L3 / L4 任务完成后**即刻**写 `engineering/qa/` 与 `engineering/retro/`，不允许攒到最后补；L0–L2 不写。

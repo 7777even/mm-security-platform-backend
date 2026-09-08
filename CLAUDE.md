@@ -34,7 +34,7 @@
 5. **无状态令牌**：JWT 不落盘不写 Cookie；`jwt.secret` / `DB_PASSWORD` / `SIGNATURE_SECRET` 只从环境变量注入。
 6. **错误码分段**：`1xx` 通用 / `2xx` 鉴权 / `3xx` 设备 / `5xx` 硬控；新增码同步 `ResultCode` + 前端契约 + 调用方。
 7. **分层不越界**：Controller 不写业务、Service 不感知 HTTP、Mapper 不写业务判断、Entity 不直接做出参。
-8. **数据库**：禁止操作生产库；DDL 变更必须同步 `schema.sql` 快照 + `resources/db/` 增量 SQL + 回退方案。
+8. **数据库**：禁止操作生产库；DDL 由 Flyway 接管（双轨：`V1` 快照 + `V` 增量，三方言 `db/migration/{h2,postgresql,dameng}`），已发布 `V` 文件禁止改/删，结构变更属 L3/L4 须附回退方案（AGENTS §6.4）。
 
 ## 5. 工程约定
 
@@ -51,3 +51,17 @@
 ## 7. OpenSpec 可执行命令（可选）
 
 本仓库已启用 openspec（`schema: spec-driven`）。Cursor 侧可用 `openspec` CLI，见 `.cursor/commands/opsx-*.md`（需本地安装 `openspec` CLI）。WorkBuddy/Claude 侧直接按 `AGENTS.md` §7 四件套执行。
+
+## 8. 开工前必读（路线图 / 进度台账 / 归档纪律）
+
+L3 / L4 开工前，按序读取：
+
+1. **跨库路线图**：`docs/architecture/roadmap.md`（能力依赖顺序与阶段完成判据）。
+2. **进度台账**：`engineering/plans/end-to-end-development-progress-tracker.md`（各能力域状态与证据）。
+3. **当前已确认 Change**：`openspec/changes/<name>/`——其 `tasks.md` 是唯一实施依据；路线图只规定依赖顺序，不授权跳过已确认范围。
+
+收尾纪律：
+
+- `tasks.md` 全勾后**同一次交付内**完成 spec 回填（→ `openspec/specs/<capability>/`）并归档到 `openspec/archive/<YYYY-MM-DD>-<name>/`（详见 AGENTS §7.1；CI 由 `scripts/check-openspec-hygiene.mjs` 守门）。
+- 更新进度台账：状态、Change、日期、验收证据（QA 文件链接）、阻塞项、行更新时间。
+- 判据：**Mock、桩服务、单层代码、建表/枚举完成，不得作为能力「已完成」的依据**；只有端到端验收 + 回归全绿 + 文档同步通过才可关闭。
