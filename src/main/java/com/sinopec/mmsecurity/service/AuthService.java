@@ -82,7 +82,6 @@ public class AuthService {
         }
         return TokenResponse.of(
                 jwtUtil.issueAccess(u.getUsername(), u.getRole()),
-                jwtUtil.issueRefresh(u.getUsername()),
                 accessTtl);
     }
 
@@ -91,11 +90,14 @@ public class AuthService {
         if (claims == null || !"refresh".equals(claims.get("type", String.class))) {
             throw new BusinessException(ResultCode.TOKEN_INVALID, "refresh 令牌无效");
         }
-        String username = claims.getSubject();
         return TokenResponse.of(
-                jwtUtil.issueAccess(username, "ADMIN"),
-                jwtUtil.issueRefresh(username),
+                jwtUtil.issueAccess(claims.getSubject(), "ADMIN"),
                 accessTtl);
+    }
+
+    /** 签发刷新令牌：仅由 AuthController 经 HttpOnly Cookie 下发，绝不进响应 body。 */
+    public String issueRefreshToken(String username) {
+        return jwtUtil.issueRefresh(username);
     }
 
     public Map<String, Object> me() {

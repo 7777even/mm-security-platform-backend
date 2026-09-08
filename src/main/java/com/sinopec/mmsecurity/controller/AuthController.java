@@ -6,6 +6,7 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.dto.TokenResponse;
+import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -29,7 +30,9 @@ import java.util.Map;
  *
  * <p>刷新令牌安全策略（S1 §5.3 合规红线）：refresh 令牌<b>绝不</b>进入响应 body，
  * 仅由后端经 {@code Set-Cookie} 下发 {@code HttpOnly} Cookie（name=rt，SameSite=Lax）。
- * 前端 JS 不可读，规避 XSS 窃刷新令牌；access 令牌仍走前端内存态（token.ts）。
+ * {@link TokenResponse} 不再持有 refresh 字段，从源头杜绝 body 泄露；
+ * 刷新令牌由 {@link AuthService#issueRefreshToken} 签发后在此层种入 Cookie，前端 JS 不可读，
+ * 规避 XSS 窃刷新令牌；access 令牌仍走前端内存态（token.ts）。
  * 续期时浏览器自动携带该 Cookie，后端从 {@code @CookieValue} 读取，
  * 因此 {@code POST /auth/refresh} 无需请求体。登出时后端下发 Max-Age=0 的同名 Cookie 清除之。</p>
  */
@@ -41,6 +44,7 @@ public class AuthController {
     private static final String REFRESH_COOKIE = "rt";
 
     private final AuthService authService;
+    private final JwtUtil jwtUtil;
 
     /** 生产 HTTPS 下刷新 Cookie 须 Secure 才生效；dev(http) 必须为 false，否则浏览器拒存。 */
     @Value("${app.cookie.secure:false}")
@@ -49,9 +53,9 @@ public class AuthController {
     @PostMapping("/login")
     public Result<TokenResponse> login(@Valid @RequestBody LoginRequest req, HttpServletResponse response) {
         TokenResponse t = authService.login(req);
-        addRefreshCookie(response, t.getRefreshToken(), t.getExpiresIn());
-        // 对外响应只带 access + 有效期，refresh 已通过 Cookie 下发（body 不暴露）
-        return Result.ok(TokenResponse.of(t.getAccessToken(), t.getExpiresIn()));
+        String rt = authService.issueRefreshToken(req.getUsername());
+        addRefreshCookie(response, rt, t.getExpiresIn());
+        return Result.ok(t);
     }
 
     @PostMapping("/refresh")
@@ -62,8 +66,10 @@ public class AuthController {
             throw new BusinessException(ResultCode.TOKEN_INVALID, "缺少 refresh 令牌（Cookie）");
         }
         TokenResponse t = authService.refresh(refreshToken);
-        addRefreshCookie(response, t.getRefreshToken(), t.getExpiresIn());
-        return Result.ok(TokenResponse.of(t.getAccessToken(), t.getExpiresIn()));
+        String username = jwtUtil.parse(refreshToken).getSubject();
+        String newRt = authService.issueRefreshToken(username);
+        addRefreshCookie(response, newRt, t.getExpiresIn());
+        return Result.ok(t);
     }
 
     @PostMapping("/logout")

@@ -5,42 +5,52 @@ import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
+import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.service.AuthService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * AuthController（standalone MockMvc，不启动 Spring 上下文）：
- * 登录成功返回 token；口令错误返回业务错误码（由 GlobalExceptionHandler 收敛为 B3 包络）。
+ * 登录/刷新成功返回 access token 且 refresh 仅经 HttpOnly Cookie 下发（body 绝不出现 refreshToken）；
+ * 口令错误返回业务错误码（由 GlobalExceptionHandler 收敛为 B3 包络）。
  */
 class AuthControllerTest {
 
     private final AuthService authService = mock(AuthService.class);
-    private final AuthController controller = new AuthController(authService);
+    private final JwtUtil jwtUtil = mock(JwtUtil.class);
+    private final AuthController controller = new AuthController(authService, jwtUtil);
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
 
     @Test
-    void login_success_returnsToken() throws Exception {
-        when(authService.login(any(LoginRequest.class))).thenReturn(TokenResponse.of("at", "rt", 7200));
+    void login_success_returnsToken_and_setsRefreshCookie() throws Exception {
+        when(authService.login(any(LoginRequest.class))).thenReturn(TokenResponse.of("at", 7200));
+        when(jwtUtil.issueRefresh("admin")).thenReturn("rt-cookie");
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"admin\",\"password\":\"admin@2026\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.accessToken").value("at"));
+                .andExpect(jsonPath("$.data.accessToken").value("at"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(header().string("Set-Cookie", containsString("rt=")))
+                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")));
     }
 
     @Test
@@ -56,14 +66,21 @@ class AuthControllerTest {
     }
 
     @Test
-    void refresh_success_returnsToken() throws Exception {
-        when(authService.refresh("rt")).thenReturn(TokenResponse.of("at", "rt2", 7200));
+    void refresh_success_returnsToken_and_rotatesRefreshCookie() throws Exception {
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("admin");
+        when(claims.get("type", String.class)).thenReturn("refresh");
+        when(jwtUtil.parse("rt")).thenReturn(claims);
+        when(authService.refresh("rt")).thenReturn(TokenResponse.of("at", 7200));
+        when(jwtUtil.issueRefresh("admin")).thenReturn("rt-cookie");
 
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(new Cookie("rt", "rt")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.accessToken").value("at"))
-                .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andExpect(header().string("Set-Cookie", containsString("rt=")))
+                .andExpect(header().string("Set-Cookie", containsString("HttpOnly")));
     }
 
     @Test
