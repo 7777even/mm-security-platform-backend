@@ -37,9 +37,11 @@ npm run dev            # 浏览器开输出的本地端口
 - 后端启动后由 `AuthService.ensureAdmin()` 写入默认账号 **`admin` / `admin@2026`**。
 - 前端 `src/main.ts` 在启动阶段调用 `login()`（`POST /api/v1/auth/login`）拿 `accessToken` 存入内存态，
   请求拦截器（`src/services/http.ts`）自动注入 `Authorization: Bearer <token>`。
-- **401 处理**：响应拦截器捕获 401 后清内存令牌并通过 `onUnauthenticated` 钩子跳登录，
-  不再依赖本地写死的假 token（早期 `mock-admin-*` 假令牌会被 `JwtFilter` 拒，关 mock 后必失败）。
-- dev 凭证可由前端 `.env.development` 的 `VITE_DEV_USER` / `VITE_DEV_PASSWORD` 覆盖（已写入 `env.d.ts` 类型）。
+- **401 处理（统一跳登录）**：`src/services/http.ts` 拦截器捕获 401 后清内存令牌并调用
+  `onUnauthorized` 钩子，由 `src/main.ts` 统一 `router.push('/login')` 跳转登录页
+  （`src/views/auth/LoginView.vue`：dev 用 `VITE_DEV_USERNAME`/`VITE_DEV_PASSWORD` 自动登录，生产跳 IDP/SSO）。
+  不再静默重登、不再种 `mock-admin-*` 假令牌（假令牌会被 `JwtFilter` 拒 → 全站 401 风暴）。
+- dev 凭证由前端 `.env.development` 的 `VITE_DEV_USERNAME` / `VITE_DEV_PASSWORD` 提供（对齐后端 `admin/admin@2026`）。
 
 ---
 
@@ -52,7 +54,8 @@ npm run dev            # 浏览器开输出的本地端口
 | `VITE_USE_DEV_MOCK`       | frontend `.env.development` | `false`（关闭全局 mock 适配器，请求直连真后端）            |
 | `VITE_DEV_USER` / `VITE_DEV_PASSWORD` | frontend `.env.development` | dev 登录账号（缺省 `admin` / `admin@2026`）              |
 | `server.port`             | backend `application-dev.yml` | `8787`                                                    |
-| `JWT_SECRET` / `DB_PASSWORD` / `SIGNATURE_SECRET` | 后端环境变量 | 生产强制注入；dev 用 `application-dev.yml` 占位弱密钥（禁止上生产） |
+| `JWT_SECRET` / `SIGNATURE_SECRET` | 后端环境变量 | 生产强制注入（**无默认值**，缺失即启动失败）；后端 `SecurityBeans.validateSecrets()` 校验密钥强度（JWT≥256bit / 签名≥128bit 且非已知占位），杜绝弱密钥上线。dev profile 给定独立 dev 密钥。 |
+| `CORS_ALLOWED_ORIGINS`    | 后端环境变量 | 生产/信创（prod/dm）强制注入真实前端域名白名单（逗号分隔，不含 `*`）；缺失或为空串 → 启动失败（CorsConfig fail-fast）。 |
 
 > `.env.development` 里另有遗留未引用的 `VITE_WS_BASE=ws://localhost:8787/ws`，`realtime.ts` 并不读取它，勿被误导。
 
@@ -66,6 +69,10 @@ npm run dev            # 浏览器开输出的本地端口
   前端 `ApiResponse<T>` 字段完全一致。
 - **错误码**：401 未认证 / 403 无权限已映射真实 HTTP 状态码（不再永远 200）；鉴权失败 `JwtFilter` 直接写 401 + B3 包络，
   不抛异常冒泡（否则变 500 且无 CORS 头）。
+- **越权校验（安全收口）**：变更类端点（`POST`/`PUT`/`DELETE /api/v1/alarms` 建警/改警/删警）加
+  `@RequireAuth(role="ADMIN")`，非管理员调用返回 **403**；现场回传 `/api/v1/field-reports` 声明的 `reporter`
+  必须是本人（管理员除外）否则 **403**，且服务端按当前登录态覆盖 `reporter`（防水平越权/身份冒用）。
+  逻辑统一由 `AuthorizationService`（`assertAdmin` / `assertSelfOrAdmin`）承载。
 - 后端改动接口后须 `node scripts/check-api-contract.mjs` 校验端点不漂移，并通知前端重生成类型（四同步见 `AGENTS.md` §11）。
 
 ---
@@ -87,7 +94,8 @@ npm run dev            # 浏览器开输出的本地端口
 
 - **dev profile**：`app.cors.allowed-origins: "*"`（vite 端口动态，用 `allowedOriginPatterns("*")` + `allowCredentials` 兼容任意 localhost）。
 - **prod / dm profile**：`app.cors.allowed-origins: ${CORS_ALLOWED_ORIGINS}`（环境变量强制注入真实域名白名单，
-  **不含 `*`**）；`CorsConfig` 在**非 dev profile 且含 `*` 时启动即抛异常 fail-fast**，杜绝生产误配通配。
+  **不含 `*`**）；`CorsConfig` 在**非 dev profile 且含 `*` 或白名单为空/空白时启动即抛异常 fail-fast**，
+  杜绝生产误配通配与空源退化（空白名单会让任何跨域请求都失败，等于变相拒绝服务，故一并拦截）。
 - CORS 由 Servlet 级 `CorsFilter`（HIGHEST_PRECEDENCE，先于 `JwtFilter`/`HmacFilter`）统一加头，
   保证被鉴权短路的 401 响应也带 `Access-Control-Allow-Origin`，浏览器不报 CORS 阻断。
 
@@ -112,3 +120,13 @@ mvn -s ci-settings.xml test     # 含 security/config/websocket/integration 包�
 
 其中 `integration/IntegrationContractTest`（standalone MockMvc，不起 Spring 上下文）串起
 `CorsFilter → HmacFilter → JwtFilter` 与探针控制器，锁死「401 响应带 CORS 头」「白名单放行」「合法 Bearer 通过」三类契约。
+
+安全收口新增/强化的测试（本次改动须全绿）：
+
+- `config/CorsConfigTest`：非 dev profile 下含 `*` 或白名单为空/空白均**启动即抛异常**（fail-fast）断言。
+- `config/SecurityBeansTest`：`SecurityBeans.validateSecrets()` 弱密钥、占位密钥拒启，强密钥放行（JWT≥32 字节 / 签名≥16 字节）。
+- `security/AuthorizationServiceTest`：`assertAdmin()` 垂直越权、`assertSelfOrAdmin(String)` 水平越权（本人/管理员放行、他人/未登录拒绝）共 6 例。
+- `service/UplinkServiceTest`：`submitFieldReport` 调用 `assertSelfOrAdmin` 并以当前登录态覆盖 `reporter`（防身份冒用）。
+- `integration/EndToEndFlowTest`（`@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("dev")`）：真实登录拿 token →
+  受保护端点 admin 200 / 缺 token 401+CORS 头 / viewer 建警 403 / admin 建警 200 / 伪报 reporter 403 / 空 reporter 204，
+  端到端锁死「鉴权 + 越权 + B3 包络 + CORS 头」联动。
