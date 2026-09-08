@@ -16,9 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
- * 契约锁：GET /auth/menus 必须返回与前端 MENU_ROUTE_SPECS 对齐的字符串 id（fm-*），
- * 绝不能回到早期的数字 id(1..5) + 后端资源路径。否则前端 buildDynamicRoutes 全部跳过、
- * 只能降级 DEFAULT_MENUS。纯 Mockito，不起 Spring 上下文。
+ * 契约锁：GET /auth/menus 必须仅返回顶部导航的 5 个 fm-* 主模块字符串 id，
+ * 与前端 MENU_ROUTE_SPECS 顶部项对齐，绝不能回到早期的数字 id(1..5) + 后端资源路径。
+ * 其余子应用（fm-rescue 等）走前端 SECONDARY_ROUTES 二级路由，不进顶部菜单，故不在此返回。
+ * 纯 Mockito，不起 Spring 上下文。
  */
 class AuthServiceMenuContractTest {
 
@@ -28,17 +29,15 @@ class AuthServiceMenuContractTest {
     private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder);
 
     private static final Set<String> EXPECTED_IDS = Set.of(
-            "fm-emergency", "fm-fire", "fm-security", "fm-tv", "fm-production",
-            "fm-rescue", "fm-typhoon", "fm-production-area", "fm-major-hazard",
-            "fm-communication", "fm-video-control", "fm-video-wall");
+            "fm-emergency", "fm-fire", "fm-security", "fm-tv", "fm-production");
 
     @Test
-    void menus_returnsAllFmSubappsWithStringRouteKeys() {
+    void menus_returnsOnlyTopNavFmSubappsWithStringRouteKeys() {
         List<MenuVO> menus = authService.menus();
 
-        assertEquals(12, menus.size(), "后端菜单应覆盖全部 12 个 fm-* 子应用");
+        assertEquals(5, menus.size(), "后端菜单应仅返回顶部导航的 5 个 fm-* 主模块");
         assertEquals(EXPECTED_IDS, menus.stream().map(MenuVO::id).collect(Collectors.toSet()),
-                "菜单 id 集合必须与前端 MENU_ROUTE_SPECS 的字符串 key 完全一致");
+                "菜单 id 集合必须与前端 MENU_ROUTE_SPECS 顶部项 key 完全一致");
 
         for (MenuVO m : menus) {
             assertNotNull(m.name(), "菜单 name 不可为空: " + m.id());

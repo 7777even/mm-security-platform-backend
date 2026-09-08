@@ -33,9 +33,12 @@ public class AuthService {
     private long accessTtl;
 
     /**
-     * 菜单树（驱动前端路由）。id 必须与前端 {@code MENU_ROUTE_SPECS} 的字符串 key 对齐，
-     * 否则前端 buildDynamicRoutes 会全部跳过、只能降级用内置 DEFAULT_MENUS。
-     * 这里以 fm-* 子应用目录名为 id，覆盖整套 fire-monitoring 迁移子应用。
+     * 顶部导航栏菜单（驱动前端顶部 Tab）。只返回 5 个顶层主模块 fm-*，
+     * id 必须与前端 {@code MENU_ROUTE_SPECS} 中对应 key 对齐，否则前端 buildDynamicRoutes
+     * 会跳过该项、降级为内置 DEFAULT_MENUS。
+     * 其余子应用（fm-rescue / fm-typhoon / fm-production-area / fm-major-hazard /
+     * fm-communication / fm-video-control / fm-video-wall）不进顶部导航，由前端
+     * SECONDARY_ROUTES 二级隐藏路由承载（WujieHost 挂载对应子应用），故不在此返回。
      * 后续接入 RBAC 时改为按角色从 sys_menu 表加载。
      */
     private static final List<MenuVO> MENUS = List.of(
@@ -43,14 +46,7 @@ public class AuthService {
             new MenuVO("fm-fire", "消防报警", "/fire"),
             new MenuVO("fm-security", "治安防恐", "/security"),
             new MenuVO("fm-tv", "工业电视", "/tv"),
-            new MenuVO("fm-production", "生产应急", "/production"),
-            new MenuVO("fm-rescue", "应急救援", "/fm-rescue"),
-            new MenuVO("fm-typhoon", "台风应急", "/fm-typhoon"),
-            new MenuVO("fm-production-area", "生产区域", "/fm-production-area"),
-            new MenuVO("fm-major-hazard", "重大危险源", "/fm-major-hazard"),
-            new MenuVO("fm-communication", "生产通信", "/fm-communication"),
-            new MenuVO("fm-video-control", "视频控制", "/fm-video-control"),
-            new MenuVO("fm-video-wall", "视频墙", "/fm-video-wall")
+            new MenuVO("fm-production", "生产应急", "/production")
     );
 
     /** 首次启动且 sys_user 为空时，写入默认 admin（用户名 admin / 密码 admin@2026） */
