@@ -70,3 +70,8 @@ jobs:
 
       - name: 契约对拍（strict：路由差异或 schema 漂移任一 > 0 即失败）
         run: node scripts/check-api-contract.mjs --contracts frontend-scaffold/docs/api --strict
+
+      # openspec 闭环纪律守门：changes/ 下不允许存在 tasks 全勾未归档的 Change、
+      # 四件套缺失、archive/ 目录缺日期前缀（规则见根 AGENTS.md §7.1）。
+      - name: OpenSpec 卫生检查（全勾必归档）
+        run: node scripts/check-openspec-hygiene.mjs
