@@ -64,6 +64,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Prometheus 指标注册表：暴露 /actuator/prometheus 供监控抓取（JVM / HTTP / 业务指标） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
         <!-- Flyway 数据库版本化迁移（生产在线迁移；dev 用 H2 方言可本地验证） -->
         <dependency>
             <groupId>org.flywaydb</groupId>

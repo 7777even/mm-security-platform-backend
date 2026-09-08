@@ -98,7 +98,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus：供监控系统抓取 JVM / HTTP / 业务指标。
+        # 注意该端点免鉴权（JwtFilter/HmacFilter 已放行 /actuator/**），
+        # 生产务必限制在内网/监控网段访问，勿直接暴露公网。
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: when_authorized
