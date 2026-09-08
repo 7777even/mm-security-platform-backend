@@ -25,6 +25,12 @@
         <jjwt.version>0.12.5</jjwt.version>
         <hutool.version>5.8.27</hutool.version>
         <fastjson2.version>2.0.49</fastjson2.version>
+        <!-- 覆盖率红线：行覆盖率下限，jacoco:check 跌破即失败。
+             实测基线 87.60%（2026-09-08，116 测试、71 类），红线取 0.80 留余量防误伤。
+             注：指令覆盖率约 39%、分支覆盖率约 11%，受 Lombok @Data 生成的
+                 equals/hashCode/toString 拉低（字节码指令多、源码仅 1 行且常未被触达），
+                 故门禁只采用行覆盖率；分支覆盖偏低是后续可改进项。 -->
+        <jacoco.line.coverage.min>0.80</jacoco.line.coverage.min>
     </properties>
 
     <dependencies>
@@ -144,6 +150,49 @@
                         </exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+            <!-- 覆盖率门禁：mvn test 采集并生成报告，jacoco:check 按红线卡口 -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <!-- 红线按实测基线设定（见 docs/integration/README.md），防覆盖率下降 -->
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.line.coverage.min}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
