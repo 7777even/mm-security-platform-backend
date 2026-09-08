@@ -51,13 +51,15 @@ public class JwtFilter extends OncePerRequestFilter {
         return "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
-    /** 免鉴权路径白名单（与 AuthController 注释「login/refresh/logout/me/menus 免鉴权」一致） */
+    /**
+     * 免鉴权路径白名单：仅登录/刷新/登出三类端点（拿令牌/换发令牌/清 Cookie 必须免鉴权）。
+     * 注意：/auth/me 与 /auth/menus 已【移出】白名单，必须携带有效 access 令牌（Bearer）才能访问——
+     * 二者依赖 UserContext 中的当前登录态（me 取真实身份、menus 按角色做 RBAC），故不能免鉴权。
+     */
     private static final String[] WHITELIST = {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
-            "/api/v1/auth/menus",
-            "/api/v1/auth/me",
             "/actuator",
             "/h2-console",
             "/ws",

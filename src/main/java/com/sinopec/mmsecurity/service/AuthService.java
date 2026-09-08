@@ -6,9 +6,12 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.dto.TokenResponse;
+import com.sinopec.mmsecurity.entity.SysMenu;
 import com.sinopec.mmsecurity.entity.SysUser;
+import com.sinopec.mmsecurity.mapper.SysMenuMapper;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -28,26 +32,20 @@ public class AuthService {
     private final SysUserMapper userMapper;
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder encoder;
+    private final SysMenuMapper sysMenuMapper;
 
     @Value("${jwt.access-ttl}")
     private long accessTtl;
 
     /**
-     * 顶部导航栏菜单（驱动前端顶部 Tab）。只返回 5 个顶层主模块 fm-*，
-     * id 必须与前端 {@code MENU_ROUTE_SPECS} 中对应 key 对齐，否则前端 buildDynamicRoutes
-     * 会跳过该项、降级为内置 DEFAULT_MENUS。
+     * 顶部导航栏菜单（驱动前端顶部 Tab）。从 sys_menu 表按当前登录角色过滤加载
+     * （RBAC）：只返回 allowed_roles 含当前角色、且为顶层主模块 fm-* 的菜单。
+     * id（=sys_menu.code）必须与前端 {@code MENU_ROUTE_SPECS} 中对应 key 对齐，否则前端
+     * buildDynamicRoutes 会跳过该项、降级为内置 DEFAULT_MENUS。
      * 其余子应用（fm-rescue / fm-typhoon / fm-production-area / fm-major-hazard /
      * fm-communication / fm-video-control / fm-video-wall）不进顶部导航，由前端
      * SECONDARY_ROUTES 二级隐藏路由承载（WujieHost 挂载对应子应用），故不在此返回。
-     * 后续接入 RBAC 时改为按角色从 sys_menu 表加载。
      */
-    private static final List<MenuVO> MENUS = List.of(
-            new MenuVO("fm-emergency", "应急指挥", "/emergency"),
-            new MenuVO("fm-fire", "消防报警", "/fire"),
-            new MenuVO("fm-security", "治安防恐", "/security"),
-            new MenuVO("fm-tv", "工业电视", "/tv"),
-            new MenuVO("fm-production", "生产应急", "/production")
-    );
 
     /** 首次启动且 sys_user 为空时，写入默认 admin（用户名 admin / 密码 admin@2026） */
     @PostConstruct
@@ -101,10 +99,42 @@ public class AuthService {
     }
 
     public Map<String, Object> me() {
-        return Map.of("username", "admin", "realName", "系统管理员", "role", "ADMIN");
+        String username = UserContext.username();
+        SysUser u = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, username));
+        String realName = (u != null && u.getRealName() != null)
+                ? u.getRealName()
+                : (username == null ? "" : username);
+        String role = (u != null && u.getRole() != null)
+                ? u.getRole()
+                : (UserContext.role() == null ? "" : UserContext.role());
+        return Map.of(
+                "username", username == null ? "" : username,
+                "realName", realName,
+                "role", role);
     }
 
     public List<MenuVO> menus() {
-        return MENUS;
+        String ctxRole = UserContext.role();
+        final String role = (ctxRole == null) ? "ANONYMOUS" : ctxRole;
+        List<SysMenu> all = sysMenuMapper.selectList(null);
+        return all.stream()
+                .filter(m -> roleAllowed(m.getAllowedRoles(), role))
+                .sorted(Comparator.comparingInt(m -> m.getSort() == null ? 0 : m.getSort()))
+                .map(m -> new MenuVO(m.getMenuKey(), m.getName(), m.getPath()))
+                .toList();
+    }
+
+    /** RBAC 判定：菜单 allowed_roles（逗号分隔）是否包含当前角色 */
+    private boolean roleAllowed(String allowedRoles, String role) {
+        if (allowedRoles == null || allowedRoles.isBlank()) {
+            return false;
+        }
+        for (String r : allowedRoles.split(",")) {
+            if (r.trim().equalsIgnoreCase(role)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

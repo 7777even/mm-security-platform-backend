@@ -26,7 +26,9 @@ import java.util.Map;
 
 /**
  * 认证域：登录、续期、登出、当前用户、菜单。
- * 这些路径免鉴权（已在 JwtFilter 白名单），前端脚手架 login/refresh/logout/me/menus 对接。
+ * 仅 login/refresh/logout 免鉴权（在 JwtFilter 白名单，因拿/换/清令牌本身不能要求令牌）；
+ * me/menus 已移出白名单，必须携带有效 access 令牌（Bearer），由 JwtFilter 解析后注入 UserContext，
+ * 供 AuthService 取真实身份（me）与按角色过滤菜单（menus，RBAC）。前端脚手架对应对接。
  *
  * <p>刷新令牌安全策略（S1 §5.3 合规红线）：refresh 令牌<b>绝不</b>进入响应 body，
  * 仅由后端经 {@code Set-Cookie} 下发 {@code HttpOnly} Cookie（name=rt，SameSite=Lax）。

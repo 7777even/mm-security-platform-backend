@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>把真实过滤器链 CorsFilter → HmacFilter → JwtFilter 与探针控制器串起来，锁定上午收口的两类修复：</p>
  * <ul>
  *   <li>被 JwtFilter 短路的 401 响应【必须带 CORS 头】（否则浏览器报 No 'Access-Control-Allow-Origin'）；</li>
- *   <li>免鉴权白名单（auth/menus 等）放行、合法 Bearer 通过鉴权；</li>
+ *   <li>auth/menus 与 auth/me 已移出白名单（必须携带有效 Bearer），其余白名单（login/refresh/logout）仍放行、合法 Bearer 通过鉴权；</li>
  *   <li>遗留自定义 /api/v1/health 已废弃：不再白名单，缺 token 返回 401（且仍带 CORS 头）。</li>
  * </ul>
  *
@@ -104,11 +104,11 @@ class IntegrationContractTest {
                 .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN));
     }
 
-    /** 免鉴权白名单 auth/menus 无 token 也应放行，并带 CORS 头 */
+    /** auth/menus 已移出白名单：无 token 必须 401，且仍带 CORS 头 */
     @Test
-    void whitelistedMenus_noToken_returns200WithCorsHeader() throws Exception {
+    void menus_noToken_returns401WithCorsHeader() throws Exception {
         mockMvc.perform(get("/api/v1/auth/menus").header("Origin", ORIGIN))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN));
     }
 

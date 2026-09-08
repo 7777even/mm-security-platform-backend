@@ -88,7 +88,7 @@ class JwtFilterTest {
 
         JwtFilter filter = filterWith(jwtUtil);
         // 用受保护端点（非白名单）验证 token 解析 + UserContext 注入；
-        // 注意 auth/menus 与 auth/me 已加入免鉴权白名单，不能用于本用例
+        // 注意 auth/menus 与 auth/me 已【移出】白名单，必须携带有效令牌，不能用于免鉴权用例
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/devices");
         req.addHeader("Authorization", "Bearer valid.token");
         MockHttpServletResponse res = new MockHttpServletResponse();
