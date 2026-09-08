@@ -4,7 +4,9 @@
 
 与前端的对接北向约定：遵循前端脚手架 `frontend-scaffold/AGENTS.md` §3 API 契约。
 
-## 0. AI 协作规范（动手前必读）
+## 0. AI 协作入口（动手前必读）
+
+> 跨工具通用速查（分级速记 / 验证矩阵 / 红线 / 机器消费闭环）见前端库 `frontend-scaffold/docs/ai-collaboration-guide.md`。
 
 本库与前端库 `frontend-scaffold` 为**平级双库、非 monorepo**，两端共用同一套 AI 规范骨架：
 
