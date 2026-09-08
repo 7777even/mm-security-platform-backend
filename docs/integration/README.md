@@ -80,7 +80,12 @@ npm run dev            # 浏览器开输出的本地端口
   `@RequireAuth(role="ADMIN")`，非管理员调用返回 **403**；现场回传 `/api/v1/field-reports` 声明的 `reporter`
   必须是本人（管理员除外）否则 **403**，且服务端按当前登录态覆盖 `reporter`（防水平越权/身份冒用）。
   逻辑统一由 `AuthorizationService`（`assertAdmin` / `assertSelfOrAdmin`）承载。
-- 后端改动接口后须 `node scripts/check-api-contract.mjs` 校验端点不漂移，并通知前端重生成类型（四同步见 `AGENTS.md` §11）。
+- **契约一致性守门（双层级）**：`node scripts/check-api-contract.mjs`（后端仓库 `scripts/` 下）跨库校验：
+  1. **路由层**：后端 `@XxxMapping` 端点 `(method, path)` ⇄ 契约 `paths`，缺实现 / 缺契约均报。
+  2. **schema 字段层（契约真 diff）**：对「契约 `components.schemas` 名 == 后端具名 DTO 类名」的 DTO，
+     比对字段名集合与基础类型族（string/integer/number/boolean/array/object），捕获加字段 / 删字段 / 改类型漂移。
+     枚举类（无属性）、外部 gis 桩（`server` 为绝对 URL）、后端内部包装类（契约无同名）自动豁免，不误报。
+  `--strict` 任一维度差异 > 0 即退出码 1，可直接进 CI 守门。后端改接口须跑此脚本并通知前端重生成类型（四同步见 `AGENTS.md` §11）。
 
 ---
 
