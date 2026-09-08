@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -9,6 +10,10 @@ import java.time.LocalDateTime;
 @TableName("fac_alarm")
 public class FacAlarm {
     private Long id;
+
+    /** 乐观锁版本号：MyBatis-Plus @Version，在 update 时自动比对 WHERE version=? 并自增。 */
+    @Version
+    private Long version;
     /** 业务展示 ID（如 AE-2026-001），非物理主键；对齐前端 AlarmItem.alarmId */
     private String alarmId;
     private String deviceCode;

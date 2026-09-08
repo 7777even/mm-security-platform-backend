@@ -1,6 +1,6 @@
 # 乐观锁与并发护栏（Optimistic Locking）
 
-> 并发写冲突的防护设计真源。当前为**待落地设计**，本文作为实现约束；改动并发策略、实体结构属 **L3/L4**，须 proposal + 评审。本文与 `AGENTS.md §6.4 数据库变更规则` 配合（加字段需走 Flyway V 文件）。
+> 并发写冲突的防护设计真源。已于 2026-09-08 落地实现（见 `MybatisPlusConfig` + 实体 `@Version` + `V9__optimistic_lock.sql` + `ResultCode.CONFLICT`），本文为实现约束与变更记录；改动并发策略、实体结构属 **L3/L4**，须 proposal + 评审。本文与 `AGENTS.md §6.4 数据库变更规则` 配合（加字段需走 Flyway V 文件）。
 
 ## 1. 决策（Decisions）
 
@@ -13,10 +13,10 @@
 
 | 项 | 状态 |
 | -- | ---- |
-| `OptimisticLockerInnerInterceptor` 装配 | ⚠️ **未实现**（`MybatisPlusConfig` 仅有 `PaginationInnerInterceptor`） |
-| 实体 `@Version version` 字段 | ⚠️ 未实现 |
+| `OptimisticLockerInnerInterceptor` 装配 | ✅ 已实现（`MybatisPlusConfig` 在分页拦截器之前注入） |
+| 实体 `@Version version` 字段 | ✅ 已实现（`fac_alarm` / `fac_security_event` / `fac_fire_alarm` / `fac_field_report` 加 `Long version`，H2 V9 + DM V3 + PG V3 同步加列） |
 | 逻辑删除 | ✅ 手动 `deleted` 整数字段（非 `@TableLogic`） |
-| 冲突错误码 `CONFLICT` | ⚠️ 需确认 `ResultCode` 是否已含 409 段 |
+| 冲突错误码 `CONFLICT` | ✅ 已实现（`ResultCode.CONFLICT=409` + `GlobalExceptionHandler` 映射真实 HTTP 409；`AlarmService.update` 检测 `updateById` 影响 0 行抛 `BusinessException(CONFLICT)`） |
 
 > 现状下并发写（如两人同时处置同一报警）后写覆盖先写，无冲突检测——本文旨在补该护栏。
 

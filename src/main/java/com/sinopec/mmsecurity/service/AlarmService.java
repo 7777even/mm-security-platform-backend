@@ -81,7 +81,12 @@ public class AlarmService {
         existing.setLocation(payload.getLocation());
         existing.setContent(payload.getDescription());
         existing.setTitle(payload.getDescription());
-        alarmMapper.updateById(existing);
+        // 乐观锁：updateById 携带 loaded version，版本不匹配时影响 0 行 → 抛 409 冲突。
+        // 不静默覆盖、不重试到成功（避免活锁）。
+        int rows = alarmMapper.updateById(existing);
+        if (rows == 0) {
+            throw new BusinessException(ResultCode.CONFLICT, "数据已被他人修改，请刷新后重试");
+        }
         return assembler.toItem(existing);
     }
 

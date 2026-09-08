@@ -20,11 +20,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Result<Void>> handleBusiness(BusinessException ex, HttpServletRequest req) {
         log.warn("[{}] BusinessException code={} msg={}", req.getRequestURI(), ex.getCode(), ex.getMessage());
-        // 401/403 映射为真实 HTTP 状态码（与前端契约 Unauthorized/Forbidden 对齐）；
+        // 401/403/409 映射为真实 HTTP 状态码（与前端契约 Unauthorized/Forbidden/Conflict 对齐）；
         // 其余业务码（含 2xx 鉴权码）保持 200，由前端按 code 判断。
         HttpStatus status = HttpStatus.OK;
         if (ex.getCode() == 401) status = HttpStatus.UNAUTHORIZED;
         else if (ex.getCode() == 403) status = HttpStatus.FORBIDDEN;
+        else if (ex.getCode() == ResultCode.CONFLICT) status = HttpStatus.CONFLICT;
         return ResponseEntity.status(status).body(Result.fail(ex.getCode(), ex.getMessage()));
     }
 

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 /**
@@ -16,6 +17,10 @@ public class FacFieldReport {
 
     @TableId(type = IdType.INPUT)
     private String id;
+
+    /** 乐观锁版本号：MyBatis-Plus @Version，在 update 时自动比对并自增。 */
+    @Version
+    private Long version;
 
     private String kind;
     private String title;
