@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
+import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
@@ -31,13 +32,25 @@ public class AuthService {
     @Value("${jwt.access-ttl}")
     private long accessTtl;
 
-    /** 开发环境默认菜单（实际从 sys_menu 表加载） */
-    private static final List<Map<String, Object>> MENUS = List.of(
-            Map.of("id", 1, "name", "首页", "code", "dashboard", "path", "/dashboard"),
-            Map.of("id", 2, "name", "设施管理", "code", "facility", "path", "/facility"),
-            Map.of("id", 3, "name", "告警中心", "code", "alarm", "path", "/alarm"),
-            Map.of("id", 4, "name", "设备台账", "code", "device", "path", "/device"),
-            Map.of("id", 5, "name", "应急指挥", "code", "emergency", "path", "/emergency")
+    /**
+     * 菜单树（驱动前端路由）。id 必须与前端 {@code MENU_ROUTE_SPECS} 的字符串 key 对齐，
+     * 否则前端 buildDynamicRoutes 会全部跳过、只能降级用内置 DEFAULT_MENUS。
+     * 这里以 fm-* 子应用目录名为 id，覆盖整套 fire-monitoring 迁移子应用。
+     * 后续接入 RBAC 时改为按角色从 sys_menu 表加载。
+     */
+    private static final List<MenuVO> MENUS = List.of(
+            new MenuVO("fm-emergency", "应急指挥", "/emergency"),
+            new MenuVO("fm-fire", "消防报警", "/fire"),
+            new MenuVO("fm-security", "治安防恐", "/security"),
+            new MenuVO("fm-tv", "工业电视", "/tv"),
+            new MenuVO("fm-production", "生产应急", "/production"),
+            new MenuVO("fm-rescue", "应急救援", "/fm-rescue"),
+            new MenuVO("fm-typhoon", "台风应急", "/fm-typhoon"),
+            new MenuVO("fm-production-area", "生产区域", "/fm-production-area"),
+            new MenuVO("fm-major-hazard", "重大危险源", "/fm-major-hazard"),
+            new MenuVO("fm-communication", "生产通信", "/fm-communication"),
+            new MenuVO("fm-video-control", "视频控制", "/fm-video-control"),
+            new MenuVO("fm-video-wall", "视频墙", "/fm-video-wall")
     );
 
     /** 首次启动且 sys_user 为空时，写入默认 admin（用户名 admin / 密码 admin@2026） */
@@ -93,7 +106,7 @@ public class AuthService {
         return Map.of("username", "admin", "realName", "系统管理员", "role", "ADMIN");
     }
 
-    public List<Map<String, Object>> menus() {
+    public List<MenuVO> menus() {
         return MENUS;
     }
 }

@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.LoginRequest;
+import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.service.AuthService;
 import jakarta.validation.Valid;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,7 +43,7 @@ public class AuthController {
     }
 
     @GetMapping("/menus")
-    public Result<Object> menus() {
+    public Result<List<MenuVO>> menus() {
         return Result.ok(authService.menus());
     }
 }
