@@ -1,21 +1,23 @@
 package com.sinopec.mmsecurity.security;
 
-import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.common.TraceContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 /**
  * JWT 鉴权过滤器：解析 Authorization: Bearer <token>，解出登录态写入 UserContext。
- * 鉴权失败抛 BusinessException(code=401)，由 GlobalExceptionHandler 收敛为 B3 包络。
+ * 鉴权失败【直接写出 HTTP 401 + B3 包络】，不再抛异常冒泡给 Tomcat（否则变成 500 且无 CORS 头）。
  *
  * 令牌内存态：服务端不持久存 token（无状态），前端脚手架要求前端走 HttpOnly Cookie / 内存，
  * 本过滤器只校验签名有效性 + 过期，不在服务端落成 localStorage 明文。
@@ -28,9 +30,11 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
-    public JwtFilter(JwtUtil jwtUtil) {
+    public JwtFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
         this.jwtUtil = jwtUtil;
+        this.objectMapper = objectMapper;
     }
 
     public static final String AUTH_HEADER = "Authorization";
@@ -47,10 +51,12 @@ public class JwtFilter extends OncePerRequestFilter {
         return "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
-    /** 免鉴权路径白名单 */
+    /** 免鉴权路径白名单（与 AuthController 注释「login/refresh/me/menus 免鉴权」一致） */
     private static final String[] WHITELIST = {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
+            "/api/v1/auth/menus",
+            "/api/v1/auth/me",
             "/api/v1/health",
             "/actuator",
             "/h2-console",
@@ -73,18 +79,21 @@ public class JwtFilter extends OncePerRequestFilter {
 
             String header = request.getHeader(AUTH_HEADER);
             if (header == null || !header.startsWith(TOKEN_PREFIX)) {
-                throw new BusinessException(ResultCode.TOKEN_INVALID, "缺少 Authorization 头");
+                reject(ResultCode.TOKEN_INVALID, "缺少 Authorization 头", response);
+                return;
             }
 
             String token = header.substring(TOKEN_PREFIX.length());
             Claims claims = jwtUtil.parse(token);
             if (claims == null) {
-                throw new BusinessException(ResultCode.TOKEN_INVALID, "令牌无效或已过期");
+                reject(ResultCode.TOKEN_INVALID, "令牌无效或已过期", response);
+                return;
             }
 
             String type = claims.get("type", String.class);
             if (!"access".equals(type)) {
-                throw new BusinessException(ResultCode.TOKEN_INVALID, "令牌类型非法");
+                reject(ResultCode.TOKEN_INVALID, "令牌类型非法", response);
+                return;
             }
 
             String role = claims.get("role", String.class);
@@ -94,6 +103,21 @@ public class JwtFilter extends OncePerRequestFilter {
             UserContext.clear();
             TraceContext.clear();
         }
+    }
+
+    /**
+     * 鉴权失败：直接写出 HTTP 401 + B3 包络（UTF-8 JSON），不抛异常。
+     * 这样响应（已被 CorsFilter 加上 CORS 头）对浏览器可读，前端 http.ts 能按 code 处理。
+     */
+    private void reject(int code, String msg, HttpServletResponse response) throws IOException {
+        HttpStatus status = (code == ResultCode.UNAUTHORIZED) ? HttpStatus.UNAUTHORIZED
+                : (code == ResultCode.FORBIDDEN) ? HttpStatus.FORBIDDEN
+                : HttpStatus.UNAUTHORIZED;
+        log.warn("[{}] JWT 鉴权失败 code={} msg={}", TraceContext.get(), code, msg);
+        response.setStatus(status.value());
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(Result.fail(code, msg)));
+        response.getWriter().flush();
     }
 
     private boolean isWhite(String uri) {
