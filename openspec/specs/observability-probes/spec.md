@@ -34,4 +34,18 @@
 - **WHEN** 新增或调整 actuator 探针
 - **THEN** 无需变更 `frontend-scaffold/docs/api/*.openapi.json`，也无需跑 `check-api-contract`
 
-> 注：`/actuator/prometheus` 指标端点系 Change 之外交付（feat-observability-probes 明确排除），尚无对应 capability spec，登记于进度台账待回填。
+### Requirement: Prometheus 指标端点
+
+系统须通过 Actuator 暴露 `/actuator/prometheus` 指标端点，供监控系统抓取 JVM / HTTP / 业务指标；该端点免 JWT/免签名（`JwtFilter`/`HmacFilter` 对 `/actuator/**` 放行），生产须限制在内网/监控网段访问，不得直接暴露公网。
+
+#### Scenario: 指标抓取
+
+- **WHEN** 监控系统 `GET /actuator/prometheus`
+- **THEN** 返回 Prometheus 文本格式指标（含 JVM / HTTP / 业务指标），无需携带令牌
+
+#### Scenario: 公网隔离
+
+- **WHEN** 从公网直连 `/actuator/prometheus`
+- **THEN** 由网关/网络安全策略拒绝（端点本身仅做鉴权豁免，不负责公网暴露）
+
+> 注：`/actuator/prometheus` 由 `management.endpoints.web.exposure.include` 暴露，鉴权豁免与内网访问限制见 `src/main/resources/application.yml`；该端点不属于 `/api/v1` 业务路由，不进入前端 OpenAPI 契约。
