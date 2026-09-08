@@ -158,6 +158,10 @@ dev profile 自带密钥与 `CORS=*`，**无需注入**；切到 `prod` / `dm` �
 curl -s http://localhost:8787/actuator/health      # 期望 {"status":"UP"}
 curl -s http://localhost:8787/actuator/info
 
+# Prometheus 指标抓取端点（Micrometer 暴露，供监控系统拉取 JVM/HTTP/业务指标）
+# 该端点免鉴权，生产务必限制在内网或监控网段，勿直接暴露公网。
+curl -s http://localhost:8787/actuator/prometheus | head -8
+
 # 端到端最小路径
 # 1) 登录拿 accessToken（refresh 令牌由 Set-Cookie 下发，不进 body）
 # 2) GET /api/v1/auth/menus        -> 200，5 个顶部 fm-* 菜单
