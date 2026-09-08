@@ -41,6 +41,12 @@ npm run dev            # 浏览器开输出的本地端口
   `onUnauthorized` 钩子，由 `src/main.ts` 统一 `router.push('/login')` 跳转登录页
   （`src/views/auth/LoginView.vue`：dev 用 `VITE_DEV_USERNAME`/`VITE_DEV_PASSWORD` 自动登录，生产跳 IDP/SSO）。
   不再静默重登、不再种 `mock-admin-*` 假令牌（假令牌会被 `JwtFilter` 拒 → 全站 401 风暴）。
+- **刷新令牌 HttpOnly Cookie 化（安全收口）**：refresh 令牌**绝不进响应 body**，仅由后端经
+  `Set-Cookie` 下发 `HttpOnly` Cookie（`name=rt`，`SameSite=Lax`，`Path=/`），`Max-Age=7d`。
+  access 令牌仍走前端内存态（`token.ts`），refresh Cookie 前端 JS 读不到，规避 XSS 窃刷新令牌。
+  续期时浏览器自动携带该 Cookie，`POST /api/v1/auth/refresh` 从 `@CookieValue` 读取、**无需请求体**；
+  登出 `POST /api/v1/auth/logout` 下发明名 `Max-Age=0` Cookie 清除之。`app.cookie.secure` 开关控制
+  `Secure` 标记：dev(http) 为 `false`，prod/dm(HTTPS) 为 `true`（见 §3）。
 - dev 凭证由前端 `.env.development` 的 `VITE_DEV_USERNAME` / `VITE_DEV_PASSWORD` 提供（对齐后端 `admin/admin@2026`）。
 
 ---
@@ -56,6 +62,7 @@ npm run dev            # 浏览器开输出的本地端口
 | `server.port`             | backend `application-dev.yml` | `8787`                                                    |
 | `JWT_SECRET` / `SIGNATURE_SECRET` | 后端环境变量 | 生产强制注入（**无默认值**，缺失即启动失败）；后端 `SecurityBeans.validateSecrets()` 校验密钥强度（JWT≥256bit / 签名≥128bit 且非已知占位），杜绝弱密钥上线。dev profile 给定独立 dev 密钥。 |
 | `CORS_ALLOWED_ORIGINS`    | 后端环境变量 | 生产/信创（prod/dm）强制注入真实前端域名白名单（逗号分隔，不含 `*`）；缺失或为空串 → 启动失败（CorsConfig fail-fast）。 |
+| `COOKIE_SECURE`           | 后端环境变量 | 刷新 Cookie(`rt`) 是否带 `Secure` 标记：生产 HTTPS 必须 `true`，dev(http) 必须 `false`；默认 `false`，prod/dm 已显式 `true`。 |
 
 > `.env.development` 里另有遗留未引用的 `VITE_WS_BASE=ws://localhost:8787/ws`，`realtime.ts` 并不读取它，勿被误导。
 
@@ -129,4 +136,6 @@ mvn -s ci-settings.xml test     # 含 security/config/websocket/integration 包�
 - `service/UplinkServiceTest`：`submitFieldReport` 调用 `assertSelfOrAdmin` 并以当前登录态覆盖 `reporter`（防身份冒用）。
 - `integration/EndToEndFlowTest`（`@SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("dev")`）：真实登录拿 token →
   受保护端点 admin 200 / 缺 token 401+CORS 头 / viewer 建警 403 / admin 建警 200 / 伪报 reporter 403 / 空 reporter 204，
-  端到端锁死「鉴权 + 越权 + B3 包络 + CORS 头」联动。
+  另含刷新令牌 Cookie 化用例：登录响应**不含 refreshToken** 且下发 `Set-Cookie: rt=...; HttpOnly; SameSite=Lax`、
+  凭该 Cookie 调 `/auth/refresh` 返回新 accessToken（仍无 refreshToken）、调 `/auth/logout` 清除 Cookie，
+  端到端锁死「鉴权 + 越权 + B3 包络 + CORS 头 + refresh Cookie」联动。
