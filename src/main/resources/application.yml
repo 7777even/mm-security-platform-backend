@@ -56,6 +56,13 @@ signature:
   # timestamp 容忍偏差（秒）= 5min
   max-skew-seconds: 300
 
+# 刷新令牌 Cookie（HttpOnly，name=rt，SameSite=Lax）是否带 Secure 标记。
+# 生产 HTTPS 必须为 true（否则浏览器拒存/拒发 Secure Cookie）；dev(http) 必须为 false。
+# prod/dm profile 已显式覆盖为 true；dev 沿用本默认 false。
+app:
+  cookie:
+    secure: ${COOKIE_SECURE:false}
+
 # 日志
 logging:
   level:

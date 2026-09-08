@@ -42,6 +42,9 @@ signature:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  # 生产 HTTPS（信创）：刷新 Cookie 须 Secure 才生效（HttpOnly + SameSite=Lax 已由代码固定）
+  cookie:
+    secure: true
 
 # 日志：生产收紧到 INFO
 logging:

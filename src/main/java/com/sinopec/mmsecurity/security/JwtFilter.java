@@ -51,10 +51,11 @@ public class JwtFilter extends OncePerRequestFilter {
         return "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
-    /** 免鉴权路径白名单（与 AuthController 注释「login/refresh/me/menus 免鉴权」一致） */
+    /** 免鉴权路径白名单（与 AuthController 注释「login/refresh/logout/me/menus 免鉴权」一致） */
     private static final String[] WHITELIST = {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
             "/api/v1/auth/menus",
             "/api/v1/auth/me",
             "/actuator",
