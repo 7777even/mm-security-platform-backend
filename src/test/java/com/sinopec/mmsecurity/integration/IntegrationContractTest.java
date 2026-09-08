@@ -29,7 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>把真实过滤器链 CorsFilter → HmacFilter → JwtFilter 与探针控制器串起来，锁定上午收口的两类修复：</p>
  * <ul>
  *   <li>被 JwtFilter 短路的 401 响应【必须带 CORS 头】（否则浏览器报 No 'Access-Control-Allow-Origin'）；</li>
- *   <li>免鉴权白名单（auth/menus、health）放行、合法 Bearer 通过鉴权。</li>
+ *   <li>免鉴权白名单（auth/menus 等）放行、合法 Bearer 通过鉴权；</li>
+ *   <li>遗留自定义 /api/v1/health 已废弃：不再白名单，缺 token 返回 401（且仍带 CORS 头）。</li>
  * </ul>
  *
  * <p>CorsConfigurationSource 与 {@link CorsConfig} 同构（localhost:5173 + allowCredentials），显式复刻而非依赖 Spring 装配。</p>
@@ -52,11 +53,6 @@ class IntegrationContractTest {
         @GetMapping("/api/v1/auth/menus")
         String menus() {
             return "menus";
-        }
-
-        @GetMapping("/api/v1/health")
-        String health() {
-            return "UP";
         }
     }
 
@@ -116,11 +112,11 @@ class IntegrationContractTest {
                 .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN));
     }
 
-    /** 健康检查免鉴权放行并带 CORS 头 */
+    /** 遗留自定义 /api/v1/health 已废弃：不再白名单，缺 token 返回 401 且带 CORS 头 */
     @Test
-    void health_noToken_returns200WithCorsHeader() throws Exception {
+    void legacyHealthEndpoint_removed_returns401WithoutToken() throws Exception {
         mockMvc.perform(get("/api/v1/health").header("Origin", ORIGIN))
-                .andExpect(status().isOk())
+                .andExpect(status().isUnauthorized())
                 .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN));
     }
 

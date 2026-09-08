@@ -82,7 +82,7 @@ mybatis-plus:
 #   - show-details=when_authorized：匿名探针只拿到 UP/DOWN 状态，鉴权后可看组件明细，
 #     避免把数据源等内部细节暴露给公网
 #   - /actuator/** 已在 JwtFilter/HmacFilter 白名单放行，探针免 JWT/免签名
-#   - 注意：探针路径是 /actuator/health（非既有自定义 /api/v1/health）
+#   - 注意：探针统一走 /actuator/health；自定义 /api/v1/health 已废弃删除（2026-09-08）
 # =============================================================================
 management:
   endpoints:
