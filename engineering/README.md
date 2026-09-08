@@ -21,4 +21,9 @@ L0 / L1 / L2 改动默认不写这些记录。
 
 ## 模板
 
-从 `../templates/_qa_template.md` 与 `../templates/_retro_template.md` 复制填充，避免格式漂移。
+- QA / Retro 内容：从 `../templates/_qa_template.md` 与 `../templates/_retro_template.md` 复制填充，避免格式漂移。
+- 阶段汇报（向甲方 / 团队汇报）：从 `../templates/_stage_report_template.md` 复制填充，严格对照 `roadmap.md §2` 阶段判据、用证据说话。
+
+## 执行密度跟踪
+
+- `retro-qa-tracker.md`（本目录顶层）：轻量 meta 表，每次新增 `qa/` 或 `retro/` 记录后追加一行，用于看清复盘 / 验收的执行频度（对标报告 P2-1「保持即时记录 + 证据必附」的纪律可视性）。
