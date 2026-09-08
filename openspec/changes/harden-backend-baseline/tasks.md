@@ -46,6 +46,9 @@
 - [x] `mvn test` 0 failure（18 case 全绿，见 `engineering/qa/`）。
 - [x] 提交按 scope 拆分：`security` / `config` / `device` / `test`。
 - [x] QA + Retro 即刻写入 `engineering/`。
-- [ ] 契约同步（**不在本 Change 范围**，拆到独立任务「消化跨库契约技术债」）：
-      新建 `frontend-scaffold/docs/api/device.openapi.json`、补齐 auth/login|refresh|me、
-      dashboard/workstations 前端契约、明确 401/403 口径。本 Change 仅用脚本比对确认**未引入新漂移**。
+- [x] 契约同步（原「不在本 Change 范围，拆到独立任务」项，已于 2026-09-08 实质完成）：
+      当日修复前端契约四铁律 7 处违规时一并落地——`device.openapi.json` 已建并补齐 description/example；
+      `auth.openapi.json` 已含 login/refresh/me（refresh/logout 补 example）；`dashboard.openapi.json` 已存在；
+      401/403 口径随安全收口（`AuthorizationService` / `Result.fail` B3）明确。
+      验证：后端 `check-api-contract.mjs --strict` 路由差异 0 / 24 具名 DTO schema 漂移 0；
+      前端 `validate-api-contracts.mjs` 9 域文件通过四铁律。本 Change 原目标「未引入新漂移」已满足且超额闭环。
