@@ -29,3 +29,18 @@
 3. 统计、热力、趋势类端点必须读取稳定、可追溯的业务事实；基础事实未稳定时不得虚构统计口径。
 4. 每完成一个已确认 Task：先回填 `tasks.md` 勾选框，再更新进度台账（状态/证据/阻塞项/日期）。
 5. 本路线图只登记阶段与能力状态，不得扩写成 `openspec/` 之外的第二套业务 Task。
+
+## 4. 当前活跃工作（每次会话先读这里）
+
+> 阶段 1–5 已全绿归档。下一处真实推进落在阶段 6（业务域纵深）。
+
+- **进行中（前端库 `openspec/changes/`，跨库归属）**：
+  - `mgmt-redesign-migration` / `mgmt-tabstrip-style-align` / `remaining-modules-inline-closed-loop` — 系统管理域 mgmt 子应用闭环
+  - `screen-mock-to-service` — 大屏从 mock 切真实后端服务
+  - `wujie-subapp-fullscreen` / `wujie-subapp-switch-race` — wujie 微前端子应用体验
+- **未开始（阶段 7）**：达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核（依赖达梦环境与 release 窗口）。
+- **后端 `openspec/changes/` 当前无进行中 Change**（仅 `README.md` 归档纪律说明）；后端下一工作须先经 L3/L4 新建 Change 并回填 `tasks.md`，再据此实施。
+- **已知债务**（不阻塞阶段 6，但新 Change 须顺带清）：
+  - 认证/RBAC 域尚无独立 capability spec（当前散落于 `backend-security-baseline` + `alarm-domain` 的确认流约束里），新做鉴权/权限类 Change 时补 `auth-rbac` spec。
+  - prometheus 指标端点系 Change 外交付，未入 `observability-probes` spec，待补。
+  - 若甲方提供《功能项清单》，回填 `docs/requirement/scope-inventory.md` 的需求追溯列。
