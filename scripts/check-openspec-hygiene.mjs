@@ -9,6 +9,8 @@
  *      （proposal.md / design.md / tasks.md / spec-delta.md）。【告警】
  *      存量 Change（早于四件套纪律）允许只有 proposal+tasks；新提案必须齐全。
  *   3) openspec/archive/ 下的目录必须带日期前缀（YYYY-MM-DD-<name>）。【硬失败】
+ *   4) openspec/changes/ 下的目录建议也带日期前缀（YYYY-MM-DD-<name>），与归档命名一致。【告警】
+ *   5) openspec/changes/ 下的每个目录建议含 .openspec.yaml（schema: spec-driven + created: <YYYY-MM-DD>）。【告警】
  *
  * 用法：
  *   node scripts/check-openspec-hygiene.mjs
@@ -65,6 +67,17 @@ for (const name of listDirs(CHANGES)) {
 for (const name of listDirs(ARCHIVE)) {
   if (!DATE_PREFIX.test(name)) {
     violations.push(`archive/${name}: 目录名缺少日期前缀（应为 YYYY-MM-DD-<name>）`);
+  }
+}
+
+// 4) changes/ 目录建议带日期前缀【告警】 + 5) 建议含 .openspec.yaml【告警】
+for (const name of listDirs(CHANGES)) {
+  if (!DATE_PREFIX.test(name)) {
+    warnings.push(`changes/${name}: 目录名建议带日期前缀（YYYY-MM-DD-<name>，与归档命名一致）`);
+  }
+  const yamlPath = path.join(CHANGES, name, '.openspec.yaml');
+  if (!fs.existsSync(yamlPath)) {
+    warnings.push(`changes/${name}: 建议含 .openspec.yaml（schema: spec-driven + created: <YYYY-MM-DD>）`);
   }
 }
 

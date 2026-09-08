@@ -212,7 +212,8 @@ L3 / L4 改动动手前必须完成并闭环以下四件套（位于 `openspec/c
 
 1. **spec 回填**：将 `spec-delta.md` 合入 `openspec/specs/<capability>/spec.md`（新建或扩充 capability，Requirement/Scenario 格式）。
 2. **归档**：`git mv openspec/changes/<name> openspec/archive/<YYYY-MM-DD>-<name>`（日期前缀必带）。
-3. **守门**：CI 跑 `node scripts/check-openspec-hygiene.mjs`（全勾未归档 / 归档缺日期前缀即失败；四件套缺失为告警——存量 Change 允许只有 proposal+tasks，新提案必须齐全）；纪律细则见 `openspec/changes/README.md`。
+3. **守门**：CI 跑 `node scripts/check-openspec-hygiene.mjs`（全勾未归档 / 归档缺日期前缀即失败；四件套缺失与进行中 Change 命名前缀为告警——存量 Change 允许只有 proposal+tasks，新提案必须齐全）；纪律细则见 `openspec/changes/README.md`。
+4. **命名与元数据**：进行中 Change 也建议带 `YYYY-MM-DD-` 前缀，且每个 Change 含 `.openspec.yaml`（`schema: spec-driven` + `created: <YYYY-MM-DD>`）；hygiene 会对其告警提示，确保归档时前缀一致。
 
 ### 7.2 QA / Retro 即刻记录
 
