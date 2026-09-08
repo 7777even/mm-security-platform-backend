@@ -29,8 +29,18 @@ jobs:
       # 注意：本地开发用 `mvn -s ci-settings.xml`，但该文件把 localRepository 硬编码为
       # Windows 路径 C:/Users/7even/.m2/repository，在 Linux runner 上不可用。
       # CI 因此使用 Maven 默认 settings，依赖缓存交由 setup-java 的 cache: maven 负责。
-      - name: 运行单元测试
+      # mvn test 已绑定 jacoco 的 prepare-agent / report / check，
+      # 行覆盖率跌破 pom 中 jacoco.line.coverage.min 时构建失败（覆盖率门禁）
+      - name: 运行单元测试 + 覆盖率门禁
         run: mvn -B -ntp test
+
+      - name: 上传覆盖率报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: warn
 
   contract-guard:
     name: 跨库 API 契约守门（路由 + schema 字段级）
