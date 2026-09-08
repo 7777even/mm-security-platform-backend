@@ -4,10 +4,11 @@
  *
  * 规则（对应根 AGENTS.md §7.1「全勾必归档」）：
  *   1) openspec/changes/ 下不允许存在 tasks.md 全部勾选（无未勾项）的 Change
- *      ——已完结的 Change 必须完成 spec 回填并移入 openspec/archive/。
- *   2) openspec/changes/ 下的每个 Change 必须四件套齐全
- *      （proposal.md / design.md / tasks.md / spec-delta.md）。
- *   3) openspec/archive/ 下的目录必须带日期前缀（YYYY-MM-DD-<name>）。
+ *      ——已完结的 Change 必须完成 spec 回填并移入 openspec/archive/。【硬失败】
+ *   2) openspec/changes/ 下的每个 Change 应四件套齐全
+ *      （proposal.md / design.md / tasks.md / spec-delta.md）。【告警】
+ *      存量 Change（早于四件套纪律）允许只有 proposal+tasks；新提案必须齐全。
+ *   3) openspec/archive/ 下的目录必须带日期前缀（YYYY-MM-DD-<name>）。【硬失败】
  *
  * 用法：
  *   node scripts/check-openspec-hygiene.mjs
@@ -29,6 +30,7 @@ const REQUIRED_FILES = ['proposal.md', 'design.md', 'tasks.md', 'spec-delta.md']
 const DATE_PREFIX = /^\d{4}-\d{2}-\d{2}-/;
 
 const violations = [];
+const warnings = [];
 
 function listDirs(dir) {
   if (!fs.existsSync(dir)) return [];
@@ -38,12 +40,12 @@ function listDirs(dir) {
     .map((e) => e.name);
 }
 
-// 1) 全勾未归档 + 2) 四件套齐全
+// 1) 全勾未归档【硬失败】 + 2) 四件套齐全【告警，存量豁免】
 for (const name of listDirs(CHANGES)) {
   const dir = path.join(CHANGES, name);
   for (const f of REQUIRED_FILES) {
     if (!fs.existsSync(path.join(dir, f))) {
-      violations.push(`changes/${name}: 缺少四件套文件 ${f}`);
+      warnings.push(`changes/${name}: 缺少四件套文件 ${f}（新提案必须齐全，存量 Change 建议补齐）`);
     }
   }
   const tasksPath = path.join(dir, 'tasks.md');
@@ -64,6 +66,11 @@ for (const name of listDirs(ARCHIVE)) {
   if (!DATE_PREFIX.test(name)) {
     violations.push(`archive/${name}: 目录名缺少日期前缀（应为 YYYY-MM-DD-<name>）`);
   }
+}
+
+if (warnings.length > 0) {
+  console.warn(`[openspec-hygiene] ${warnings.length} 处告警（不阻塞）：`);
+  for (const w of warnings) console.warn(`  - ${w}`);
 }
 
 if (violations.length > 0) {
