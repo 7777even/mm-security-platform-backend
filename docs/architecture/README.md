@@ -108,9 +108,9 @@ python scripts/smoke-test.py
 - [auth-design.md](./auth-design.md) — 认证与授权设计（无状态 JWT / 刷新 Cookie / RBAC）
 - [password-security.md](./password-security.md) — 口令与密钥安全（BCrypt / 环境变量 / fail-fast）
 - [audit-log.md](./audit-log.md) — 操作审计设计（append-only / 尽力落库）
-- [data-masking.md](./data-masking.md) — 数据脱敏设计（出口脱敏，待落地）
-- [optimistic-lock.md](./optimistic-lock.md) — 乐观锁与并发护栏（待落地）
-- [id-name-cache.md](./id-name-cache.md) — ID↔名称缓存一致性（待落地）
+- [data-masking.md](./data-masking.md) — 数据脱敏设计（出口脱敏，已落地）
+- [optimistic-lock.md](./optimistic-lock.md) — 乐观锁与并发护栏（已落地）
+- [id-name-cache.md](./id-name-cache.md) — ID↔名称缓存一致性（已落地）
 - [module-boundary.md](./module-boundary.md) — 分层与模块边界红线
 - [../database/README.md](../database/README.md) — Flyway 规约与逻辑删除
 - [../test-strategy.md](../test-strategy.md) — 测试基线与覆盖率门禁

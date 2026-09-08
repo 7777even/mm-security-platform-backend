@@ -41,6 +41,6 @@
 - **未开始（阶段 7）**：达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核（依赖达梦环境与 release 窗口）。
 - **后端 `openspec/changes/` 当前无进行中 Change**（仅 `README.md` 归档纪律说明）；后端下一工作须先经 L3/L4 新建 Change 并回填 `tasks.md`，再据此实施。
 - **已知债务**（不阻塞阶段 6，但新 Change 须顺带清）：
-  - 认证/RBAC 域尚无独立 capability spec（当前散落于 `backend-security-baseline` + `alarm-domain` 的确认流约束里），新做鉴权/权限类 Change 时补 `auth-rbac` spec。
-  - prometheus 指标端点系 Change 外交付，未入 `observability-probes` spec，待补。
-  - 若甲方提供《功能项清单》，回填 `docs/requirement/scope-inventory.md` 的需求追溯列。
+  - ✅ 认证/RBAC 域独立 capability spec 已补：`openspec/specs/auth-rbac/spec.md`（从 `auth-design.md` 抽取，与 `backend-security-baseline` 互补，不重复）。
+  - ✅ prometheus 指标端点已入 `observability-probes` spec（`### Requirement: Prometheus 指标端点`）。
+  - ⬜ 若甲方提供《功能项清单》，回填 `docs/requirement/scope-inventory.md` 的需求追溯列（依赖甲方输入，当前阻塞）。
