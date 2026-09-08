@@ -4,7 +4,9 @@ import com.sinopec.mmsecurity.dto.AuditEvent;
 import com.sinopec.mmsecurity.dto.AuditEventBatch;
 import com.sinopec.mmsecurity.dto.FieldReportItem;
 import com.sinopec.mmsecurity.entity.FacAuditLog;
+import com.sinopec.mmsecurity.entity.FacFieldReport;
 import com.sinopec.mmsecurity.mapper.AuditLogMapper;
+import com.sinopec.mmsecurity.mapper.FacFieldReportMapper;
 import com.sinopec.mmsecurity.security.AuthorizationService;
 import com.sinopec.mmsecurity.security.LoginUser;
 import com.sinopec.mmsecurity.security.UserContext;
@@ -30,7 +32,8 @@ class UplinkServiceTest {
 
     private final AuditLogMapper mapper = mock(AuditLogMapper.class);
     private final AuthorizationService authz = mock(AuthorizationService.class);
-    private final UplinkService service = new UplinkService(mapper, authz);
+    private final FacFieldReportMapper facFieldReportMapper = mock(FacFieldReportMapper.class);
+    private final UplinkService service = new UplinkService(mapper, authz, facFieldReportMapper);
 
     @AfterEach
     void tearDown() {
@@ -66,6 +69,7 @@ class UplinkServiceTest {
         item.setStatus("done");
         // reporter 不声明（null）→ assertSelfOrAdmin 放行，由服务端绑定当前登录态
         assertDoesNotThrow(() -> service.submitFieldReport(item));
+        verify(facFieldReportMapper, times(1)).insert(any(FacFieldReport.class));
     }
 
     @Test
@@ -81,5 +85,6 @@ class UplinkServiceTest {
         service.submitFieldReport(item);
         assertEquals("zhang.san", item.getReporter(), "reporter 须被服务端重写为当前登录用户");
         verify(authz, times(1)).assertSelfOrAdmin("li.si");
+        verify(facFieldReportMapper, times(1)).insert(any(FacFieldReport.class));
     }
 }
