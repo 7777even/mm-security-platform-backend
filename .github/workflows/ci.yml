@@ -1,0 +1,62 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 单元测试（Maven / JDK 17）
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出后端源码
+        uses: actions/checkout@v4
+
+      - name: 配置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # 注意：本地开发用 `mvn -s ci-settings.xml`，但该文件把 localRepository 硬编码为
+      # Windows 路径 C:/Users/7even/.m2/repository，在 Linux runner 上不可用。
+      # CI 因此使用 Maven 默认 settings，依赖缓存交由 setup-java 的 cache: maven 负责。
+      - name: 运行单元测试
+        run: mvn -B -ntp test
+
+  contract-guard:
+    name: 跨库 API 契约守门（路由 + schema 字段级）
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出后端源码（实现侧）
+        uses: actions/checkout@v4
+
+      - name: 配置 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 契约机器可读真源在前端仓 frontend-scaffold/docs/api，后端禁止复制第二份。
+      # 这里只稀疏拉取 docs/api 目录做对拍，避免全量克隆。
+      # 若前端仓为私有：在本仓 Settings → Secrets 配置 CONTRACT_REPO_TOKEN
+      # （PAT，需具备前端仓的读权限）；公开仓无需配置，回退到默认 GITHUB_TOKEN 即可。
+      - name: 检出前端契约真源（跨仓，仅 docs/api）
+        uses: actions/checkout@v4
+        with:
+          repository: 7777even/mm-security-platform-scaffold
+          ref: feature/scaffold-rebuild
+          path: frontend-scaffold
+          sparse-checkout: docs/api
+          sparse-checkout-cone-mode: false
+          token: ${{ secrets.CONTRACT_REPO_TOKEN || github.token }}
+
+      - name: 契约对拍（strict：路由差异或 schema 漂移任一 > 0 即失败）
+        run: node scripts/check-api-contract.mjs --contracts frontend-scaffold/docs/api --strict
