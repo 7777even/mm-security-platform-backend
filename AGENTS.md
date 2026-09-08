@@ -64,7 +64,7 @@
 
 ### 2.2 测试策略（起步基线）
 
-本库当前**尚无 `src/test/java`**（脚手架阶段），测试按以下顺序增量补齐，不照搬安全培训系统的 Testcontainers / 162+16 例规模：
+本库已建立 `src/test/java` 测试基线（脚手架阶段起步），测试按以下顺序增量补齐，不照搬安全培训系统的 Testcontainers / 162+16 例规模：
 
 1. **先补零依赖单测**（对应 `src/test/java`，类名 `*Test`）：
    - Controller：`MockMvcBuilders.standaloneSetup` + mock Service，验证路径与参数透传、分页绑定、`@Valid` 非法请求 400 且不进 Service。
@@ -140,8 +140,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 安全管控指挥系统后端服务：Spring Boot 3.2.5 + Java 17 + MyBatis-Plus 3.5.5 + PostgreSQL（生产）/ H2（dev 兜底）+ JJWT 0.12.5 + WebSocket。
 
-- 端口 `8080`；REST 前缀 `/api/v1`；WS 端点 `/ws/alarm`（告警实时推送）。
-- 过滤器 / 拦截器顺序：`HmacFilter`(1，生产) → `JwtFilter`(2) → `HardControlInterceptor`(3) → `RequireAuthInterceptor`(4)。
+- 端口：base `application.yml` 为 `8080`，dev profile（`application-dev.yml`）对齐前端 `VITE_API_BASE` 改为 `8787`（前端 dev 关 mock 后直连，零前端改动）。REST 前缀 `/api/v1`；WS 端点 `/ws/alarm`（告警实时推送，包络见 `docs/integration/README.md` 与 `frontend-scaffold/docs/api/realtime.openapi.json`：`{topic:'alarm.push', payload:AlarmItem}`）。
+- 过滤器 / 拦截器顺序（Servlet 级，先于 DispatcherServlet）：`CorsFilter`(HIGHEST_PRECEDENCE，先给所有响应加 CORS 头) → `HmacFilter`(HIGHEST_PRECEDENCE+1) → `JwtFilter`(HIGHEST_PRECEDENCE+10) → `HardControlInterceptor`(3) → `RequireAuthInterceptor`(4)。CORS 必须在最前：否则被 JwtFilter 短路的 401 响应无 CORS 头，浏览器报「No 'Access-Control-Allow-Origin' header」。前后端联调运行手册见 `docs/integration/README.md`。
 - dev profile 走 H2 内存库（Flyway 迁移 `db/migration/h2` 自动建表＋种子，不再用 `schema.sql`/`data.sql`），启动即由 `AuthService.ensureAdmin()` 写入默认账号 `admin` / `admin@2026`。
 
 ### 6.2 目录职责与红线
@@ -163,7 +163,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 1. 零下行控制（§3.1）；WebSocket 通道同样不得下发控制指令。
 2. 密钥 / 口令 / 签名 secret 只从环境变量注入（`JWT_SECRET`、`DB_PASSWORD`、`SIGNATURE_SECRET`），默认值为占位串，生产部署必须覆盖。
-3. 未登录默认拒绝：除 `@RequireAuth` 豁免的认证域（`/api/v1/auth/**`、`/api/v1/health`）外，新端点默认需鉴权；新增免鉴权端点须在 proposal 中显式说明理由。
+3. 未登录默认拒绝：除下述免鉴权白名单外，新端点默认需鉴权；新增免鉴权端点须在 proposal 中显式说明理由。当前白名单（`JwtFilter.WHITELIST`）：`/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/auth/menus`、`/api/v1/auth/me`、`/api/v1/health`、`/actuator`、`/h2-console`、`/ws`、`/error`（OPTIONS 预检一律放行）。鉴权失败 `JwtFilter` 直接写 HTTP 401 + B3 包络（不抛异常冒泡成 500）；前端 `main.ts` 在 401 时清内存令牌并跳登录（见 `docs/integration/README.md`）。
 4. 日志脱敏：禁止打印令牌、口令、签名头、完整请求体敏感字段；`traceId` 由 `TraceContext` 透传，前后端联调以它对齐。
 5. SQL 注入：禁止字符串拼接 SQL；MyBatis-Plus 条件构造器优先，`${}` 一律禁止。
 
