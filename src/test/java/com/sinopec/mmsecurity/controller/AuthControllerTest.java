@@ -6,6 +6,7 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.service.AuthService;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -58,30 +59,26 @@ class AuthControllerTest {
     void refresh_success_returnsToken() throws Exception {
         when(authService.refresh("rt")).thenReturn(TokenResponse.of("at", "rt2", 7200));
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"rt\"}"))
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(new Cookie("rt", "rt")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.accessToken").value("at"));
+                .andExpect(jsonPath("$.data.accessToken").value("at"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
     }
 
     @Test
-    void refresh_missingToken_returnsParamInvalid() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+    void refresh_missingCookie_returnsTokenInvalid() throws Exception {
+        // 无 refresh Cookie → Controller 抛 TOKEN_INVALID（B3 code=202，HTTP 200）
+        mockMvc.perform(post("/api/v1/auth/refresh"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID));
+                .andExpect(jsonPath("$.code").value(ResultCode.TOKEN_INVALID));
     }
 
     @Test
     void refresh_invalidToken_returns401() throws Exception {
         when(authService.refresh("bad")).thenThrow(new BusinessException(401, "刷新令牌无效"));
 
-        mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"bad\"}"))
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(new Cookie("rt", "bad")))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
     }

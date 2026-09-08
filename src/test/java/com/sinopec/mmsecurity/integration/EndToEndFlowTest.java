@@ -2,16 +2,20 @@ package com.sinopec.mmsecurity.integration;
 
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -55,6 +59,52 @@ class EndToEndFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.accessToken").exists());
+    }
+
+    /** 登录响应不得携带 refreshToken（防 XSS 窃取），refresh 须经 HttpOnly Cookie 下发 */
+    @Test
+    void login_responseExcludesRefreshToken_butSetsHttpOnlyCookie() throws Exception {
+        MockHttpServletResponse resp = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin@2026\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").exists())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andReturn().getResponse();
+        String setCookie = resp.getHeader("Set-Cookie");
+        assertNotNull(setCookie, "登录必须下发 Set-Cookie");
+        assertTrue(setCookie.contains("rt="), "refresh Cookie 名应为 rt");
+        assertTrue(setCookie.contains("HttpOnly"), "refresh Cookie 必须 HttpOnly");
+        assertTrue(setCookie.contains("SameSite=Lax"), "refresh Cookie 必须 SameSite=Lax");
+    }
+
+    /** 凭 HttpOnly Cookie 续期（无请求体），返回新 access 且仍不暴露 refreshToken */
+    @Test
+    void refresh_viaCookie_returnsNewAccessToken() throws Exception {
+        Cookie rt = loginAndGetRefreshCookie();
+        assertNotNull(rt, "登录应下发挥刷新 Cookie");
+        mockMvc.perform(post("/api/v1/auth/refresh").cookie(rt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.accessToken").exists())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
+    }
+
+    /** 登出清除 HttpOnly 刷新 Cookie */
+    @Test
+    void logout_clearsRefreshCookie() throws Exception {
+        Cookie rt = loginAndGetRefreshCookie();
+        mockMvc.perform(post("/api/v1/auth/logout").cookie(rt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    private Cookie loginAndGetRefreshCookie() throws Exception {
+        MockHttpServletResponse resp = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin@2026\"}"))
+                .andReturn().getResponse();
+        return resp.getCookie("rt");
     }
 
     @Test
