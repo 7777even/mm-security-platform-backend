@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.sinopec.mmsecurity.common.cache.IdNameCacheService;
 import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.entity.SysMenu;
-import com.sinopec.mmsecurity.mapper.SysMenuMapper;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.security.LoginUser;
@@ -33,8 +33,8 @@ class AuthServiceMenuContractTest {
     private final SysUserMapper userMapper = mock(SysUserMapper.class);
     private final JwtUtil jwtUtil = mock(JwtUtil.class);
     private final BCryptPasswordEncoder encoder = mock(BCryptPasswordEncoder.class);
-    private final SysMenuMapper sysMenuMapper = mock(SysMenuMapper.class);
-    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, sysMenuMapper);
+    private final IdNameCacheService idNameCache = mock(IdNameCacheService.class);
+    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache);
 
     private static final Set<String> EXPECTED_IDS = Set.of(
             "fm-emergency", "fm-fire", "fm-security", "fm-tv", "fm-production");
@@ -48,7 +48,7 @@ class AuthServiceMenuContractTest {
     void menus_returnsOnlyTopNavFmSubappsWithStringRouteKeys() {
         // 以 ADMIN 身份访问（与默认 admin 账号角色一致），5 个顶部菜单均允许 ADMIN,USER
         UserContext.set(new LoginUser(null, "admin", "ADMIN"));
-        when(sysMenuMapper.selectList(null)).thenReturn(List.of(
+        when(idNameCache.allMenus()).thenReturn(List.of(
                 menu("fm-emergency", "应急指挥", "/emergency", 1, "ADMIN,USER"),
                 menu("fm-fire", "消防报警", "/fire", 2, "ADMIN,USER"),
                 menu("fm-security", "治安防恐", "/security", 3, "ADMIN,USER"),

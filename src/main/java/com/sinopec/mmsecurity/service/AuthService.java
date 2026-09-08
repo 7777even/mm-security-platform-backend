@@ -3,12 +3,12 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
+import com.sinopec.mmsecurity.common.cache.IdNameCacheService;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.entity.SysMenu;
 import com.sinopec.mmsecurity.entity.SysUser;
-import com.sinopec.mmsecurity.mapper.SysMenuMapper;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.security.UserContext;
@@ -32,7 +32,7 @@ public class AuthService {
     private final SysUserMapper userMapper;
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder encoder;
-    private final SysMenuMapper sysMenuMapper;
+    private final IdNameCacheService idNameCache;
 
     @Value("${jwt.access-ttl}")
     private long accessTtl;
@@ -117,7 +117,7 @@ public class AuthService {
     public List<MenuVO> menus() {
         String ctxRole = UserContext.role();
         final String role = (ctxRole == null) ? "ANONYMOUS" : ctxRole;
-        List<SysMenu> all = sysMenuMapper.selectList(null);
+        List<SysMenu> all = idNameCache.allMenus();
         return all.stream()
                 .filter(m -> roleAllowed(m.getAllowedRoles(), role))
                 .sorted(Comparator.comparingInt(m -> m.getSort() == null ? 0 : m.getSort()))

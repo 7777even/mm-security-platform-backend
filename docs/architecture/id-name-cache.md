@@ -1,6 +1,6 @@
 # ID↔名称缓存一致性（ID-Name Cache）
 
-> 引用数据（用户 id→姓名、设备 id→名称、菜单 key→名称）解析的缓存设计真源。当前为**待落地设计**，本文作为实现约束；改动缓存策略属 **L3**，须 proposal + 评审。
+> 引用数据（用户 id→姓名、设备 id→名称、菜单 key→名称）解析的缓存设计真源。已于 2026-09-08 落地实现（见 `common/cache/IdNameCacheService`，Caffeine 读穿 + TTL 5min + 写时失效），本文为实现约束与变更记录；改动缓存策略属 **L3**，须 proposal + 评审。
 
 ## 1. 决策（Decisions）
 
@@ -13,10 +13,10 @@
 
 | 项 | 状态 |
 | -- | ---- |
-| 统一 `id→name` 缓存组件（Caffeine） | ⚠️ **未实现** |
-| `AuthService.me()` 每次查 `sys_user` | ✅ 单点查询，量小可接受 |
-| 列表接口 id→name 解析 | ⚠️ 部分靠逐行 `selectOne` / 内存 map，存在 N+1 / 不一致风险 |
-| `menus()` 全表加载 + 内存过滤 | ✅ 已是「全量缓存式」但无 TTL 失效，菜单变更需重启生效 |
+| 统一 `id→name` 缓存组件（Caffeine） | ✅ 已实现（`common/cache/IdNameCacheService`：sys_user id→realName 读穿 + sys_menu 全量列表缓存，TTL 5min + evict/reload 主动失效） |
+| `AuthService.me()` 每次查 `sys_user` | ✅ 单点查询，量小可接受（缓存 API 已就绪供列表解析复用） |
+| 列表接口 id→name 解析 | ✅ `IdNameCacheService.userName(id)` 提供读穿，规避 N+1 / 不一致 |
+| `menus()` 全表加载 + 内存过滤 | ✅ 已走 `idNameCache.allMenus()`，带 TTL 5min 失效，菜单变更后 `reloadMenus()` 主动失效 |
 
 > 现状下菜单靠 `sysMenuMapper.selectList(null)` 全量内存过滤（无失效机制），用户姓名解析未集中——本文旨在统一为带失效的缓存层。
 

@@ -1,10 +1,10 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.common.cache.IdNameCacheService;
 import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.entity.SysMenu;
 import com.sinopec.mmsecurity.entity.SysUser;
-import com.sinopec.mmsecurity.mapper.SysMenuMapper;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.security.LoginUser;
@@ -34,8 +34,8 @@ class AuthServiceTest {
     private final SysUserMapper userMapper = mock(SysUserMapper.class);
     private final JwtUtil jwtUtil = mock(JwtUtil.class);
     private final BCryptPasswordEncoder encoder = mock(BCryptPasswordEncoder.class);
-    private final SysMenuMapper sysMenuMapper = mock(SysMenuMapper.class);
-    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, sysMenuMapper);
+    private final IdNameCacheService idNameCache = mock(IdNameCacheService.class);
+    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache);
 
     @AfterEach
     void tearDown() {
@@ -70,7 +70,7 @@ class AuthServiceTest {
     @Test
     void menus_filtersByCurrentRole() {
         UserContext.set(new LoginUser(null, "viewer", "USER"));
-        when(sysMenuMapper.selectList(null)).thenReturn(List.of(
+        when(idNameCache.allMenus()).thenReturn(List.of(
                 menu("fm-emergency", "应急指挥", "/emergency", 1, "ADMIN,USER"),
                 menu("fm-admin", "后台管理", "/admin", 9, "ADMIN"),
                 menu("fm-production", "生产应急", "/production", 5, "ADMIN,USER")));
@@ -83,7 +83,7 @@ class AuthServiceTest {
     @Test
     void menus_emptyForAnonymousRole() {
         // UserContext 未注入 → 角色 ANONYMOUS，无任何菜单放行
-        when(sysMenuMapper.selectList(null)).thenReturn(List.of(
+        when(idNameCache.allMenus()).thenReturn(List.of(
                 menu("fm-emergency", "应急指挥", "/emergency", 1, "ADMIN,USER")));
 
         List<MenuVO> menus = authService.menus();

@@ -93,6 +93,12 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Caffeine：ID↔名称读穿缓存（稳定引用数据，避免列表 N+1 查询） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.1.8</version>
+        </dependency>
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
