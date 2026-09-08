@@ -1,0 +1,82 @@
+# =============================================================================
+# mm-security-platform 一键编排
+#
+# 目录约定（两仓同级 clone）：
+#   <root>/backend-scaffold/    ← 本文件所在仓
+#   <root>/frontend-scaffold/   ← 前端仓（frontend 服务的 build context 指向它）
+#
+# 默认（dev 演示，开箱可起）：
+#   docker compose up --build      # backend(H2 内存库) + frontend(nginx)
+#   访问 http://localhost:8080 ，默认账号 admin / admin@2026
+#
+# 生产（达梦 DM8）：
+#   前置：达梦 JDBC 驱动受授权限制、不随镜像分发，需先 install-file 到构建机本地仓库
+#         （见根目录 Dockerfile 注释），且 Flyway 社区版无达梦官方模块，
+#         迁移 SQL 必须在真实 DM8 实例上复核执行（见 application-dm.yml 注释）。
+#   启动：cp .env.example .env 并填好后
+#         docker compose --profile dm up --build
+#
+# 注意：dev profile 自带 dev 密钥与 CORS=*，无需注入 JWT_SECRET；
+#       切到 dm/prod 时必须注入 JWT_SECRET / SIGNATURE_SECRET / CORS_ALLOWED_ORIGINS
+#       （base yml 为纯 ${...} 无默认值，缺失即启动失败，符合 fail-fast 安全基线）。
+# =============================================================================
+
+name: mm-security-platform
+
+services:
+  # ---------- 达梦 DM8（生产目标库，默认不启动）----------
+  db-dm:
+    profiles: ["dm"]
+    image: ${DM_IMAGE:?达梦镜像需自备（在 .env 中设置 DM_IMAGE）}
+    container_name: mm-db-dm
+    environment:
+      DM_SYSDBA_PWD: ${DM_SYSDBA_PWD:-SysDba@2026}
+      DB_NAME: ${DB_NAME:-mm_security}
+    ports:
+      - "${DM_HOST_PORT:-5236}:5236"
+    volumes:
+      - dm-data:/opt/dmdbms/data
+    healthcheck:
+      # 达梦镜像内无轻量客户端，直接探端口
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/5236' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # ---------- 后端 ----------
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: mm-backend
+    # 敏感项（JWT_SECRET / SIGNATURE_SECRET / DB_PASSWORD）由 .env 注入。
+    # 刻意不在 environment 中列出：环境变量优先级高于 application-dev.yml，
+    # 注入空字符串会覆盖 dev profile 自带的 dev 密钥，导致启动即失败。
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+      # dm profile 生效时用到（application-dm.yml 使用自定义变量名，非 SPRING_DATASOURCE_*）
+      DB_HOST: ${DB_HOST:-db-dm}
+      DB_PORT: ${DB_PORT:-5236}
+      DB_NAME: ${DB_NAME:-mm_security}
+      DB_USERNAME: ${DB_USERNAME:-SYSDBA}
+    ports:
+      - "8787:8787"
+
+  # ---------- 前端 ----------
+  frontend:
+    build:
+      context: ../../frontend-scaffold
+      dockerfile: Dockerfile
+    container_name: mm-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  dm-data:
