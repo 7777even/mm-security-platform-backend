@@ -59,4 +59,19 @@ class CorsConfigTest {
         assertDoesNotThrow(cfg::assertNoWildcardInNonDevProfile,
                 "prod 配显式 localhost 白名单（非通配）应放行");
     }
+
+    @Test
+    void nonDevProfile_withEmptyOrigins_throws() throws Exception {
+        // CORS_ALLOWED_ORIGINS 缺失时解析为空串 -> ['']，不得静默退化为空源
+        CorsConfig cfg = buildWith("prod", List.of(""));
+        assertThrows(IllegalStateException.class, cfg::assertNoWildcardInNonDevProfile,
+                "prod 白名单为空必须启动失败");
+    }
+
+    @Test
+    void nonDevProfile_withBlankOrigins_throws() throws Exception {
+        CorsConfig cfg = buildWith("dm", List.of(" ", "https://app.example.com"));
+        assertThrows(IllegalStateException.class, cfg::assertNoWildcardInNonDevProfile,
+                "dm 白名单含空白项必须启动失败");
+    }
 }
