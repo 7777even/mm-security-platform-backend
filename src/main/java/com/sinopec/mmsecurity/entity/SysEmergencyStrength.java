@@ -1,0 +1,19 @@
+package com.sinopec.mmsecurity.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+
+/** 应急力量统计参考配置（真实数据源，替代原 EmergencyService 硬编码常量）。 */
+@Data
+@TableName("sys_emergency_strength")
+public class SysEmergencyStrength {
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private String kind;
+    private Integer count;
+    private String icon;
+}

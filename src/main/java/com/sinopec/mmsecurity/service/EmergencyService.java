@@ -12,12 +12,21 @@ import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.SysDutyMember;
+import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
+import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
+import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
+import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
+import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
+import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 应急资源服务。
@@ -25,8 +34,9 @@ import java.util.List;
  * <p>数据来源分两类（见 openspec Change design ADR-1）：
  * <ul>
  *   <li><b>真实聚合</b>：{@link #closedCases()} 来自 fac_alarm(status=3 CLOSED)，随库变化。</li>
- *   <li><b>静态参考配置</b>：strength / duty / phones / knowledge 为企业应急资源固定配置（通讯录、值班表、
- *       知识库、力量统计），本质为配置而非运行时遥测，故以内置参考列表提供，不造表、不写随机。</li>
+ *   <li><b>DB 参考配置</b>：strength / duty / phones / knowledge 为企业应急资源固定配置（通讯录、值班表、
+ *       知识库、力量统计），由 V8 迁移至 DB 参考表（sys_emergency_strength / sys_emergency_phone /
+ *       sys_knowledge_item / sys_duty_member），运营可在不改动代码的前提下维护。</li>
  * </ul>
  */
 @Service
@@ -34,19 +44,24 @@ import java.util.List;
 public class EmergencyService {
 
     private final AlarmMapper alarmMapper;
+    private final SysEmergencyStrengthMapper strengthMapper;
+    private final SysEmergencyPhoneMapper phoneMapper;
+    private final SysKnowledgeItemMapper knowledgeMapper;
+    private final SysDutyMemberMapper dutyMapper;
 
-    /** 应急力量统计：静态参考配置 */
+    /** 应急力量统计：来自 sys_emergency_strength 参考表 */
     public EmergencyStrength strength() {
         EmergencyStrength s = new EmergencyStrength();
-        s.setResources(List.of(
-                res("应急专家", 47, "UserFilled"),
-                res("应急物资", 3510, "Box"),
-                res("救援队伍", 12, "Soldier"),
-                res("装备车辆", 28, "Van"),
-                res("应急场所", 6, "LocationFilled"),
-                res("医疗机构", 3, "FirstAidKit"),
-                res("应急车辆", 18, "Truck"),
-                res("消防设施", 42, "Fire")));
+        List<SysEmergencyStrength> rows = strengthMapper.selectList(null);
+        List<EmergencyResource> resources = new ArrayList<>();
+        for (SysEmergencyStrength r : rows) {
+            EmergencyResource res = new EmergencyResource();
+            res.setKind(r.getKind());
+            res.setCount(r.getCount());
+            res.setIcon(r.getIcon());
+            resources.add(res);
+        }
+        s.setResources(resources);
         return s;
     }
 
@@ -71,73 +86,65 @@ public class EmergencyService {
         return list;
     }
 
-    /** 应急值班值守表：静态参考配置 */
+    /** 应急值班值守表：来自 sys_duty_member 参考表（department / shift 随数据驱动） */
     public DutyRoster duty() {
+        List<SysDutyMember> rows = dutyMapper.selectList(null);
+        List<DutyMember> members = new ArrayList<>();
+        for (SysDutyMember r : rows) {
+            DutyMember m = new DutyMember();
+            m.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+            m.setName(r.getName());
+            m.setPhone(r.getPhone());
+            m.setRole(r.getRole());
+            m.setDepartment(r.getDepartment());
+            m.setShift(r.getShift());
+            members.add(m);
+        }
+        List<String> departments = members.stream()
+                .map(DutyMember::getDepartment)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        String shift = members.isEmpty() ? "白班"
+                : (members.get(0).getShift() == null ? "白班" : members.get(0).getShift());
         DutyRoster r = new DutyRoster();
-        r.setDepartments(List.of("全部"));
-        r.setShift("白班");
-        r.setMembers(List.of(
-                member("d1", "杨恒明", "13792536966", "值班领导", "全部", "白班"),
-                member("d2", "李伟", "13800138000", "值班员", "全部", "白班")));
+        r.setDepartments(departments.isEmpty() ? List.of("全部") : departments);
+        r.setShift(shift);
+        r.setMembers(members);
         return r;
     }
 
-    /** 应急电话通讯录：静态参考配置 */
+    /** 应急电话通讯录：来自 sys_emergency_phone 参考表 */
     public EmergencyPhoneBook phones() {
         EmergencyPhoneBook b = new EmergencyPhoneBook();
-        b.setEntries(List.of(
-                phone("ph1", "消防报警", "119", "消防"),
-                phone("ph2", "医疗急救", "120", "医疗"),
-                phone("ph3", "公安报警", "110", "公安"),
-                phone("ph4", "厂内应急", "0668-2222111", "厂内应急"),
-                phone("ph5", "保卫值班", "0668-2222333", "保卫值班")));
+        List<SysEmergencyPhone> rows = phoneMapper.selectList(null);
+        List<EmergencyPhone> entries = new ArrayList<>();
+        for (SysEmergencyPhone r : rows) {
+            EmergencyPhone p = new EmergencyPhone();
+            p.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+            p.setName(r.getName());
+            p.setNumber(r.getNumber());
+            p.setCategory(r.getCategory());
+            entries.add(p);
+        }
+        b.setEntries(entries);
         return b;
     }
 
-    /** 应急生产安全知识：静态参考配置 */
+    /** 应急生产安全知识：来自 sys_knowledge_item 参考表 */
     public KnowledgeList knowledge() {
         KnowledgeList k = new KnowledgeList();
-        k.setItems(List.of(
-                item("k1", "岗位应急处置卡", 158, "Document"),
-                item("k2", "火灾爆炸应急预案", 42, "Files"),
-                item("k3", "气体泄漏处置", 67, "Warning")));
-        return k;
-    }
-
-    private EmergencyResource res(String kind, int count, String icon) {
-        EmergencyResource r = new EmergencyResource();
-        r.setKind(kind);
-        r.setCount(count);
-        r.setIcon(icon);
-        return r;
-    }
-
-    private DutyMember member(String id, String name, String phone, String role, String dept, String shift) {
-        DutyMember m = new DutyMember();
-        m.setId(id);
-        m.setName(name);
-        m.setPhone(phone);
-        m.setRole(role);
-        m.setDepartment(dept);
-        m.setShift(shift);
-        return m;
-    }
-
-    private EmergencyPhone phone(String id, String name, String number, String category) {
-        EmergencyPhone p = new EmergencyPhone();
-        p.setId(id);
-        p.setName(name);
-        p.setNumber(number);
-        p.setCategory(category);
-        return p;
-    }
-
-    private KnowledgeItem item(String id, String title, int count, String icon) {
-        KnowledgeItem k = new KnowledgeItem();
-        k.setId(id);
-        k.setTitle(title);
-        k.setCount(count);
-        k.setIcon(icon);
+        List<SysKnowledgeItem> rows = knowledgeMapper.selectList(null);
+        List<KnowledgeItem> items = new ArrayList<>();
+        for (SysKnowledgeItem r : rows) {
+            KnowledgeItem it = new KnowledgeItem();
+            it.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+            it.setTitle(r.getTitle());
+            it.setCount(r.getCount());
+            it.setIcon(r.getIcon());
+            items.add(it);
+        }
+        k.setItems(items);
         return k;
     }
 }
