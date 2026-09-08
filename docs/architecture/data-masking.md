@@ -1,6 +1,6 @@
 # 数据脱敏设计（Data Masking）
 
-> 敏感字段在**日志**与**响应出口**的脱敏设计真源。当前为**待落地设计**，本文作为实现约束；改动脱敏策略属 **L3**（业务能力），须 proposal + 评审。本文与 `password-security.md`、`audit-log.md` 配合。
+> 敏感字段在**日志**与**响应出口**的脱敏设计真源。已于 2026-09-08 落地实现（见 `common/mask` 包），本文为实现约束与变更记录；改动脱敏策略属 **L3**（业务能力），须 proposal + 评审。本文与 `password-security.md`、`audit-log.md` 配合。
 
 ## 1. 决策（Decisions）
 
@@ -14,9 +14,9 @@
 
 | 项 | 状态 |
 | -- | ---- |
-| `common/MaskUtil` / `MaskingSerializer` | ⚠️ **未实现**（设计待落地） |
-| 日志 MDC 自动脱敏 | ⚠️ 未实现 |
-| 响应级 `@JsonSerialize` 脱敏注解 | ⚠️ 未实现，当前靠 DTO 手工排除（如 `AuthService.me()` 只选 3 字段） |
+| `common/MaskUtil` / `MaskingSerializer` | ✅ 已实现（`common/mask` 包：MaskType 枚举 + MaskUtil 集中策略 + @Masked 注解 + MaskingSerializer） |
+| 日志 MDC 自动脱敏 | ✅ 已实现（`MaskUtil.maskForLog(key,value)`，按敏感 key 白名单脱敏；调用点使用） |
+| 响应级 `@JsonSerialize` 脱敏注解 | ✅ 已实现（@Masked + MaskingSerializer，已落地 `DutyMember.name/phone`；DTO 不再手工排除） |
 | `passwordHash` 不出现于响应 | ✅ 靠 DTO 映射保证（非系统级脱敏） |
 
 > 现状下脱敏是「点状」的（靠开发者自觉选字段），无统一策略层，存在遗漏风险——本文旨在把点状升级为集中策略。
