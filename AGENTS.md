@@ -70,7 +70,7 @@
    - Controller：`MockMvcBuilders.standaloneSetup` + mock Service，验证路径与参数透传、分页绑定、`@Valid` 非法请求 400 且不进 Service。
    - Service：纯 Mockito 手动构造，覆盖成功路径 + 存在性 / 唯一性 / 状态 / 权限护栏，断言 `BusinessException` 的错误码与关键副作用。
    - 安全层：`JwtUtil` 签发/校验/过期、`HmacFilter` 签名字符串构造、`HardControlInterceptor` 硬控路径命中即拒。
-2. **带 DB 的集成测试**（`*IT`）在引入 Testcontainers 后再启用；**Docker 不可用必须如实报告 IT 未执行，禁止用零 DB 通过代替**。
+2. **带 DB 的集成测试（`*IT`）已落地一层**：`src/test/java/.../integration/DbLayerIntegrationIT`（`@SpringBootTest` + `dev` profile）启动真实上下文，复用 `db/migration/h2` 的 **V1–V8 作为唯一 schema 来源（禁止在测试目录复制第二份 DDL）**，验证真实 SQL / 落库 / 逻辑删除（MyBatis-Plus 全局 `logic-delete-field`）/ 审计写入。Docker / Testcontainers 不可用，故以 H2 充当集成 DB；**生产库（达梦 / PG）语义不等价，最终必须在真实实例上复核**（见 `docs/deployment/dameng-migration-runbook.md`）。若后续引入 Testcontainers / PG 容器，可拓展 `*IT` 覆盖生产方言——但不得为「实跑不了」而用零 DB 通过冒充。
 3. **先红后绿（TDD）**：新增行为 / 业务逻辑修改 / 缺陷修复必须先写失败测试；实现已存在则验其契约。代码完成后补写测试不得宣称为 TDD。
 4. **回归闭环**：`./mvnw test` 为回归门禁，改动横切层（`common/` `security/` `config/`）时必须全绿。
 
@@ -232,6 +232,7 @@ L3 / L4 任务完成后**即刻**写 `engineering/qa/` 与 `engineering/retro/`�
 | `templates/_openspec-spec-delta_template.md` | 四件套 · spec-delta    |
 | `templates/_qa_template.md`                  | engineering/qa 记录    |
 | `templates/_retro_template.md`               | engineering/retro 记录 |
+| `templates/_ship_template.md`                | engineering/ship 发布检查与回滚 |
 | `templates/api-contract-writing-guide.md`    | §3 契约编写与同步手册  |
 
 `templates/README.md` 为索引与用法说明。
