@@ -177,9 +177,17 @@ function javaTypeFamily(raw) {
 
 /** OpenAPI 属性 type → 类型族（array/object/$ref 归一） */
 function oasFamily(t) {
-  if (t === 'string' || t === 'integer' || t === 'number' || t === 'boolean' || t === 'array' || t === 'object')
-    return t;
-  return t ? 'object' : null; // $ref 或未知 → 视作 object，不比对族
+  // OpenAPI 3.1 允许 type 为联合类型数组（如 ["string","null"] 表示可空字段），
+  // 契约里大量使用这种写法。剥离 'null' 后若只剩一种类型即按该类型归族；
+  // 若仍为多类型联合则无法归族，返回 null（不参与比对，避免误报）。
+  let v = t;
+  if (Array.isArray(v)) {
+    const nonNull = v.filter((x) => x !== 'null');
+    v = nonNull.length === 1 ? nonNull[0] : null;
+  }
+  if (v === 'string' || v === 'integer' || v === 'number' || v === 'boolean' || v === 'array' || v === 'object')
+    return v;
+  return v ? 'object' : null; // $ref 或未知 → 视作 object，不比对族
 }
 
 const FIELD_RE =
