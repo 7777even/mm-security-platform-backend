@@ -71,6 +71,21 @@ jobs:
       - name: 契约对拍（strict：路由差异或 schema 漂移任一 > 0 即失败）
         run: node scripts/check-api-contract.mjs --contracts frontend-scaffold/docs/api --strict
 
+      # 本 job 对拍的是前端仓契约的「分支最新」，因此存在时序耦合：
+      # 契约侧还没推送时，后端实现无论对错都会红。这里把排查方向写清楚，
+      # 避免后端同学误以为是实现缺陷。
+      - name: 失败排查指引
+        if: failure()
+        run: |
+          echo "::error::路由或 schema 与前端契约不一致。先判定漂移来自哪一侧："
+          echo "  · 输出格式为「字段:契约≠后端」，左侧是前端契约、右侧是本仓实现。"
+          echo "  · 批量出现 object≠string 时，先怀疑契约用了 OpenAPI 3.1 联合类型"
+          echo "    \"type\": [\"string\",\"null\"] 而守门脚本未识别 —— 是脚本缺陷，不是实现漂移。"
+          echo "  · 若确认要改契约：必须在前端仓改 docs/api/<domain>.openapi.json 并**先推送**，"
+          echo "    再重跑本 job（本 job 拉取的是前端仓分支最新，不认本地改动）。"
+          echo "  · 前端仓已新增同名 contract-guard job，可直接在那里先验证契约侧是否自洽。"
+          echo "  详见根 AGENTS.md §4「跨库推送顺序」。"
+
       # openspec 闭环纪律守门：changes/ 下不允许存在 tasks 全勾未归档的 Change、
       # 四件套缺失、archive/ 目录缺日期前缀（规则见根 AGENTS.md §7.1）。
       - name: OpenSpec 卫生检查（全勾必归档）
