@@ -4,9 +4,13 @@ import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
+import com.sinopec.mmsecurity.dto.MeResult;
 import com.sinopec.mmsecurity.dto.MenuVO;
+import com.sinopec.mmsecurity.dto.PasswordChangeRequest;
+import com.sinopec.mmsecurity.dto.ProfileUpdateRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.service.AccountService;
 import com.sinopec.mmsecurity.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -17,12 +21,12 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 认证域：登录、续期、登出、当前用户、菜单。
@@ -46,6 +50,7 @@ public class AuthController {
     private static final String REFRESH_COOKIE = "rt";
 
     private final AuthService authService;
+    private final AccountService accountService;
     private final JwtUtil jwtUtil;
 
     /** 生产 HTTPS 下刷新 Cookie 须 Secure 才生效；dev(http) 必须为 false，否则浏览器拒存。 */
@@ -81,13 +86,26 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public Result<Map<String, Object>> me() {
+    public Result<MeResult> me() {
         return Result.ok(authService.me());
     }
 
     @GetMapping("/menus")
     public Result<List<MenuVO>> menus() {
         return Result.ok(authService.menus());
+    }
+
+    /** 本人修改口令（须校验旧口令；成功后清除强制改密标记）。 */
+    @PostMapping("/password")
+    public Result<Void> changePassword(@Valid @RequestBody PasswordChangeRequest payload) {
+        accountService.changePassword(payload);
+        return Result.ok();
+    }
+
+    /** 本人资料修改（仅姓名；角色/状态不可自改）。返回最新 me。 */
+    @PutMapping("/profile")
+    public Result<MeResult> updateProfile(@Valid @RequestBody ProfileUpdateRequest payload) {
+        return Result.ok(accountService.updateProfile(payload));
     }
 
     /** 种 HttpOnly 刷新 Cookie：浏览器自动随同站请求回传，前端 JS 读不到。 */
