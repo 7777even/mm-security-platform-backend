@@ -13,17 +13,23 @@ import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
+import com.sinopec.mmsecurity.dto.NodePhaseConfig;
+import com.sinopec.mmsecurity.dto.NodePhaseDuty;
+import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
 import com.sinopec.mmsecurity.service.EmergencyService;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -153,5 +159,49 @@ class EmergencyControllerTest {
         r.setKind(kind);
         r.setCount(count);
         return r;
+    }
+
+    @Test
+    void nodePhaseConfigs_returnsList() throws Exception {
+        NodePhaseConfig c = new NodePhaseConfig();
+        c.setNodeId("alarmJudgement");
+        c.setNodeName("1. 接警研判");
+        NodePhaseMapCamera cam = new NodePhaseMapCamera();
+        cam.setAnchorPriorityList(List.of("alarm_phone_location", "event_device"));
+        cam.setBufferRadiusMeters(260);
+        c.setMapCamera(cam);
+        c.setRightPanelHiddenTabs(List.of());
+        c.setLeftPanelHiddenPanels(List.of());
+        NodePhaseDuty duty = new NodePhaseDuty();
+        duty.setAutoRoster(true);
+        c.setDuty(duty);
+        when(service.nodePhaseConfigs()).thenReturn(List.of(c));
+
+        mockMvc.perform(get("/api/v1/emergency/process/node-configs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].nodeId").value("alarmJudgement"))
+                .andExpect(
+                        jsonPath("$.data[0].mapCamera.anchorPriorityList[0]")
+                                .value("alarm_phone_location"))
+                .andExpect(jsonPath("$.data[0].duty.autoRoster").value(true));
+    }
+
+    @Test
+    void saveNodePhaseConfigs_returnsSavedList() throws Exception {
+        NodePhaseConfig c = new NodePhaseConfig();
+        c.setNodeId("3min");
+        c.setNodeName("3. 三分钟退守稳态");
+        when(service.saveNodePhaseConfigs(any())).thenReturn(List.of(c));
+
+        mockMvc.perform(put("/api/v1/emergency/process/node-configs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[{\"nodeId\":\"3min\",\"nodeName\":\"3. 三分钟退守稳态\","
+                                + "\"mapCamera\":{\"anchorPriorityList\":[\"event_device\"],"
+                                + "\"bufferRadiusMeters\":320},\"rightPanelHiddenTabs\":[],"
+                                + "\"leftPanelHiddenPanels\":[],\"duty\":{\"autoRoster\":true}}]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].nodeId").value("3min"));
     }
 }

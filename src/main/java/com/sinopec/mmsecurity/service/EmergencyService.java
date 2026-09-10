@@ -15,14 +15,19 @@ import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
+import com.sinopec.mmsecurity.dto.NodePhaseConfig;
+import com.sinopec.mmsecurity.dto.NodePhaseDuty;
+import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
+import com.sinopec.mmsecurity.entity.FacNodePhaseConfig;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
+import com.sinopec.mmsecurity.mapper.FacNodePhaseConfigMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
@@ -35,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 应急资源服务。
@@ -57,6 +63,7 @@ public class EmergencyService {
     private final SysKnowledgeItemMapper knowledgeMapper;
     private final SysDutyMemberMapper dutyMapper;
     private final FacEmergencyCmdMapper cmdMapper;
+    private final FacNodePhaseConfigMapper nodePhaseConfigMapper;
     private final ObjectMapper objectMapper;
 
     /** 应急力量统计：来自 sys_emergency_strength 参考表 */
@@ -204,5 +211,142 @@ public class EmergencyService {
         d.setStatus(row.getStatus());
         d.setLocation(row.getLocation());
         return d;
+    }
+
+    // ------------------------------------------------------------------
+    // 应急流程节点联动配置（V30 fac_node_phase_config）
+    // ------------------------------------------------------------------
+
+    /** 流程节点联动配置列表（按 sort_no 升序）。 */
+    public List<NodePhaseConfig> nodePhaseConfigs() {
+        return nodePhaseConfigMapper.selectList(new LambdaQueryWrapper<FacNodePhaseConfig>()
+                        .orderByAsc(FacNodePhaseConfig::getSortNo)).stream()
+                .map(this::toNodePhaseConfig).collect(Collectors.toList());
+    }
+
+    /**
+     * 保存流程节点联动配置（按 node_id 整体 upsert：存在则更新，不存在则新建），返回落库后的全量列表。
+     *
+     * <p>入参为前端整表单次提交的全部节点配置；nodeId 缺失的条目跳过，新建行按输入顺序写 sort_no。</p>
+     */
+    public List<NodePhaseConfig> saveNodePhaseConfigs(List<NodePhaseConfig> configs) {
+        if (configs == null || configs.isEmpty()) {
+            return nodePhaseConfigs();
+        }
+        int index = 0;
+        for (NodePhaseConfig config : configs) {
+            index++;
+            if (config == null || config.getNodeId() == null || config.getNodeId().isBlank()) {
+                continue;
+            }
+            FacNodePhaseConfig entity = findNodePhaseConfig(config.getNodeId());
+            boolean creating = entity == null;
+            if (creating) {
+                entity = new FacNodePhaseConfig();
+                entity.setNodeId(config.getNodeId());
+                entity.setNodeName(config.getNodeId());
+                entity.setCameraAnchors("");
+                entity.setBufferRadiusMeters(260);
+                entity.setRightHiddenTabs("");
+                entity.setLeftHiddenPanels("");
+                entity.setDutyAutoRoster(Boolean.FALSE);
+                entity.setSortNo(index);
+            }
+            applyNodePhaseConfig(entity, config);
+            if (creating) {
+                nodePhaseConfigMapper.insert(entity);
+            } else {
+                nodePhaseConfigMapper.updateById(entity);
+            }
+        }
+        return nodePhaseConfigs();
+    }
+
+    private FacNodePhaseConfig findNodePhaseConfig(String nodeId) {
+        return nodePhaseConfigMapper.selectList(new LambdaQueryWrapper<FacNodePhaseConfig>()
+                        .eq(FacNodePhaseConfig::getNodeId, nodeId))
+                .stream().findFirst().orElse(null);
+    }
+
+    private void applyNodePhaseConfig(FacNodePhaseConfig entity, NodePhaseConfig config) {
+        if (config.getNodeName() != null && !config.getNodeName().isBlank()) {
+            entity.setNodeName(config.getNodeName());
+        }
+        NodePhaseMapCamera camera = config.getMapCamera();
+        if (camera != null) {
+            if (camera.getAnchorPriorityList() != null) {
+                entity.setCameraAnchors(String.join(",", camera.getAnchorPriorityList()));
+            }
+            entity.setCustomCenter(toCenterText(camera.getCustomCenter()));
+            if (camera.getBufferRadiusMeters() != null) {
+                entity.setBufferRadiusMeters(camera.getBufferRadiusMeters());
+            }
+        }
+        if (config.getRightPanelHiddenTabs() != null) {
+            entity.setRightHiddenTabs(String.join(",", config.getRightPanelHiddenTabs()));
+        }
+        if (config.getLeftPanelHiddenPanels() != null) {
+            entity.setLeftHiddenPanels(String.join(",", config.getLeftPanelHiddenPanels()));
+        }
+        NodePhaseDuty duty = config.getDuty();
+        if (duty != null && duty.getAutoRoster() != null) {
+            entity.setDutyAutoRoster(duty.getAutoRoster());
+        }
+    }
+
+    private NodePhaseConfig toNodePhaseConfig(FacNodePhaseConfig entity) {
+        NodePhaseConfig config = new NodePhaseConfig();
+        config.setNodeId(entity.getNodeId());
+        config.setNodeName(entity.getNodeName());
+        NodePhaseMapCamera camera = new NodePhaseMapCamera();
+        camera.setAnchorPriorityList(splitCsv(entity.getCameraAnchors()));
+        camera.setCustomCenter(parseCenter(entity.getCustomCenter()));
+        camera.setBufferRadiusMeters(entity.getBufferRadiusMeters());
+        config.setMapCamera(camera);
+        config.setRightPanelHiddenTabs(splitCsv(entity.getRightHiddenTabs()));
+        config.setLeftPanelHiddenPanels(splitCsv(entity.getLeftHiddenPanels()));
+        NodePhaseDuty duty = new NodePhaseDuty();
+        duty.setAutoRoster(Boolean.TRUE.equals(entity.getDutyAutoRoster()));
+        config.setDuty(duty);
+        return config;
+    }
+
+    /** 逗号串 → 去空白后的列表；空/null 返回空列表（前端按数组消费）。 */
+    private static List<String> splitCsv(String text) {
+        if (text == null || text.isBlank()) {
+            return List.of();
+        }
+        List<String> values = new ArrayList<>();
+        for (String part : text.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                values.add(trimmed);
+            }
+        }
+        return values;
+    }
+
+    /** [lon,lat] → "lon,lat"；null/空返回 null。 */
+    private static String toCenterText(List<Double> center) {
+        if (center == null || center.isEmpty()) {
+            return null;
+        }
+        return center.stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    /** "lon,lat" → [lon,lat]；空或非法返回 null。 */
+    private static List<Double> parseCenter(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        List<Double> center = new ArrayList<>();
+        for (String part : text.split(",")) {
+            try {
+                center.add(Double.valueOf(part.trim()));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return center.isEmpty() ? null : center;
     }
 }
