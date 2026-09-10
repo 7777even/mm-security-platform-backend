@@ -123,4 +123,41 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("必填")));
     }
+
+    // ==== Spring 6.1 方法级参数校验（HandlerMethodValidationException）====
+
+    private final com.sinopec.mmsecurity.service.DeviceService deviceService =
+            mock(com.sinopec.mmsecurity.service.DeviceService.class);
+    private final MockMvc deviceMvc = MockMvcBuilders
+            .standaloneSetup(new com.sinopec.mmsecurity.controller.DeviceController(deviceService))
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
+
+    /**
+     * @PathVariable 上的 @DeviceCode 约束（20 位 MDM 编码）在 Spring 6.1 抛
+     * HandlerMethodValidationException —— 曾未被接住而落 500「服务器内部错误」
+     * （2026-09-10 全量端点冒烟：GET /devices/{19位GAS编码} → 500）。
+     * 现应为 HTTP 200 + code=100 参数错误，message 点名 20 位要求。
+     */
+    @Test
+    void deviceCodePathVariableConstraint_returnsParamInvalidInsteadOf500() throws Exception {
+        deviceMvc.perform(get("/api/v1/devices/FAC2026GASA00000001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("20 位")));
+    }
+
+    /** 合法 20 位编码不触发方法级校验异常，正常走 service 返回（守卫校验不过度拦截）。 */
+    @Test
+    void validDeviceCode_passesThroughToService() throws Exception {
+        com.sinopec.mmsecurity.entity.FacDevice device = new com.sinopec.mmsecurity.entity.FacDevice();
+        device.setDeviceCode("FAC2026GASA000000001");
+        device.setDeviceName("装置C气体检测仪-G01");
+        when(deviceService.byCode("FAC2026GASA000000001")).thenReturn(device);
+
+        deviceMvc.perform(get("/api/v1/devices/FAC2026GASA000000001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.deviceCode").value("FAC2026GASA000000001"));
+    }
 }

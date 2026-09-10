@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -142,6 +144,25 @@ public class GlobalExceptionHandler {
                         })
                         .orElse("参数校验失败");
         log.warn("[{}] Constraint violation: {}", req.getRequestURI(), msg);
+        return ResponseEntity.ok(Result.fail(ResultCode.PARAM_INVALID, msg));
+    }
+
+    /**
+     * Spring 6.1 方法级参数校验（@PathVariable / @RequestParam 上直接标注约束注解，
+     * 如 {@code @DeviceCode}）：框架抛的是 {@link HandlerMethodValidationException}
+     * 而非 {@link ConstraintViolationException}，曾漏接落 500
+     * （2026-09-10 全量端点冒烟：GET /devices/{19位编码} → 500「服务器内部错误」）。
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Result<Void>> handleMethodValidation(HandlerMethodValidationException ex,
+                                                               HttpServletRequest req) {
+        String msg = ex.getAllErrors().isEmpty()
+                ? "参数校验失败"
+                : ex.getAllErrors().stream()
+                        .findFirst()
+                        .map(MessageSourceResolvable::getDefaultMessage)
+                        .orElse("参数校验失败");
+        log.warn("[{}] Method validation failed: {}", req.getRequestURI(), msg);
         return ResponseEntity.ok(Result.fail(ResultCode.PARAM_INVALID, msg));
     }
 
