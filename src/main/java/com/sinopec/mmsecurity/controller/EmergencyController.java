@@ -4,6 +4,8 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.DutyRoster;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
+import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
+import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
@@ -70,6 +72,18 @@ public class EmergencyController {
     @GetMapping("/process/node-configs")
     public Result<List<NodePhaseConfig>> nodePhaseConfigs() {
         return Result.ok(emergencyService.nodePhaseConfigs());
+    }
+
+    /** 应急流程全景：5 阶段 + 4 响应模式 + 15 流程节点。 */
+    @GetMapping("/process/panorama")
+    public Result<EmergencyProcessPanorama> processPanorama() {
+        return Result.ok(emergencyService.processPanorama());
+    }
+
+    /** 应急流程节点处置指引：实时值班表 + 各节点上报链路与岗位任务。 */
+    @GetMapping("/process/guidances")
+    public Result<EmergencyProcessGuidance> processGuidances() {
+        return Result.ok(emergencyService.processGuidances());
     }
 
     /** 保存流程节点联动配置（按 nodeId 整体 upsert），返回落库后的全量列表。 */

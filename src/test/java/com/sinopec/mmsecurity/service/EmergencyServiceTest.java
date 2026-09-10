@@ -11,6 +11,11 @@ import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
+import com.sinopec.mmsecurity.entity.FacEmergencyGuidanceRoster;
+import com.sinopec.mmsecurity.entity.FacEmergencyNodeGuidance;
+import com.sinopec.mmsecurity.entity.FacEmergencyPhase;
+import com.sinopec.mmsecurity.entity.FacEmergencyProcessStage;
+import com.sinopec.mmsecurity.entity.FacEmergencyResponseMode;
 import com.sinopec.mmsecurity.entity.FacNodePhaseConfig;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
@@ -18,6 +23,11 @@ import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyNodeGuidanceMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPhaseMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyProcessStageMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyResponseModeMapper;
 import com.sinopec.mmsecurity.mapper.FacNodePhaseConfigMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
@@ -54,10 +64,20 @@ class EmergencyServiceTest {
     private final FacEmergencyCmdMapper cmdMapper = mock(FacEmergencyCmdMapper.class);
     private final FacNodePhaseConfigMapper nodePhaseConfigMapper =
             mock(FacNodePhaseConfigMapper.class);
+    private final FacEmergencyPhaseMapper emergencyPhaseMapper = mock(FacEmergencyPhaseMapper.class);
+    private final FacEmergencyResponseModeMapper responseModeMapper =
+            mock(FacEmergencyResponseModeMapper.class);
+    private final FacEmergencyProcessStageMapper processStageMapper =
+            mock(FacEmergencyProcessStageMapper.class);
+    private final FacEmergencyNodeGuidanceMapper nodeGuidanceMapper =
+            mock(FacEmergencyNodeGuidanceMapper.class);
+    private final FacEmergencyGuidanceRosterMapper guidanceRosterMapper =
+            mock(FacEmergencyGuidanceRosterMapper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final EmergencyService service = new EmergencyService(
             alarmMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper,
-            cmdMapper, nodePhaseConfigMapper, objectMapper);
+            cmdMapper, nodePhaseConfigMapper, emergencyPhaseMapper, responseModeMapper,
+            processStageMapper, nodeGuidanceMapper, guidanceRosterMapper, objectMapper);
 
     private static SysEmergencyStrength strength(String kind, int count, String icon) {
         SysEmergencyStrength s = new SysEmergencyStrength();
@@ -295,5 +315,100 @@ class EmergencyServiceTest {
         assertEquals(Boolean.FALSE, inserted.getDutyAutoRoster());
         assertEquals(1, inserted.getSortNo());
         assertTrue(saved.isEmpty());
+    }
+
+    @Test
+    void processPanorama_mapsPhasesModesAndDeserializesStages() {
+        FacEmergencyPhase phase = new FacEmergencyPhase();
+        phase.setPhaseCode("phase-team");
+        phase.setPhaseName("班组处置");
+        phase.setStartStage(1);
+        phase.setEndStage(4);
+        phase.setTone("blue");
+        when(emergencyPhaseMapper.selectList(any())).thenReturn(List.of(phase));
+
+        FacEmergencyResponseMode mode = new FacEmergencyResponseMode();
+        mode.setModeCode("team");
+        mode.setModeLabel("一、班组处置");
+        mode.setStageId(1);
+        when(responseModeMapper.selectList(any())).thenReturn(List.of(mode));
+
+        FacEmergencyProcessStage row = new FacEmergencyProcessStage();
+        row.setStageId(1);
+        row.setPhaseCode("phase-team");
+        row.setDetailJson("{\"id\":1,\"name\":\"接警研判\",\"shortName\":\"1. 接警研判\","
+                + "\"commandLevel\":\"班组处置\",\"previousContext\":[\"a\",\"b\"],"
+                + "\"currentActions\":[{\"id\":\"act-1-1\",\"label\":\"报告\",\"done\":true,"
+                + "\"type\":\"primary\"}],"
+                + "\"criteriaChecklist\":[{\"id\":\"cri-1-1\",\"label\":\"确认\",\"checked\":true}],"
+                + "\"escalationRule\":{\"triggerCondition\":\"t\",\"fromRole\":\"f\",\"toRole\":\"to\","
+                + "\"details\":{\"location\":\"L\",\"substance\":\"S\",\"casualty\":\"C\","
+                + "\"currentStatus\":\"P\"}}}");
+        when(processStageMapper.selectList(any())).thenReturn(List.of(row));
+
+        var panorama = service.processPanorama();
+
+        assertEquals(1, panorama.getPhases().size());
+        assertEquals("phase-team", panorama.getPhases().get(0).getId());
+        assertEquals(1, panorama.getPhases().get(0).getStart());
+        assertEquals(4, panorama.getPhases().get(0).getEnd());
+        assertEquals("team", panorama.getResponseModes().get(0).getValue());
+        assertEquals(1, panorama.getStages().size());
+        var stage = panorama.getStages().get(0);
+        assertEquals(1, stage.getId());
+        assertEquals("接警研判", stage.getName());
+        assertEquals(List.of("a", "b"), stage.getPreviousContext());
+        assertEquals("primary", stage.getCurrentActions().get(0).getType());
+        assertEquals(Boolean.TRUE, stage.getCurrentActions().get(0).getDone());
+        assertEquals(Boolean.TRUE, stage.getCriteriaChecklist().get(0).getChecked());
+        assertEquals("L", stage.getEscalationRule().getDetails().getLocation());
+    }
+
+    @Test
+    void processPanorama_toleratesBrokenDetailJson() {
+        FacEmergencyProcessStage row = new FacEmergencyProcessStage();
+        row.setStageId(1);
+        row.setDetailJson("{ not json");
+        when(emergencyPhaseMapper.selectList(any())).thenReturn(List.of());
+        when(responseModeMapper.selectList(any())).thenReturn(List.of());
+        when(processStageMapper.selectList(any())).thenReturn(List.of(row));
+
+        var panorama = service.processPanorama();
+
+        assertEquals(1, panorama.getStages().size());
+        assertEquals(null, panorama.getStages().get(0).getId());
+    }
+
+    @Test
+    void processGuidances_mapsRosterAndDeserializesGuidances() {
+        FacEmergencyGuidanceRoster roster = new FacEmergencyGuidanceRoster();
+        roster.setShiftGroup("乙班（白班）");
+        roster.setSupervisor("李明辉（加氢制氢部值班长）");
+        roster.setSupervisorPhone("138-0288-3456");
+        roster.setBoardOperator("张建国（DCS 内操人员）");
+        roster.setBoardOperatorPhone("139-0668-2233");
+        roster.setFieldOperator("王安全（现场外操巡检员）");
+        roster.setFieldOperatorPhone("137-0668-8378");
+        when(guidanceRosterMapper.selectList(any())).thenReturn(List.of(roster));
+
+        FacEmergencyNodeGuidance row = new FacEmergencyNodeGuidance();
+        row.setNodeId("1");
+        row.setDetailJson("{\"nodeId\":\"1\",\"nodeName\":\"节点 1：接警研判\","
+                + "\"reportingChain\":[{\"step\":1,\"fromRole\":\"外操\",\"toRole\":\"内操\","
+                + "\"method\":\"对讲机\",\"notice\":\"汇报\"}],"
+                + "\"roleTasks\":[{\"roleName\":\"内操\",\"roleTitle\":\"DCS 内操\","
+                + "\"personName\":\"张建国\",\"avatarIcon\":\"i\",\"phone\":\"139\","
+                + "\"tasks\":[\"t1\",\"t2\"]}],\"generalNotice\":\"注意安全\"}");
+        when(nodeGuidanceMapper.selectList(any())).thenReturn(List.of(row));
+
+        var guidance = service.processGuidances();
+
+        assertEquals("乙班（白班）", guidance.getDutyRoster().getShiftGroup());
+        assertEquals(1, guidance.getGuidances().size());
+        var node = guidance.getGuidances().get(0);
+        assertEquals("1", node.getNodeId());
+        assertEquals("对讲机", node.getReportingChain().get(0).getMethod());
+        assertEquals(List.of("t1", "t2"), node.getRoleTasks().get(0).getTasks());
+        assertEquals("注意安全", node.getGeneralNotice());
     }
 }

@@ -7,15 +7,22 @@ import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.DutyRoster;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.EmergencyCommandInstruction;
+import com.sinopec.mmsecurity.dto.EmergencyPhase;
 import com.sinopec.mmsecurity.dto.EmergencyPhone;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
+import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
+import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
 import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
+import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
+import com.sinopec.mmsecurity.dto.NodeGuidance;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
+import com.sinopec.mmsecurity.dto.ProcessStage;
+import com.sinopec.mmsecurity.dto.ResponseModeOption;
 import com.sinopec.mmsecurity.service.EmergencyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -203,5 +210,54 @@ class EmergencyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data[0].nodeId").value("3min"));
+    }
+
+    @Test
+    void processPanorama_returnsPhasesModesStages() throws Exception {
+        EmergencyProcessPanorama panorama = new EmergencyProcessPanorama();
+        EmergencyPhase phase = new EmergencyPhase();
+        phase.setId("phase-team");
+        phase.setName("班组处置");
+        phase.setStart(1);
+        phase.setEnd(4);
+        phase.setTone("blue");
+        panorama.setPhases(List.of(phase));
+        ResponseModeOption mode = new ResponseModeOption();
+        mode.setValue("team");
+        mode.setLabel("一、班组处置");
+        mode.setStageId(1);
+        panorama.setResponseModes(List.of(mode));
+        ProcessStage stage = new ProcessStage();
+        stage.setId(1);
+        stage.setName("接警研判");
+        panorama.setStages(List.of(stage));
+        when(service.processPanorama()).thenReturn(panorama);
+
+        mockMvc.perform(get("/api/v1/emergency/process/panorama"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.phases[0].id").value("phase-team"))
+                .andExpect(jsonPath("$.data.phases[0].start").value(1))
+                .andExpect(jsonPath("$.data.responseModes[0].value").value("team"))
+                .andExpect(jsonPath("$.data.stages[0].name").value("接警研判"));
+    }
+
+    @Test
+    void processGuidances_returnsRosterAndGuidances() throws Exception {
+        EmergencyProcessGuidance guidance = new EmergencyProcessGuidance();
+        GuidanceDutyRoster roster = new GuidanceDutyRoster();
+        roster.setShiftGroup("乙班（白班）");
+        guidance.setDutyRoster(roster);
+        NodeGuidance node = new NodeGuidance();
+        node.setNodeId("1");
+        node.setNodeName("节点 1：接警研判");
+        guidance.setGuidances(List.of(node));
+        when(service.processGuidances()).thenReturn(guidance);
+
+        mockMvc.perform(get("/api/v1/emergency/process/guidances"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.dutyRoster.shiftGroup").value("乙班（白班）"))
+                .andExpect(jsonPath("$.data.guidances[0].nodeId").value("1"));
     }
 }

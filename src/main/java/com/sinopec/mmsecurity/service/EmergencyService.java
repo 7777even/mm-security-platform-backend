@@ -9,17 +9,29 @@ import com.sinopec.mmsecurity.dto.DutyMember;
 import com.sinopec.mmsecurity.dto.DutyRoster;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.EmergencyCommandInstruction;
+import com.sinopec.mmsecurity.dto.EmergencyPhase;
 import com.sinopec.mmsecurity.dto.EmergencyPhone;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
+import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
+import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
 import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
+import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
+import com.sinopec.mmsecurity.dto.NodeGuidance;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
+import com.sinopec.mmsecurity.dto.ProcessStage;
+import com.sinopec.mmsecurity.dto.ResponseModeOption;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
+import com.sinopec.mmsecurity.entity.FacEmergencyGuidanceRoster;
+import com.sinopec.mmsecurity.entity.FacEmergencyNodeGuidance;
+import com.sinopec.mmsecurity.entity.FacEmergencyPhase;
+import com.sinopec.mmsecurity.entity.FacEmergencyProcessStage;
+import com.sinopec.mmsecurity.entity.FacEmergencyResponseMode;
 import com.sinopec.mmsecurity.entity.FacNodePhaseConfig;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
@@ -27,6 +39,11 @@ import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyNodeGuidanceMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPhaseMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyProcessStageMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyResponseModeMapper;
 import com.sinopec.mmsecurity.mapper.FacNodePhaseConfigMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
@@ -64,6 +81,11 @@ public class EmergencyService {
     private final SysDutyMemberMapper dutyMapper;
     private final FacEmergencyCmdMapper cmdMapper;
     private final FacNodePhaseConfigMapper nodePhaseConfigMapper;
+    private final FacEmergencyPhaseMapper emergencyPhaseMapper;
+    private final FacEmergencyResponseModeMapper responseModeMapper;
+    private final FacEmergencyProcessStageMapper processStageMapper;
+    private final FacEmergencyNodeGuidanceMapper nodeGuidanceMapper;
+    private final FacEmergencyGuidanceRosterMapper guidanceRosterMapper;
     private final ObjectMapper objectMapper;
 
     /** 应急力量统计：来自 sys_emergency_strength 参考表 */
@@ -348,5 +370,99 @@ public class EmergencyService {
             }
         }
         return center.isEmpty() ? null : center;
+    }
+
+    // ------------------------------------------------------------------
+    // 应急流程全景（V31 fac_emergency_phase / response_mode / process_stage / node_guidance）
+    // ------------------------------------------------------------------
+
+    /** 流程全景聚合：5 阶段 + 4 响应模式 + 15 流程节点（节点嵌套结构由 detail_json 反序列化）。 */
+    public EmergencyProcessPanorama processPanorama() {
+        EmergencyProcessPanorama panorama = new EmergencyProcessPanorama();
+        panorama.setPhases(emergencyPhaseMapper.selectList(
+                        new LambdaQueryWrapper<FacEmergencyPhase>()
+                                .orderByAsc(FacEmergencyPhase::getSortNo)).stream()
+                .map(this::toEmergencyPhase).collect(Collectors.toList()));
+        panorama.setResponseModes(responseModeMapper.selectList(
+                        new LambdaQueryWrapper<FacEmergencyResponseMode>()
+                                .orderByAsc(FacEmergencyResponseMode::getSortNo)).stream()
+                .map(this::toResponseModeOption).collect(Collectors.toList()));
+        panorama.setStages(processStageMapper.selectList(
+                        new LambdaQueryWrapper<FacEmergencyProcessStage>()
+                                .orderByAsc(FacEmergencyProcessStage::getSortNo)).stream()
+                .map(row -> readJson(row.getDetailJson(), ProcessStage.class))
+                .collect(Collectors.toList()));
+        return panorama;
+    }
+
+    /** 节点处置指引聚合：实时值班表 + 9 条节点指引（嵌套结构由 detail_json 反序列化）。 */
+    public EmergencyProcessGuidance processGuidances() {
+        EmergencyProcessGuidance guidance = new EmergencyProcessGuidance();
+        FacEmergencyGuidanceRoster roster = guidanceRosterMapper.selectList(
+                        new LambdaQueryWrapper<FacEmergencyGuidanceRoster>()
+                                .orderByAsc(FacEmergencyGuidanceRoster::getSortNo)).stream()
+                .findFirst().orElse(null);
+        guidance.setDutyRoster(roster == null ? null : toGuidanceDutyRoster(roster));
+        guidance.setGuidances(nodeGuidanceMapper.selectList(
+                        new LambdaQueryWrapper<FacEmergencyNodeGuidance>()
+                                .orderByAsc(FacEmergencyNodeGuidance::getSortNo)).stream()
+                .map(row -> readJson(row.getDetailJson(), NodeGuidance.class))
+                .collect(Collectors.toList()));
+        return guidance;
+    }
+
+    /**
+     * detail_json 反序列化。
+     *
+     * <p>数据由脚本从 TS 常量直出、列非空，理论上必可解析；此处仍做防御：解析失败或为空时
+     * 返回空实例（而非 null），避免前端拿到的列表里出现 null 元素导致渲染崩溃。</p>
+     */
+    private <T> T readJson(String json, Class<T> type) {
+        T value = null;
+        if (json != null && !json.isBlank()) {
+            try {
+                value = objectMapper.readValue(json, type);
+            } catch (Exception ignored) {
+                value = null;
+            }
+        }
+        if (value != null) {
+            return value;
+        }
+        try {
+            return type.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("无法实例化 " + type.getSimpleName(), e);
+        }
+    }
+
+    private EmergencyPhase toEmergencyPhase(FacEmergencyPhase row) {
+        EmergencyPhase dto = new EmergencyPhase();
+        dto.setId(row.getPhaseCode());
+        dto.setName(row.getPhaseName());
+        dto.setStart(row.getStartStage());
+        dto.setEnd(row.getEndStage());
+        dto.setTone(row.getTone());
+        return dto;
+    }
+
+    private ResponseModeOption toResponseModeOption(FacEmergencyResponseMode row) {
+        ResponseModeOption dto = new ResponseModeOption();
+        dto.setValue(row.getModeCode());
+        dto.setLabel(row.getModeLabel());
+        dto.setStageId(row.getStageId());
+        return dto;
+    }
+
+    private GuidanceDutyRoster toGuidanceDutyRoster(FacEmergencyGuidanceRoster row) {
+        GuidanceDutyRoster dto = new GuidanceDutyRoster();
+        dto.setShiftGroup(row.getShiftGroup());
+        dto.setSupervisor(row.getSupervisor());
+        dto.setSupervisorPhone(row.getSupervisorPhone());
+        dto.setBoardOperator(row.getBoardOperator());
+        dto.setBoardOperatorPhone(row.getBoardOperatorPhone());
+        dto.setFieldOperator(row.getFieldOperator());
+        dto.setFieldOperatorPhone(row.getFieldOperatorPhone());
+        return dto;
     }
 }
