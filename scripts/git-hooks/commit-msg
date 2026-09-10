@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# 后端仓库 commit-msg 钩子（无 node/husky 依赖）：委托给 scripts/commit-msg-lint.sh
+sh "$(dirname -- "$0")/../commit-msg-lint.sh" "$1"
