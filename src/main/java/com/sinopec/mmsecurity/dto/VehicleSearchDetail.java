@@ -1,22 +1,17 @@
-package com.sinopec.mmsecurity.entity;
+package com.sinopec.mmsecurity.dto;
 
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-/**
- * 车辆识别检索实体。数据来自真实表 fac_vehicle_search；keyword 检索在服务端按车牌/卡口/状态过滤。
- */
+/** 车辆识别检索详情（检索结果字段 + 派单/货物扩展），契约源：前端 VehicleSearchDetail。 */
 @Data
-@TableName("fac_vehicle_search")
-public class FacVehicleSearch {
+public class VehicleSearchDetail {
+
     private Long id;
     private String plate;
     private Integer confidence;
     private String gate;
     private String status;
     private String time;
-
-    // V28 新增：检索详情扩展（原前端 securitySearchMock 的 vehicleDetailExtras）
     private String vehicleType;
     private String driverName;
     private String driverPhone;

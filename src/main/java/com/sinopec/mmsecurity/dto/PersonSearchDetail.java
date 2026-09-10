@@ -1,21 +1,16 @@
-package com.sinopec.mmsecurity.entity;
+package com.sinopec.mmsecurity.dto;
 
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-/**
- * 人员识别检索实体。数据来自真实表 fac_person_search；keyword 检索在服务端按姓名/卡口/状态过滤。
- */
+/** 人员识别检索详情（检索结果字段 + 访客/作业扩展），契约源：前端 PersonSearchDetail。 */
 @Data
-@TableName("fac_person_search")
-public class FacPersonSearch {
+public class PersonSearchDetail {
+
     private Long id;
     private String name;
     private String gate;
     private String status;
     private String date;
-
-    // V28 新增：检索详情扩展（原前端 securitySearchMock 的 personDetailExtras）
     private String gender;
     private String phone;
     private String company;

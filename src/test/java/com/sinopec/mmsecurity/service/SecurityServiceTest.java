@@ -1,22 +1,31 @@
 package com.sinopec.mmsecurity.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
+import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
+import com.sinopec.mmsecurity.dto.SecurityTrackSummary;
+import com.sinopec.mmsecurity.dto.SecurityTrackTimelineItem;
+import com.sinopec.mmsecurity.dto.VehicleSearchDetail;
 import com.sinopec.mmsecurity.dto.VehicleSearchResult;
 import com.sinopec.mmsecurity.entity.FacBollard;
 import com.sinopec.mmsecurity.entity.FacGateControl;
 import com.sinopec.mmsecurity.entity.FacPatrolCamera;
 import com.sinopec.mmsecurity.entity.FacPersonSearch;
 import com.sinopec.mmsecurity.entity.FacSecurityEvent;
+import com.sinopec.mmsecurity.entity.FacSecurityTrack;
+import com.sinopec.mmsecurity.entity.FacSecurityTrackMeta;
 import com.sinopec.mmsecurity.entity.FacVehicleSearch;
 import com.sinopec.mmsecurity.mapper.FacBollardMapper;
 import com.sinopec.mmsecurity.mapper.FacGateControlMapper;
 import com.sinopec.mmsecurity.mapper.FacPatrolCameraMapper;
 import com.sinopec.mmsecurity.mapper.FacPersonSearchMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityEventMapper;
+import com.sinopec.mmsecurity.mapper.FacSecurityTrackMapper;
+import com.sinopec.mmsecurity.mapper.FacSecurityTrackMetaMapper;
 import com.sinopec.mmsecurity.mapper.FacVehicleSearchMapper;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +33,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -39,9 +49,12 @@ class SecurityServiceTest {
     private final FacVehicleSearchMapper vehicleSearchMapper = mock(FacVehicleSearchMapper.class);
     private final FacPersonSearchMapper personSearchMapper = mock(FacPersonSearchMapper.class);
     private final FacSecurityEventMapper securityEventMapper = mock(FacSecurityEventMapper.class);
+    private final FacSecurityTrackMapper trackMapper = mock(FacSecurityTrackMapper.class);
+    private final FacSecurityTrackMetaMapper trackMetaMapper = mock(FacSecurityTrackMetaMapper.class);
     private final SecurityService service = new SecurityService(
             patrolCameraMapper, gateControlMapper, bollardMapper,
-            vehicleSearchMapper, personSearchMapper, securityEventMapper);
+            vehicleSearchMapper, personSearchMapper, securityEventMapper,
+            trackMapper, trackMetaMapper);
 
     @Test
     void listPatrolCameras_mapsFields() {
@@ -164,5 +177,100 @@ class SecurityServiceTest {
         assertEquals("进", d.getDirection());
         assertEquals(1, d.getLevel());
         assertTrue(d.getTs().startsWith("2026-09-07"));
+    }
+
+    @Test
+    void trackTimeline_mapsAndFallsBackToDefault() {
+        FacSecurityTrack e = new FacSecurityTrack();
+        e.setId(1L);
+        e.setLocation("东门-入");
+        e.setStatus("入厂");
+        e.setStatusTone("enter");
+        e.setTrackTime("2026-01-20 09:12:08");
+        e.setCaptureHint("东门卡口");
+        when(trackMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(e));
+
+        List<SecurityTrackTimelineItem> r = service.trackTimeline("vehicle", 1L);
+        assertEquals(1, r.size());
+        assertEquals("东门-入", r.get(0).getLocation());
+        assertEquals("enter", r.get(0).getStatusTone());
+        assertEquals("2026-01-20 09:12:08", r.get(0).getTime());
+    }
+
+    @Test
+    void trackSummary_derivesTimeRangeFromTimeline() {
+        FacSecurityTrack first = new FacSecurityTrack();
+        first.setTrackTime("2026-01-20 09:12:08");
+        FacSecurityTrack last = new FacSecurityTrack();
+        last.setTrackTime("2026-01-20 10:05:12");
+        when(trackMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(first, last));
+
+        FacSecurityTrackMeta meta = new FacSecurityTrackMeta();
+        meta.setTrackMode("vehicle");
+        meta.setStartLabel("东门");
+        meta.setEndLabel("装卸点");
+        when(trackMetaMapper.selectById("vehicle")).thenReturn(meta);
+
+        SecurityTrackSummary s = service.trackSummary("vehicle", 1L);
+        assertEquals("东门", s.getStartLabel());
+        assertEquals("装卸点", s.getEndLabel());
+        assertEquals("2026-01-20 09:12:08 - 2026-01-20 10:05:12", s.getTimeRange());
+    }
+
+    @Test
+    void trackSummary_emptyTimelineUsesDash() {
+        when(trackMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        SecurityTrackSummary s = service.trackSummary("person", null);
+        assertEquals("—", s.getTimeRange());
+    }
+
+    @Test
+    void vehicleDetail_mapsExtendedFields() {
+        FacVehicleSearch e = new FacVehicleSearch();
+        e.setId(1L);
+        e.setPlate("粤KA4543");
+        e.setConfidence(80);
+        e.setGate("东门-入");
+        e.setStatus("入厂");
+        e.setTime("2026-01-20 10:23:23");
+        e.setVehicleType("危化品运输车");
+        e.setDriverName("刘师傅");
+        e.setDestination("炼油一区装卸点");
+        when(vehicleSearchMapper.selectById(1L)).thenReturn(e);
+
+        VehicleSearchDetail d = service.vehicleDetail(1L);
+        assertEquals("粤KA4543", d.getPlate());
+        assertEquals("危化品运输车", d.getVehicleType());
+        assertEquals("刘师傅", d.getDriverName());
+        assertEquals("炼油一区装卸点", d.getDestination());
+    }
+
+    @Test
+    void personDetail_mapsExtendedFields() {
+        FacPersonSearch e = new FacPersonSearch();
+        e.setId(1L);
+        e.setName("张三");
+        e.setGate("东门-入");
+        e.setStatus("入厂");
+        e.setDate("2026-01-20");
+        e.setGender("男");
+        e.setCompany("茂名石化检修公司");
+        e.setSpecialOperation("高处作业");
+        when(personSearchMapper.selectById(1L)).thenReturn(e);
+
+        PersonSearchDetail d = service.personDetail(1L);
+        assertEquals("张三", d.getName());
+        assertEquals("男", d.getGender());
+        assertEquals("茂名石化检修公司", d.getCompany());
+        assertEquals("高处作业", d.getSpecialOperation());
+    }
+
+    @Test
+    void detail_unknownIdReturnsNull() {
+        when(vehicleSearchMapper.selectById(99L)).thenReturn(null);
+        when(personSearchMapper.selectById(99L)).thenReturn(null);
+        assertEquals(null, service.vehicleDetail(99L));
+        assertEquals(null, service.personDetail(99L));
+        assertEquals(null, service.vehicleDetail(null));
     }
 }
