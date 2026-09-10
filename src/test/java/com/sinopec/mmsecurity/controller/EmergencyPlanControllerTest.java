@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
 import com.sinopec.mmsecurity.dto.EmergencyPlanTab;
 import com.sinopec.mmsecurity.dto.PlanActionCard;
@@ -14,13 +15,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -109,5 +116,53 @@ class EmergencyPlanControllerTest {
                 .andExpect(jsonPath("$.data.resources[0].lat").value(21.6868))
                 .andExpect(jsonPath("$.data.actionCards[0].status").value("pending"))
                 .andExpect(jsonPath("$.data.actionCards[0].isGlobal").value(true));
+    }
+
+    @Test
+    void createActionCard_returnsCreatedCard() throws Exception {
+        PlanActionCard card = new PlanActionCard();
+        card.setId("ac-new-1");
+        card.setResourceId("res-flood-3");
+        card.setTitle("启动排水泵");
+        card.setStartSubPhaseId("sp4_3_2");
+        card.setEndSubPhaseId("sp4_4_2");
+        card.setStatus("pending");
+        when(service.createActionCard(eq("plan-flood-003"), any())).thenReturn(card);
+
+        mvc().perform(post("/api/v1/emergency-plans/plan-flood-003/action-cards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resourceId\":\"res-flood-3\",\"title\":\"启动排水泵\","
+                                + "\"startSubPhaseId\":\"sp4_3_2\",\"endSubPhaseId\":\"sp4_4_2\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value("ac-new-1"))
+                .andExpect(jsonPath("$.data.status").value("pending"));
+    }
+
+    @Test
+    void updateActionCard_returnsUpdatedCard() throws Exception {
+        PlanActionCard card = new PlanActionCard();
+        card.setId("c-flood-401");
+        card.setStatus("completed");
+        when(service.updateActionCard(eq("plan-flood-003"), eq("c-flood-401"), any())).thenReturn(card);
+
+        mvc().perform(put("/api/v1/emergency-plans/plan-flood-003/action-cards/c-flood-401")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"completed\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("completed"));
+    }
+
+    @Test
+    void deleteActionCard_returnsOkResult() throws Exception {
+        DeleteResult result = new DeleteResult();
+        result.setOk(true);
+        when(service.deleteActionCard("plan-flood-003", "c-flood-401")).thenReturn(result);
+
+        mvc().perform(delete("/api/v1/emergency-plans/plan-flood-003/action-cards/c-flood-401"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ok").value(true));
     }
 }

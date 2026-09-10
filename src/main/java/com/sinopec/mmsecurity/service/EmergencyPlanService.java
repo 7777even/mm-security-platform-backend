@@ -1,9 +1,12 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
 import com.sinopec.mmsecurity.dto.EmergencyPlanTab;
 import com.sinopec.mmsecurity.dto.PlanActionCard;
+import com.sinopec.mmsecurity.dto.PlanActionCardCreate;
+import com.sinopec.mmsecurity.dto.PlanActionCardUpdate;
 import com.sinopec.mmsecurity.dto.PlanCombatResource;
 import com.sinopec.mmsecurity.dto.PlanInstance;
 import com.sinopec.mmsecurity.dto.PlanMajorPhase;
@@ -29,6 +32,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -120,6 +125,99 @@ public class EmergencyPlanService {
                                 .orderByAsc(FacPlanActionCard::getSortNo))
                 .stream().map(this::toActionCard).collect(Collectors.toList()));
         return dto;
+    }
+
+    /** 在某预案实例下新建行动卡；planId 未命中实例时返回 null（Result 丢 null data）。 */
+    public PlanActionCard createActionCard(String planId, PlanActionCardCreate in) {
+        FacPlanInstance instance = resolveInstance(planId);
+        if (instance == null) {
+            return null;
+        }
+        FacPlanActionCard entity = new FacPlanActionCard();
+        entity.setInstanceId(instance.getId());
+        entity.setCardCode("ac-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+        entity.setResourceCode(in.getResourceId());
+        entity.setTitle(in.getTitle());
+        entity.setContentText(in.getContent());
+        entity.setDescriptionText(in.getDescription());
+        entity.setStartSubPhaseCode(in.getStartSubPhaseId());
+        entity.setEndSubPhaseCode(in.getEndSubPhaseId());
+        entity.setRiskEventCode(in.getRiskEventId());
+        entity.setCardStatus(
+                in.getStatus() == null || in.getStatus().isBlank() ? "pending" : in.getStatus());
+        entity.setIsGlobal(in.getIsGlobal() != null && in.getIsGlobal());
+        entity.setSortNo(nextActionCardSortNo(instance.getId()));
+        planActionCardMapper.insert(entity);
+        return toActionCard(entity);
+    }
+
+    /** 局部更新行动卡（null 字段不覆盖）；实例或卡片未命中时返回 null。 */
+    public PlanActionCard updateActionCard(String planId, String cardId, PlanActionCardUpdate in) {
+        FacPlanInstance instance = resolveInstance(planId);
+        if (instance == null) {
+            return null;
+        }
+        FacPlanActionCard entity = findActionCard(instance.getId(), cardId);
+        if (entity == null) {
+            return null;
+        }
+        if (in.getResourceId() != null) {
+            entity.setResourceCode(in.getResourceId());
+        }
+        if (in.getTitle() != null) {
+            entity.setTitle(in.getTitle());
+        }
+        if (in.getContent() != null) {
+            entity.setContentText(in.getContent());
+        }
+        if (in.getDescription() != null) {
+            entity.setDescriptionText(in.getDescription());
+        }
+        if (in.getStartSubPhaseId() != null) {
+            entity.setStartSubPhaseCode(in.getStartSubPhaseId());
+        }
+        if (in.getEndSubPhaseId() != null) {
+            entity.setEndSubPhaseCode(in.getEndSubPhaseId());
+        }
+        if (in.getRiskEventId() != null) {
+            entity.setRiskEventCode(in.getRiskEventId());
+        }
+        if (in.getStatus() != null) {
+            entity.setCardStatus(in.getStatus());
+        }
+        if (in.getIsGlobal() != null) {
+            entity.setIsGlobal(in.getIsGlobal());
+        }
+        planActionCardMapper.updateById(entity);
+        return toActionCard(entity);
+    }
+
+    /** 删除行动卡；实例或卡片未命中时返回 {ok:false}（不抛异常）。 */
+    public DeleteResult deleteActionCard(String planId, String cardId) {
+        DeleteResult result = new DeleteResult();
+        FacPlanInstance instance = resolveInstance(planId);
+        FacPlanActionCard entity = instance == null ? null : findActionCard(instance.getId(), cardId);
+        result.setOk(entity != null && planActionCardMapper.deleteById(entity.getId()) > 0);
+        return result;
+    }
+
+    private FacPlanActionCard findActionCard(Long instanceId, String cardCode) {
+        if (cardCode == null || cardCode.isBlank()) {
+            return null;
+        }
+        return planActionCardMapper.selectList(
+                        new LambdaQueryWrapper<FacPlanActionCard>()
+                                .eq(FacPlanActionCard::getInstanceId, instanceId)
+                                .eq(FacPlanActionCard::getCardCode, cardCode))
+                .stream().findFirst().orElse(null);
+    }
+
+    private int nextActionCardSortNo(Long instanceId) {
+        return planActionCardMapper.selectList(
+                        new LambdaQueryWrapper<FacPlanActionCard>()
+                                .eq(FacPlanActionCard::getInstanceId, instanceId))
+                .stream().map(FacPlanActionCard::getSortNo).filter(Objects::nonNull)
+                .max(Integer::compareTo).orElse(0) + 1;
     }
 
     private FacPlanInstance resolveInstance(String planId) {

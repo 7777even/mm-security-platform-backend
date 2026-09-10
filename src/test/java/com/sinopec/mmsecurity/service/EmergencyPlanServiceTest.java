@@ -1,6 +1,9 @@
 package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
+import com.sinopec.mmsecurity.dto.PlanActionCard;
+import com.sinopec.mmsecurity.dto.PlanActionCardCreate;
+import com.sinopec.mmsecurity.dto.PlanActionCardUpdate;
 import com.sinopec.mmsecurity.dto.PlanInstance;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlan;
 import com.sinopec.mmsecurity.entity.FacPlanActionCard;
@@ -25,9 +28,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** 应急预案服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
@@ -193,5 +199,92 @@ class EmergencyPlanServiceTest {
         assertTrue(matrix.getRiskEvents().isEmpty());
         assertTrue(matrix.getResources().isEmpty());
         assertTrue(matrix.getActionCards().isEmpty());
+    }
+
+    private static FacPlanActionCard card(Long id, String code, String status) {
+        FacPlanActionCard c = new FacPlanActionCard();
+        c.setId(id);
+        c.setInstanceId(2L);
+        c.setCardCode(code);
+        c.setResourceCode("res-flood-3");
+        c.setTitle("原标题");
+        c.setStartSubPhaseCode("sp4_3_2");
+        c.setEndSubPhaseCode("sp4_4_2");
+        c.setCardStatus(status);
+        return c;
+    }
+
+    @Test
+    void createActionCard_insertsWithGeneratedCodeAndDefaults() {
+        when(planInstanceMapper.selectList(any()))
+                .thenReturn(List.of(instance(2L, "plan-flood-003", 2)));
+        when(planActionCardMapper.selectList(any())).thenReturn(List.of());
+        when(planActionCardMapper.insert(any())).thenReturn(1);
+
+        PlanActionCardCreate in = new PlanActionCardCreate();
+        in.setResourceId("res-flood-3");
+        in.setTitle("启动排水泵");
+        in.setStartSubPhaseId("sp4_3_2");
+        in.setEndSubPhaseId("sp4_4_2");
+
+        PlanActionCard created = service.createActionCard("plan-flood-003", in);
+
+        assertEquals("启动排水泵", created.getTitle());
+        assertEquals("res-flood-3", created.getResourceId());
+        assertEquals("pending", created.getStatus());
+        assertEquals(false, created.getIsGlobal());
+        assertNotNull(created.getId());
+        assertTrue(created.getId().startsWith("ac-"));
+        verify(planActionCardMapper).insert(any(FacPlanActionCard.class));
+    }
+
+    @Test
+    void createActionCard_returnsNullWhenInstanceMissing() {
+        when(planInstanceMapper.selectList(any())).thenReturn(List.of());
+
+        assertNull(service.createActionCard("plan-x", new PlanActionCardCreate()));
+    }
+
+    @Test
+    void updateActionCard_onlyOverwritesProvidedFields() {
+        when(planInstanceMapper.selectList(any()))
+                .thenReturn(List.of(instance(2L, "plan-flood-003", 2)));
+        when(planActionCardMapper.selectList(any())).thenReturn(List.of(card(9L, "c-flood-401", "pending")));
+        when(planActionCardMapper.updateById(any())).thenReturn(1);
+
+        PlanActionCardUpdate in = new PlanActionCardUpdate();
+        in.setStatus("completed");
+
+        PlanActionCard updated = service.updateActionCard("plan-flood-003", "c-flood-401", in);
+
+        assertEquals("completed", updated.getStatus());
+        assertEquals("原标题", updated.getTitle());
+        verify(planActionCardMapper).updateById(any(FacPlanActionCard.class));
+    }
+
+    @Test
+    void updateActionCard_returnsNullWhenCardMissing() {
+        when(planInstanceMapper.selectList(any()))
+                .thenReturn(List.of(instance(2L, "plan-flood-003", 2)));
+        when(planActionCardMapper.selectList(any())).thenReturn(List.of());
+
+        assertNull(service.updateActionCard("plan-flood-003", "nope", new PlanActionCardUpdate()));
+    }
+
+    @Test
+    void deleteActionCard_okWhenFound() {
+        when(planInstanceMapper.selectList(any()))
+                .thenReturn(List.of(instance(2L, "plan-flood-003", 2)));
+        when(planActionCardMapper.selectList(any())).thenReturn(List.of(card(9L, "c-flood-401", "pending")));
+        when(planActionCardMapper.deleteById(9L)).thenReturn(1);
+
+        assertTrue(service.deleteActionCard("plan-flood-003", "c-flood-401").getOk());
+    }
+
+    @Test
+    void deleteActionCard_falseWhenInstanceMissing() {
+        when(planInstanceMapper.selectList(any())).thenReturn(List.of());
+
+        assertFalse(service.deleteActionCard("plan-x", "c-flood-401").getOk());
     }
 }
