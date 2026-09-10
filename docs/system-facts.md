@@ -11,7 +11,7 @@
   环境变量 `JAVA_HOME=D:\jdk-17_windows-x64_bin\jdk-17.0.4.1`。
   `mvn` / `mvnw` 均不可用，勿用。
 - **CI 绝不能带 `ci-settings.xml`**：该文件硬编码本机 Windows `.m2` 路径，仅本地冒烟用。
-- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前约 **305 单测全绿**；jacoco 行覆盖红线 **0.80**。
+- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **328 单测全绿**（2026-09-10 含 B6 新增 8）；jacoco 行覆盖红线 **0.80**。
 - 带 DB 的 `*IT` 在引入 Testcontainers 后启用；本机无 Docker 时如实报告未执行，**禁止用零 DB 通过冒充**。
 
 ## 2. 契约真源与四同步
@@ -48,7 +48,11 @@
   V8 应急力量/通讯录/知识库/值班表（硬编码迁 DB）；V13 production 域；V14 fac_video_*；V26 fac_video_camera 加 snapshot_bytes BLOB + GET /video/cameras/{id}/snapshot（dev VideoSnapshotSeeder 生成占位 JPEG）。
   V15 fac_tv_*；V16 fac_special_operation_*；V17 emergency_event / V18 emergency_plan /
   V19 rescue_resource / V20 fire_facility / V21 blacklist+fire_situation /
-  V22 communication+weather；V23 duty 夜班种子；V24 大屏面板数据集（消防设备分类/系统消息/电视地图撒点/监控档案）。
+  V22 communication+weather；V23 duty 夜班种子；V24 大屏面板数据集（消防设备分类/系统消息/电视地图撒点/监控档案）；
+  **V27 fac_emergency_cmd**（应急指挥指令，detail_json LONGVARCHAR 存派发对象+日志+媒体，种子 n1-n3/d1-d3/t1-t2）；
+  **V28 fac_security_track + fac_security_track_meta**（巡更/通行轨迹时间轴 + 起止点标签）＋ fac_vehicle_search / fac_person_search 详情扩展列；
+  **V29 fac_perimeter_alarm**（周界入侵告警，字段对齐前端 AlarmDetailItem 视图模型，含 snapshot_bytes BLOB +
+  `GET /security/perimeter-alarms/{id}/snapshot` 字节端点；dev `PerimeterAlarmSnapshotSeeder` 生成占位 JPEG）。
 - 达梦 DM8 / PG 暂缓（本机无实例、无 docker）；`application-dm.yml` 与 `db/migration/dameng` 保留作迁移资产。代码层 DB 无关（MyBatis-Plus 方言探测、不写方言函数）。
 - **H2 保留字陷阱**：`value` / `command` 既不能作裸列名，也不能作 MyBatis-Plus 别名（`SELECT x AS value` 同样报错）。列名加后缀（value→value_name），**Java 属性名也避开保留字**再 `@TableField` 映射。已验证非保留字：`name/code/type/status/level/time/op_type/op_level/ticket_status/value_text/status_name`。
 
@@ -80,4 +84,5 @@
 - 2026-09-08：两仓 CI/CD + 跨库契约守门；Dockerfile/compose（本地无 docker 未实跑）；jacoco 0.80；openspec 回填；Prometheus `/actuator/prometheus`。
 - 2026-09-09：生产应急域全栈接线（V13）；video/tv/special-operation 三域（V14–V16）+ 前端契约/services/面板改接；大屏去 mock 收尾（V24 + 4 域端点）。
 - 2026-09-10：续验大屏四端点冒烟全 `code=0`；前端 `vue-tsc` 全绿；契约守门 0 漂移；本系统事实基线分库落地。
+- 2026-09-10（B4/B5/B6 大屏去 mock 收尾）：B4 应急指挥指令（`/emergency/commands` + `/{id}`，V27）；B5 巡更/通行轨迹（`/security/track/{timeline,summary}`）与车辆·人员检索详情（`/security/search/{vehicle,person}/{id}`，V28）；B6 周界入侵告警（`/security/perimeter-alarms/latest`、`/{id}`、`/{id}/snapshot`，V29），前端 `perimeterAlarmToDetail` 适配器把 DTO 映射为 30+ 字段 `AlarmDetailItem`，`SecurityStatusPanel` 弃用 `resolveDemoAlarmDetailById('demo-intrusion-1')`（两份 `alarmDetailMock.ts` 副本的 `demoAlarmDetails` 死常量一并删除）。
 - 2026-09-10（video 流媒体递延项·静态图后端化）：video 静态图改由后端传——fac_video_camera 加 `snapshot_bytes` BLOB（V26），`GET /video/cameras/{id}/snapshot` 返回 `image/jpeg`（无则 404）；dev 启动 `VideoSnapshotSeeder`（`CommandLineRunner` + `@Profile dev`）用 `BufferedImage`+`ImageIO` 生成带名称/位置/REC 角标占位 JPEG 写回 BLOB（27/27 张）。前端 `VideoControlGrid` 用 `blob`→`objectURL` 的 `<img>` 替换原雪碧图占位（规避 `<img>` 无法带 JWT 的 401 坑）。门禁：mvn test 309 绿、vue-tsc 0 错、契约守门 0 漂移；运行时冒烟 camera id=1 → 200 image/jpeg 20144 字节。

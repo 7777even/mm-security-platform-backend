@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
@@ -14,6 +15,7 @@ import com.sinopec.mmsecurity.dto.VehicleSearchResult;
 import com.sinopec.mmsecurity.entity.FacBollard;
 import com.sinopec.mmsecurity.entity.FacGateControl;
 import com.sinopec.mmsecurity.entity.FacPatrolCamera;
+import com.sinopec.mmsecurity.entity.FacPerimeterAlarm;
 import com.sinopec.mmsecurity.entity.FacPersonSearch;
 import com.sinopec.mmsecurity.entity.FacSecurityEvent;
 import com.sinopec.mmsecurity.entity.FacSecurityTrack;
@@ -22,6 +24,7 @@ import com.sinopec.mmsecurity.entity.FacVehicleSearch;
 import com.sinopec.mmsecurity.mapper.FacBollardMapper;
 import com.sinopec.mmsecurity.mapper.FacGateControlMapper;
 import com.sinopec.mmsecurity.mapper.FacPatrolCameraMapper;
+import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacPersonSearchMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityEventMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityTrackMapper;
@@ -31,6 +34,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -52,6 +57,7 @@ public class SecurityService {
     private final FacSecurityEventMapper securityEventMapper;
     private final FacSecurityTrackMapper trackMapper;
     private final FacSecurityTrackMetaMapper trackMetaMapper;
+    private final FacPerimeterAlarmMapper perimeterAlarmMapper;
 
     public List<PatrolCameraItem> listPatrolCameras() {
         return patrolCameraMapper.selectList(null).stream().map(this::toCamera).toList();
@@ -131,6 +137,80 @@ public class SecurityService {
         if (id == null) return null;
         FacPersonSearch e = personSearchMapper.selectById(id);
         return e == null ? null : toPersonDetail(e);
+    }
+
+    /**
+     * 最新一条周界入侵告警（按告警时间倒序取首条）；表为空时返回 null。
+     * 前端「当前厂区状态」面板据此展示待处置告警，不再使用本地 demo 常量。
+     */
+    public PerimeterAlarmDetail latestPerimeterAlarm() {
+        List<FacPerimeterAlarm> rows = perimeterAlarmMapper.selectList(
+                new LambdaQueryWrapper<FacPerimeterAlarm>()
+                        .orderByDesc(FacPerimeterAlarm::getAlarmTime)
+                        .orderByDesc(FacPerimeterAlarm::getId));
+        return rows.isEmpty() ? null : toPerimeterAlarmDetail(rows.get(0));
+    }
+
+    /** 周界入侵告警详情；未找到返回 null。 */
+    public PerimeterAlarmDetail perimeterAlarmDetail(Long id) {
+        if (id == null) return null;
+        FacPerimeterAlarm e = perimeterAlarmMapper.selectById(id);
+        return e == null ? null : toPerimeterAlarmDetail(e);
+    }
+
+    /** 周界入侵告警现场抓拍字节；无抓拍返回 null（控制器转 404）。 */
+    public byte[] perimeterAlarmSnapshot(Long id) {
+        if (id == null) return null;
+        FacPerimeterAlarm e = perimeterAlarmMapper.selectById(id);
+        if (e == null || e.getSnapshotBytes() == null || e.getSnapshotBytes().length == 0) return null;
+        return e.getSnapshotBytes();
+    }
+
+    private PerimeterAlarmDetail toPerimeterAlarmDetail(FacPerimeterAlarm e) {
+        PerimeterAlarmDetail d = new PerimeterAlarmDetail();
+        d.setId(e.getId());
+        d.setAlarmCode(e.getAlarmCode());
+        d.setTitle(e.getTitle());
+        d.setAlarmType(e.getAlarmType());
+        d.setSource(e.getSource());
+        d.setLevel(e.getLevelCode());
+        d.setStatus(e.getStatus());
+        d.setFalseAlarm(e.getFalseAlarm());
+        d.setTime(e.getAlarmTime());
+        d.setObjectType(e.getObjectType());
+        d.setObjectName(e.getObjectName());
+        d.setLocation(e.getLocation());
+        d.setDescription(e.getDescription());
+        d.setDeviceType(e.getDeviceType());
+        d.setDeviceId(e.getDeviceId());
+        d.setPoint(e.getPoint());
+        d.setIntrusionPosition(e.getIntrusionPosition());
+        d.setIntrusionMethod(e.getIntrusionMethod());
+        d.setRelatedCamera(e.getRelatedCamera());
+        d.setLongitude(e.getLongitude());
+        d.setLatitude(e.getLatitude());
+        d.setDispatchPersonnel(splitPersonnel(e.getDispatchPersonnel()));
+        d.setNotifyApp(e.getNotifyApp());
+        d.setNotifySms(e.getNotifySms());
+        d.setHandleResult(e.getHandleResult());
+        d.setHandleTime(e.getHandleTime());
+        d.setRescueEventId(e.getRescueEventId());
+        d.setMonitorId(e.getMonitorId());
+        d.setMonitorLabel(e.getMonitorLabel());
+        d.setWorkOrderNo(e.getWorkOrderNo());
+        boolean hasSnapshot = e.getSnapshotBytes() != null && e.getSnapshotBytes().length > 0;
+        d.setSnapshotPath(hasSnapshot ? "/api/v1/security/perimeter-alarms/" + e.getId() + "/snapshot" : "");
+        d.setSnapshotLabel(hasSnapshot ? "现场抓拍" : "");
+        return d;
+    }
+
+    /** 派发人员拆分：支持中英文逗号，空值返回空列表。 */
+    private List<String> splitPersonnel(String raw) {
+        if (raw == null || raw.isBlank()) return new ArrayList<>();
+        return Arrays.stream(raw.split("[,，]"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
     private SecurityTrackTimelineItem toTrackItem(FacSecurityTrack e) {

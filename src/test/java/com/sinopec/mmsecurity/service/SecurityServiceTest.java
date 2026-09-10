@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
@@ -14,6 +15,7 @@ import com.sinopec.mmsecurity.dto.VehicleSearchResult;
 import com.sinopec.mmsecurity.entity.FacBollard;
 import com.sinopec.mmsecurity.entity.FacGateControl;
 import com.sinopec.mmsecurity.entity.FacPatrolCamera;
+import com.sinopec.mmsecurity.entity.FacPerimeterAlarm;
 import com.sinopec.mmsecurity.entity.FacPersonSearch;
 import com.sinopec.mmsecurity.entity.FacSecurityEvent;
 import com.sinopec.mmsecurity.entity.FacSecurityTrack;
@@ -22,6 +24,7 @@ import com.sinopec.mmsecurity.entity.FacVehicleSearch;
 import com.sinopec.mmsecurity.mapper.FacBollardMapper;
 import com.sinopec.mmsecurity.mapper.FacGateControlMapper;
 import com.sinopec.mmsecurity.mapper.FacPatrolCameraMapper;
+import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacPersonSearchMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityEventMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityTrackMapper;
@@ -51,10 +54,11 @@ class SecurityServiceTest {
     private final FacSecurityEventMapper securityEventMapper = mock(FacSecurityEventMapper.class);
     private final FacSecurityTrackMapper trackMapper = mock(FacSecurityTrackMapper.class);
     private final FacSecurityTrackMetaMapper trackMetaMapper = mock(FacSecurityTrackMetaMapper.class);
+    private final FacPerimeterAlarmMapper perimeterAlarmMapper = mock(FacPerimeterAlarmMapper.class);
     private final SecurityService service = new SecurityService(
             patrolCameraMapper, gateControlMapper, bollardMapper,
             vehicleSearchMapper, personSearchMapper, securityEventMapper,
-            trackMapper, trackMetaMapper);
+            trackMapper, trackMetaMapper, perimeterAlarmMapper);
 
     @Test
     void listPatrolCameras_mapsFields() {
@@ -272,5 +276,81 @@ class SecurityServiceTest {
         assertEquals(null, service.vehicleDetail(99L));
         assertEquals(null, service.personDetail(99L));
         assertEquals(null, service.vehicleDetail(null));
+    }
+
+    @Test
+    void latestPerimeterAlarm_mapsFieldsAndSnapshotPath() {
+        FacPerimeterAlarm e = new FacPerimeterAlarm();
+        e.setId(1L);
+        e.setAlarmCode("AL-20260820-007");
+        e.setTitle("周界入侵告警");
+        e.setAlarmType("周界");
+        e.setSource("周界防范");
+        e.setLevelCode("一级");
+        e.setStatus("未确认");
+        e.setFalseAlarm("未核实");
+        e.setAlarmTime("2026-08-20 03:22:48");
+        e.setObjectType("区域");
+        e.setObjectName("南门西侧周界");
+        e.setLocation("厂区南门西侧 200 米");
+        e.setDescription("非授权人员翻越周界进入厂区，请立即核实。");
+        e.setDeviceType("周界摄像机");
+        e.setDeviceId("CAM-PERI-07");
+        e.setPoint("南门西侧 200 米");
+        e.setIntrusionPosition("南门西侧 200 米");
+        e.setIntrusionMethod("翻越围栏");
+        e.setRelatedCamera("CAM-PERI-07");
+        e.setLongitude(110.8872);
+        e.setLatitude(21.6709);
+        e.setDispatchPersonnel("王成,赵五");
+        e.setNotifyApp(true);
+        e.setNotifySms(false);
+        e.setRescueEventId(7L);
+        e.setMonitorId("cam-peri-07");
+        e.setMonitorLabel("南门西侧周界监控");
+        e.setSnapshotBytes(new byte[] { 1, 2, 3 });
+        when(perimeterAlarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(e));
+
+        PerimeterAlarmDetail d = service.latestPerimeterAlarm();
+        assertEquals("AL-20260820-007", d.getAlarmCode());
+        assertEquals("一级", d.getLevel());
+        assertEquals("2026-08-20 03:22:48", d.getTime());
+        assertEquals("CAM-PERI-07", d.getDeviceId());
+        assertEquals(110.8872, d.getLongitude());
+        assertEquals(List.of("王成", "赵五"), d.getDispatchPersonnel());
+        assertEquals(7L, d.getRescueEventId());
+        assertEquals("/api/v1/security/perimeter-alarms/1/snapshot", d.getSnapshotPath());
+        assertEquals("现场抓拍", d.getSnapshotLabel());
+    }
+
+    @Test
+    void latestPerimeterAlarm_emptyTableReturnsNull() {
+        when(perimeterAlarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        assertEquals(null, service.latestPerimeterAlarm());
+    }
+
+    @Test
+    void perimeterAlarmDetail_splitsChineseCommaAndMarksNoSnapshot() {
+        FacPerimeterAlarm e = new FacPerimeterAlarm();
+        e.setId(2L);
+        e.setDispatchPersonnel("张三，李四");
+        when(perimeterAlarmMapper.selectById(2L)).thenReturn(e);
+
+        PerimeterAlarmDetail d = service.perimeterAlarmDetail(2L);
+        assertEquals(List.of("张三", "李四"), d.getDispatchPersonnel());
+        assertEquals("", d.getSnapshotPath());
+        assertEquals("", d.getSnapshotLabel());
+        assertEquals(null, service.perimeterAlarmSnapshot(2L));
+        assertEquals(null, service.perimeterAlarmDetail(null));
+    }
+
+    @Test
+    void perimeterAlarmSnapshot_returnsBytesWhenPresent() {
+        FacPerimeterAlarm e = new FacPerimeterAlarm();
+        e.setId(1L);
+        e.setSnapshotBytes(new byte[] { 9, 8, 7 });
+        when(perimeterAlarmMapper.selectById(1L)).thenReturn(e);
+        assertEquals(3, service.perimeterAlarmSnapshot(1L).length);
+        assertEquals(null, service.perimeterAlarmSnapshot(null));
     }
 }
