@@ -2,12 +2,15 @@ package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.VideoCameraItem;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoCategoryItem;
 import com.sinopec.mmsecurity.dto.VideoGroupNode;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
+import com.sinopec.mmsecurity.dto.VideoLinkageRuleInput;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
+import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
 import com.sinopec.mmsecurity.entity.FacVideoCamera;
 import com.sinopec.mmsecurity.entity.FacVideoGroup;
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -118,16 +122,115 @@ public class VideoService {
     public List<VideoLinkageItem> linkages() {
         return linkageMapper.selectList(new LambdaQueryWrapper<FacVideoLinkage>()
                         .orderByAsc(FacVideoLinkage::getSortNo)).stream()
-                .map(l -> {
-                    VideoLinkageItem item = new VideoLinkageItem();
-                    item.setId(l.getConfigCode());
-                    item.setName(l.getName());
-                    item.setCode(l.getCode());
-                    item.setCategory(l.getCategory());
-                    item.setLinkageCount(l.getLinkageCount());
-                    item.setBusinessObjects(l.getBusinessObjects());
-                    return item;
-                }).collect(Collectors.toList());
+                .map(this::toLinkageItem).collect(Collectors.toList());
+    }
+
+    /**
+     * 保存视频联动配置（configCode 为空＝新建，非空＝更新）。
+     *
+     * <p>联动规则行整表替换：先删该 configCode 的旧行再按入参顺序重写 sort_no；
+     * linkageCount / businessObjects 由 rules 推导。更新时未命中 configCode 返回 null（不抛异常）。</p>
+     */
+    public VideoLinkageItem saveLinkage(String configCode, VideoLinkageSaveRequest in) {
+        List<VideoLinkageRuleInput> rules = in.getRules() == null ? List.of() : in.getRules();
+        FacVideoLinkage linkage;
+        if (configCode == null || configCode.isBlank()) {
+            linkage = new FacVideoLinkage();
+            linkage.setConfigCode(nextLinkageCode());
+            linkage.setSortNo(nextLinkageSortNo());
+            applyLinkageFields(linkage, in, rules);
+            linkageMapper.insert(linkage);
+        } else {
+            linkage = findLinkage(configCode);
+            if (linkage == null) {
+                return null;
+            }
+            applyLinkageFields(linkage, in, rules);
+            linkageMapper.updateById(linkage);
+            linkageRuleMapper.delete(new LambdaQueryWrapper<FacVideoLinkageRule>()
+                    .eq(FacVideoLinkageRule::getConfigCode, configCode));
+        }
+        int sortNo = 1;
+        for (VideoLinkageRuleInput rule : rules) {
+            FacVideoLinkageRule entity = new FacVideoLinkageRule();
+            entity.setConfigCode(linkage.getConfigCode());
+            entity.setPresetPoint(rule.getPresetPoint());
+            entity.setObjectCategory(rule.getObjectCategory());
+            entity.setObjectName(rule.getObjectName());
+            entity.setSortNo(sortNo++);
+            linkageRuleMapper.insert(entity);
+        }
+        return toLinkageItem(linkage);
+    }
+
+    /** 删除视频联动配置及其规则行；未命中 configCode 时 ok=false（不抛异常）。 */
+    public DeleteResult deleteLinkage(String configCode) {
+        DeleteResult result = new DeleteResult();
+        FacVideoLinkage linkage = findLinkage(configCode);
+        if (linkage == null) {
+            result.setOk(false);
+            return result;
+        }
+        linkageRuleMapper.delete(new LambdaQueryWrapper<FacVideoLinkageRule>()
+                .eq(FacVideoLinkageRule::getConfigCode, configCode));
+        result.setOk(linkageMapper.deleteById(linkage.getId()) > 0);
+        return result;
+    }
+
+    private void applyLinkageFields(
+            FacVideoLinkage linkage, VideoLinkageSaveRequest in, List<VideoLinkageRuleInput> rules) {
+        linkage.setName(in.getName());
+        linkage.setCode(in.getCode());
+        linkage.setCategory(in.getCategory());
+        linkage.setLinkageCount(rules.size());
+        linkage.setBusinessObjects(rules.stream()
+                .map(VideoLinkageRuleInput::getObjectName)
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .collect(Collectors.joining("、")));
+    }
+
+    private FacVideoLinkage findLinkage(String configCode) {
+        if (configCode == null || configCode.isBlank()) {
+            return null;
+        }
+        return linkageMapper.selectList(new LambdaQueryWrapper<FacVideoLinkage>()
+                        .eq(FacVideoLinkage::getConfigCode, configCode))
+                .stream().findFirst().orElse(null);
+    }
+
+    /** 生成下一个配置编码：取现有 lk-NNN 数字后缀最大值 +1；非数字后缀（如 UUID）不参与推算。 */
+    private String nextLinkageCode() {
+        int maxSeq = 0;
+        for (FacVideoLinkage linkage : linkageMapper.selectList(new LambdaQueryWrapper<>())) {
+            String code = linkage.getConfigCode();
+            if (code == null || !code.startsWith("lk-")) {
+                continue;
+            }
+            try {
+                maxSeq = Math.max(maxSeq, Integer.parseInt(code.substring(3)));
+            } catch (NumberFormatException ignored) {
+                // 非数字编码跳过
+            }
+        }
+        return String.format("lk-%03d", maxSeq + 1);
+    }
+
+    private int nextLinkageSortNo() {
+        return linkageMapper.selectList(new LambdaQueryWrapper<FacVideoLinkage>()).stream()
+                .map(FacVideoLinkage::getSortNo).filter(Objects::nonNull)
+                .max(Integer::compareTo).orElse(0) + 1;
+    }
+
+    private VideoLinkageItem toLinkageItem(FacVideoLinkage linkage) {
+        VideoLinkageItem item = new VideoLinkageItem();
+        item.setId(linkage.getConfigCode());
+        item.setName(linkage.getName());
+        item.setCode(linkage.getCode());
+        item.setCategory(linkage.getCategory());
+        item.setLinkageCount(linkage.getLinkageCount());
+        item.setBusinessObjects(linkage.getBusinessObjects());
+        return item;
     }
 
     /** 联动规则；未预置规则的配置回退默认行（沿用前端 buildLinkageRules 的兜底语义）。 */

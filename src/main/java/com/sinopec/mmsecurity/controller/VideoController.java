@@ -1,14 +1,22 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
+import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
+import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.VideoService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,6 +57,28 @@ public class VideoController {
     @GetMapping("/linkages")
     public Result<List<VideoLinkageItem>> linkages() {
         return Result.ok(videoService.linkages());
+    }
+
+    /** 新建视频联动配置（configCode 由服务端生成）。 */
+    @PostMapping("/linkages")
+    @RequireAuth(role = "ADMIN")
+    public Result<VideoLinkageItem> createLinkage(@Valid @RequestBody VideoLinkageSaveRequest payload) {
+        return Result.ok(videoService.saveLinkage(null, payload));
+    }
+
+    /** 更新视频联动配置及其规则行；未命中 configCode 时 data 为 null。 */
+    @PutMapping("/linkages/{configCode}")
+    @RequireAuth(role = "ADMIN")
+    public Result<VideoLinkageItem> updateLinkage(
+            @PathVariable String configCode, @Valid @RequestBody VideoLinkageSaveRequest payload) {
+        return Result.ok(videoService.saveLinkage(configCode, payload));
+    }
+
+    /** 删除视频联动配置及其规则行；未命中时 ok=false。 */
+    @DeleteMapping("/linkages/{configCode}")
+    @RequireAuth(role = "ADMIN")
+    public Result<DeleteResult> deleteLinkage(@PathVariable String configCode) {
+        return Result.ok(videoService.deleteLinkage(configCode));
     }
 
     /** 指定联动配置的规则行；未预置规则时回退默认行。 */

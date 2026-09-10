@@ -1,10 +1,13 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.VideoCameraItem;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoCategoryItem;
 import com.sinopec.mmsecurity.dto.VideoGroupNode;
+import com.sinopec.mmsecurity.dto.VideoLinkageItem;
+import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
 import com.sinopec.mmsecurity.service.VideoService;
 import org.junit.jupiter.api.Test;
@@ -12,13 +15,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,5 +96,54 @@ class VideoControllerTest {
                 .andExpect(jsonPath("$.data.total").value(27))
                 .andExpect(jsonPath("$.data.pages").value(3))
                 .andExpect(jsonPath("$.data.list[0].status").value("loading"));
+    }
+
+    @Test
+    void createLinkage_returnsCreatedItem() throws Exception {
+        VideoLinkageItem item = new VideoLinkageItem();
+        item.setId("lk-006");
+        item.setName("新监控");
+        item.setCode("HKJK-9999999");
+        item.setCategory("球机");
+        item.setLinkageCount(1);
+        item.setBusinessObjects("储油罐区");
+        when(service.saveLinkage(isNull(), any(VideoLinkageSaveRequest.class))).thenReturn(item);
+
+        mvc().perform(post("/api/v1/video/linkages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"新监控\",\"code\":\"HKJK-9999999\",\"category\":\"球机\","
+                                + "\"rules\":[{\"presetPoint\":\"P1\",\"objectCategory\":\"储罐\","
+                                + "\"objectName\":\"储油罐区\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value("lk-006"))
+                .andExpect(jsonPath("$.data.linkageCount").value(1));
+    }
+
+    @Test
+    void updateLinkage_passesConfigCode() throws Exception {
+        VideoLinkageItem item = new VideoLinkageItem();
+        item.setId("lk-001");
+        item.setLinkageCount(0);
+        when(service.saveLinkage(eq("lk-001"), any(VideoLinkageSaveRequest.class))).thenReturn(item);
+
+        mvc().perform(put("/api/v1/video/linkages/lk-001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"n\",\"code\":\"c\",\"category\":\"枪机\",\"rules\":[]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value("lk-001"));
+    }
+
+    @Test
+    void deleteLinkage_returnsDeleteResult() throws Exception {
+        DeleteResult result = new DeleteResult();
+        result.setOk(true);
+        when(service.deleteLinkage("lk-001")).thenReturn(result);
+
+        mvc().perform(delete("/api/v1/video/linkages/lk-001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ok").value(true));
     }
 }
