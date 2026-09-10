@@ -1,6 +1,6 @@
 # 提案：系统管理域鉴权粒度细化（role=ADMIN → perm=system:*）
 
-> **状态：`approved` — 前序 Change `2026-09-10-system-management-rbac` 的 ADR-5 第二步，已于 2026-09-10 经用户确认启动（AskUserQuestion 选「现在做 role→perm 逐切」）。**
+> **状态：`archived` — ADR-5 第二步，已于 2026-09-10 实施并推送 `main@c9d74b5`（mvn test 436 全绿 / 契约 0 漂移 / RBAC 冒烟 54/54）。**
 > 本 Change 仅执行注解细化，**不新增表结构、不改端点路径、不改契约 schema**。
 
 ## 1. 背景与目标
