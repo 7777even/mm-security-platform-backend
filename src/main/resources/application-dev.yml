@@ -23,6 +23,12 @@ spring:
 app:
   cors:
     allowed-origins: "*"
+  password:
+    # dev 用 H2 内存库，每次重启数据清空重建；若种子默认管理员置 must_change_pwd=1，
+    # 则每次启动都必须先改密才能进行任何写操作，会反复阻断演示与联调。
+    # 故 dev 不置该标记；生产（prod/dm）沿用 base 默认 true，由 PasswordLifecycleInterceptor
+    # 在业务写端点强制拦截未改密账号。拦截器本身在任何 profile 都启用。
+    force-change-default-admin: false
 
 jwt:
   secret: dev-secret-not-for-production-please-change-me-please-please
