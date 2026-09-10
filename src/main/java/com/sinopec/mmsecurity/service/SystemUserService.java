@@ -16,6 +16,7 @@ import com.sinopec.mmsecurity.entity.SysRole;
 import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysRoleMapper;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import com.sinopec.mmsecurity.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,7 @@ public class SystemUserService {
     private final IdNameCacheService idNameCache;
     private final PasswordStateCache passwordStateCache;
     private final SystemAuditHelper audit;
+    private final DataScopeResolver dataScopeResolver;
 
     /** 分页查询（keyword 模糊匹配用户名 / 姓名）。 */
     public SystemUserPageResult page(long page, long size, String keyword, Integer status, String roleCode) {
@@ -108,6 +110,7 @@ public class SystemUserService {
         u.setRole(role.getRoleCode());
         u.setStatus(req.getStatus() == null ? 1 : req.getStatus());
         u.setMustChangePwd(1);
+        u.setZoneCodes(req.getZoneCodes());
         LocalDateTime now = LocalDateTime.now();
         u.setPwdUpdatedAt(now);
         u.setCreatedAt(now);
@@ -115,6 +118,7 @@ public class SystemUserService {
         u.setDeleted(0);
         userMapper.insert(u);
 
+        dataScopeResolver.invalidateUser(username);
         audit.record("system.user.create", Map.of("username", username, "roleCode", role.getRoleCode()));
         return toItem(u, roleNameMap());
     }
@@ -126,6 +130,7 @@ public class SystemUserService {
         boolean roleChanged = req.getRoleCode() != null && !req.getRoleCode().isBlank()
                 && !req.getRoleCode().trim().equalsIgnoreCase(target.getRole());
         boolean statusChanged = req.getStatus() != null && !req.getStatus().equals(target.getStatus());
+        boolean zoneChanged = req.getZoneCodes() != null && !java.util.Objects.equals(req.getZoneCodes(), target.getZoneCodes());
 
         if (roleChanged) {
             assertNotSelf(target, "不可修改自己的角色");
@@ -142,15 +147,22 @@ public class SystemUserService {
         if (req.getStatus() != null) {
             target.setStatus(req.getStatus());
         }
+        if (req.getZoneCodes() != null) {
+            target.setZoneCodes(req.getZoneCodes());
+        }
         target.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(target);
 
+        if (zoneChanged) {
+            dataScopeResolver.invalidateUser(target.getUsername());
+        }
         idNameCache.evictUser(target.getId());
         passwordStateCache.evict(target.getUsername());
         audit.record("system.user.update", Map.of(
                 "username", target.getUsername(),
                 "roleChanged", roleChanged,
-                "status", target.getStatus() == null ? -1 : target.getStatus()));
+                "status", target.getStatus() == null ? -1 : target.getStatus(),
+                "zoneChanged", zoneChanged));
         return toItem(target, roleNameMap());
     }
 
@@ -281,6 +293,7 @@ public class SystemUserService {
         item.setRoleName(u.getRole() == null ? null
                 : roleNames.getOrDefault(u.getRole().toUpperCase(Locale.ROOT), u.getRole()));
         item.setStatus(u.getStatus());
+        item.setZoneCodes(u.getZoneCodes());
         item.setMustChangePwd(u.getMustChangePwd() != null && u.getMustChangePwd() == 1);
         item.setCreatedAt(u.getCreatedAt());
         item.setUpdatedAt(u.getUpdatedAt());

@@ -108,3 +108,32 @@ JWT / 签名密钥仅经环境变量 `JWT_SECRET` / `SIGNATURE_SECRET` 注入（
 
 - **WHEN** 启动且未注入 `JWT_SECRET` 或密钥长度/占位不合规
 - **THEN** `SecurityBeans.validateSecrets()` 抛 `IllegalStateException`，应用拒绝启动
+
+### Requirement: 行级 ABAC（data_scope）与接口鉴权正交
+
+行级数据访问控制须由 `sys_role.data_scope`（取值 `ALL` / `DEPT` / `SELF`，`V33` 已落库）与 `sys_user.zone_codes`（逗号串，如 `炼油区,罐区`）共同决定；`data_scope=ALL`（典型即 `ADMIN`）表示看全部行，解析器返回 `null`、调用方不加 WHERE。`data_scope` 与 `@RequireAuth(role/perm)` 接口级鉴权**正交叠加**：前者控制「能看到哪些数据行」，后者控制「能否进入端点」。解析由服务端 `DataScopeResolver`（复用 `RoleAuthorityService` 缓存 + 用户维度 `userZoneCache` Caffeine，TTL 5min，用户 `zone_codes` 变更经 `invalidateUser` 写时失效）完成，**令牌仍只携 `role`**（权限码与防区均不写入令牌，遵循 ADR-3）。因各业务实体防区列名不统一，采用 `DataScopeHelper.apply(qw, zoneColumn, zones)` 由各 Service 显式注入（ADR-4），三态语义：`zones==null`→不加条件（ALL）；`zones` 为空集→`1=0`（最小权限，看不到任何行）；`zones` 非空→`IN (zones)`。
+
+#### Scenario: ALL 范围不加数据条件
+
+- **WHEN** `ADMIN`（或其 `data_scope=ALL` 的角色）查询接入 ABAC 的列表端点
+- **THEN** 查询不带任何防区 WHERE 条件，返回全部行
+
+#### Scenario: SELF 范围按用户防区过滤
+
+- **WHEN** 某 `data_scope=SELF` 用户拥有 `zone_codes=炼油区,罐区` 查询接入 ABAC 的列表
+- **THEN** 查询仅返回 `zone` 列 ∈ {炼油区,罐区} 的行；其 `zone_codes` 变更经 `invalidateUser` 后下次请求即生效
+
+#### Scenario: 空防区集合最小权限
+
+- **WHEN** 某 `data_scope=SELF` 用户的 `zone_codes` 为空或缺失
+- **THEN** 查询被注入 `1=0`，不返回任何行
+
+#### Scenario: 匿名公开端点不过滤
+
+- **WHEN** 公开端点（如救援队伍域只读接口）在未登录状态下被访问
+- **THEN** `resolveZones()` 返回 `null`，不加防区条件，保持原有公开行为（仅已登录用户才受 ABAC 限制）
+
+#### Scenario: 防区与业务列取值对齐
+
+- **WHEN** 接入 ABAC 的业务域（首期=救援队伍域 `FacBrigadeTeam.area`）配置防区
+- **THEN** 其取值须与 `sys_zone.zone_name` 及对应字典标签（如 `BRIGADE_AREA`）精确一致，否则 `IN` 条件命中不到任何行

@@ -38,6 +38,11 @@
 - **WHEN** 新增涉及结构变化的迁移
 - **THEN** 三套方言目录同步新增对应增量，列定义保持一致（达梦按 Oracle 兼容方言编写并须在达梦实例复核）
 
+#### Scenario: V34 行级 ABAC 主数据
+
+- **WHEN** 迁移推进到 `V34__data_scope_abac.sql`
+- **THEN** `h2` / `postgresql` / `dameng` 三目录同步新增 `sys_zone` 表（含 7 个防区种子：炼油区/乙烯区/罐区/仓储区/码头区/芳烃区/特勤保障区，`zone_name` 与 `BRIGADE_AREA` 字典标签一致）并为 `sys_user` 增加 `zone_codes VARCHAR(512)` 列；达梦逐条 `INSERT`、PostgreSQL 多行 `VALUES`、H2 用 `IF NOT EXISTS` 兜底幂等
+
 ### Requirement: 默认账号不依赖种子脚本
 
 默认管理员账号由应用启动逻辑写入，不依赖迁移种子。

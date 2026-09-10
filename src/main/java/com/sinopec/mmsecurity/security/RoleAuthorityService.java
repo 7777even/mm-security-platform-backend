@@ -44,9 +44,9 @@ public class RoleAuthorityService {
     private final SysRoleMenuMapper roleMenuMapper;
     private final SysMenuMapper menuMapper;
 
-    /** 角色授权快照：启用菜单 id 集合 + 权限码集合 */
-    public record RoleGrant(Set<Long> menuIds, Set<String> perms) {
-        public static final RoleGrant EMPTY = new RoleGrant(Set.of(), Set.of());
+    /** 角色授权快照：启用菜单 id 集合 + 权限码集合 + 数据范围（data_scope） */
+    public record RoleGrant(Set<Long> menuIds, Set<String> perms, String dataScope) {
+        public static final RoleGrant EMPTY = new RoleGrant(Set.of(), Set.of(), "SELF");
     }
 
     private Cache<String, RoleGrant> cache;
@@ -83,6 +83,12 @@ public class RoleAuthorityService {
     /** 某角色可见的菜单 id 集合（已剔除停用节点）。 */
     public Set<Long> menuIdsOf(String roleCode) {
         return grantOf(roleCode).menuIds();
+    }
+
+    /** 某角色的 data_scope（ALL/DEPT/SELF）。角色未知/停用 → 默认 SELF（最小权限）。 */
+    public String dataScopeOf(String roleCode) {
+        String scope = grantOf(roleCode).dataScope();
+        return (scope == null || scope.isBlank()) ? "SELF" : scope.trim().toUpperCase(Locale.ROOT);
     }
 
     /** 角色授权变更（角色-菜单授权、菜单权限码/状态变更）后调用，整表失效。 */
@@ -123,6 +129,7 @@ public class RoleAuthorityService {
                 perms.add(menu.getPermCode().trim());
             }
         }
-        return new RoleGrant(Set.copyOf(enabledMenuIds), Set.copyOf(perms));
+        return new RoleGrant(Set.copyOf(enabledMenuIds), Set.copyOf(perms),
+                role.getDataScope() == null ? "SELF" : role.getDataScope());
     }
 }

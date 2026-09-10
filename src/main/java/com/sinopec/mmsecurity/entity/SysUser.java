@@ -31,6 +31,10 @@ public class SysUser {
     @TableField("must_change_pwd")
     private Integer mustChangePwd;
 
+    /** 可访问防区（逗号串，如「炼油区,罐区」；空=未分派，data_scope≠ALL 时看不到任何行） */
+    @TableField("zone_codes")
+    private String zoneCodes;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer deleted;

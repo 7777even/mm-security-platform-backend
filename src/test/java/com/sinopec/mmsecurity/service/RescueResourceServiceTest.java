@@ -31,6 +31,7 @@ import com.sinopec.mmsecurity.mapper.FacRescueVehicleCrewMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleEquipmentMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleKvMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -73,6 +74,8 @@ class RescueResourceServiceTest {
     private FacBrigadePersonMapper brigadePersonMapper;
     @Mock
     private FacBrigadeEquipmentMapper brigadeEquipmentMapper;
+    @Mock
+    private DataScopeResolver dataScopeResolver;
 
     @InjectMocks
     private RescueResourceService service;
@@ -282,6 +285,7 @@ class RescueResourceServiceTest {
         bEquipment.setItemCount(24);
         bEquipment.setEquipStatus("完好");
         when(brigadeEquipmentMapper.selectList(any())).thenReturn(List.of(bEquipment));
+        when(dataScopeResolver.resolveZones()).thenReturn(null);
 
         FireBrigadeList list = service.brigades("乙烯区");
 

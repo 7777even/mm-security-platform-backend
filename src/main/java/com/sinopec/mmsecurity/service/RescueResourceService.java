@@ -39,6 +39,8 @@ import com.sinopec.mmsecurity.mapper.FacRescueVehicleCrewMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleEquipmentMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleKvMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
+import com.sinopec.mmsecurity.security.DataScopeHelper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -47,6 +49,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -81,6 +84,7 @@ public class RescueResourceService {
     private final FacBrigadeVehicleMapper brigadeVehicleMapper;
     private final FacBrigadePersonMapper brigadePersonMapper;
     private final FacBrigadeEquipmentMapper brigadeEquipmentMapper;
+    private final DataScopeResolver dataScopeResolver;
 
     /** 救援装备列表：按中队过滤（null 或“全部中队”表示全部）。 */
     public RescueEquipmentList equipment(String squadron) {
@@ -158,10 +162,14 @@ public class RescueResourceService {
     /** 消防队伍列表：按区域过滤，条目含队伍车辆 / 人员 / 装备。 */
     public FireBrigadeList brigades(String area) {
         String areaFilter = normalize(area);
-        List<FacBrigadeTeam> rows = brigadeTeamMapper.selectList(
-                new LambdaQueryWrapper<FacBrigadeTeam>()
-                        .eq(areaFilter != null, FacBrigadeTeam::getArea, areaFilter)
-                        .orderByAsc(FacBrigadeTeam::getId));
+        // data_scope 行级 ABAC：解析当前登录用户可访问防区集合（null=不过滤/ALL，空集=1=0，非空=IN）
+        Set<String> zones = dataScopeResolver.resolveZones();
+        LambdaQueryWrapper<FacBrigadeTeam> qw = new LambdaQueryWrapper<>();
+        if (areaFilter != null) {
+            qw.eq(FacBrigadeTeam::getArea, areaFilter);
+        }
+        DataScopeHelper.apply(qw, FacBrigadeTeam::getArea, zones);
+        List<FacBrigadeTeam> rows = brigadeTeamMapper.selectList(qw);
         FireBrigadeList result = new FireBrigadeList();
         result.setAreas(options(KIND_BRIGADE_AREA));
         result.setItems(toBrigadeTeams(rows));

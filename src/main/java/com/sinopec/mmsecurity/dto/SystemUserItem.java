@@ -35,6 +35,9 @@ public class SystemUserItem implements Serializable {
     /** 1 启用 / 0 停用 */
     private Integer status;
 
+    /** 可访问防区（逗号串；空=未分派） */
+    private String zoneCodes;
+
     /** 是否需强制修改口令（管理员重置密码后为 true） */
     private Boolean mustChangePwd;
 

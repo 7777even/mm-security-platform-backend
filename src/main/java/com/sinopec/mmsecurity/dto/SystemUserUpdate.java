@@ -18,4 +18,7 @@ public class SystemUserUpdate implements Serializable {
 
     /** 1 启用 / 0 停用 */
     private Integer status;
+
+    /** 可访问防区（逗号串；空=未分派，data_scope≠ALL 时看不到任何行） */
+    private String zoneCodes;
 }

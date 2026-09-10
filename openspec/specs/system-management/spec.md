@@ -8,7 +8,7 @@
 
 ### Requirement: 系统管理域端点与门禁
 
-系统须提供系统管理域（用户 / 角色 / 菜单权限 / 字典）的查询与变更端点，默认仅 `ADMIN` 可访问；端点返回统一 `Result<T>` 包络，分页返回 `{list,total,page,size}`。唯一例外为 `GET /api/v1/system/dicts/{dictCode}`（业务只读，任何已登录用户可用）。
+系统须提供系统管理域（用户 / 角色 / 菜单权限 / 字典 / 防区）的查询与变更端点，默认仅 `ADMIN` 可访问；端点返回统一 `Result<T>` 包络，分页返回 `{list,total,page,size}`。两个例外：`GET /api/v1/system/dicts/{dictCode}`（业务只读，任何已登录用户可用）与 `GET /api/v1/system/zones`（防区主数据下拉，任何已登录用户可用，供用户表单「可访问防区」多选与未来接入 ABAC 的业务域取维度源）。
 
 #### Scenario: 非管理员访问系统管理域
 
@@ -24,6 +24,21 @@
 
 - **WHEN** 非 `ADMIN` 的已登录用户调用 `GET /api/v1/system/dicts/{dictCode}`
 - **THEN** 返回该字典的启用项列表（按 `sortOrder` 排序）
+
+#### Scenario: 防区下拉登录可读
+
+- **WHEN** 任何已登录用户调用 `GET /api/v1/system/zones`
+- **THEN** 返回启用且未删除的防区列表（`id/zoneCode/zoneName/sortOrder/status`，按 `sortOrder` 升序），不要求 `ADMIN`
+
+#### Scenario: 创建用户带可访问防区
+
+- **WHEN** `ADMIN` 在 `POST /api/v1/system/users` 请求体携带 `zoneCodes="炼油区,罐区"`
+- **THEN** 用户落库 `zone_codes` 为 `炼油区,罐区`；其 `data_scope≠ALL` 时仅能看到这些防区的数据行
+
+#### Scenario: 修改用户可访问防区即时生效
+
+- **WHEN** `ADMIN` 通过 `PUT /api/v1/system/users/{id}` 变更 `zoneCodes`
+- **THEN** 该用户下次请求即按新防区集合解析（服务端 `DataScopeResolver.invalidateUser` 写时失效其 `userZoneCache`）
 
 ### Requirement: 角色与授权模型
 

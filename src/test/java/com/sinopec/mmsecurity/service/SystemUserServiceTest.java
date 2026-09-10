@@ -13,6 +13,7 @@ import com.sinopec.mmsecurity.entity.SysRole;
 import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysRoleMapper;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import com.sinopec.mmsecurity.security.LoginUser;
 import com.sinopec.mmsecurity.security.UserContext;
 import org.junit.jupiter.api.AfterEach;
@@ -50,9 +51,10 @@ class SystemUserServiceTest {
     private final PasswordStateCache passwordStateCache = mock(PasswordStateCache.class);
     private final SystemAuditHelper audit = mock(SystemAuditHelper.class);
     private final PasswordPolicy passwordPolicy = new PasswordPolicy();
+    private final DataScopeResolver dataScopeResolver = mock(DataScopeResolver.class);
 
     private final SystemUserService service = new SystemUserService(
-            userMapper, roleMapper, encoder, passwordPolicy, idNameCache, passwordStateCache, audit);
+            userMapper, roleMapper, encoder, passwordPolicy, idNameCache, passwordStateCache, audit, dataScopeResolver);
 
     @BeforeEach
     void setUp() {
