@@ -11,7 +11,7 @@
   环境变量 `JAVA_HOME=D:\jdk-17_windows-x64_bin\jdk-17.0.4.1`。
   `mvn` / `mvnw` 均不可用，勿用。
 - **CI 绝不能带 `ci-settings.xml`**：该文件硬编码本机 Windows `.m2` 路径，仅本地冒烟用。
-- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **337 单测全绿**（2026-09-10 含预案行动卡写接口新增 9）；jacoco 行覆盖红线 **0.80**。
+- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **342 单测全绿**（2026-09-10 含预案行动卡写接口 +9、黑名单删除 +5）；jacoco 行覆盖红线 **0.80**。
 - 带 DB 的 `*IT` 在引入 Testcontainers 后启用；本机无 Docker 时如实报告未执行，**禁止用零 DB 通过冒充**。
 
 ## 2. 契约真源与四同步
@@ -87,3 +87,4 @@
 - 2026-09-10（B4/B5/B6 大屏去 mock 收尾）：B4 应急指挥指令（`/emergency/commands` + `/{id}`，V27）；B5 巡更/通行轨迹（`/security/track/{timeline,summary}`）与车辆·人员检索详情（`/security/search/{vehicle,person}/{id}`，V28）；B6 周界入侵告警（`/security/perimeter-alarms/latest`、`/{id}`、`/{id}/snapshot`，V29），前端 `perimeterAlarmToDetail` 适配器把 DTO 映射为 30+ 字段 `AlarmDetailItem`，`SecurityStatusPanel` 弃用 `resolveDemoAlarmDetailById('demo-intrusion-1')`（两份 `alarmDetailMock.ts` 副本的 `demoAlarmDetails` 死常量一并删除）。
 - 2026-09-10（video 流媒体递延项·静态图后端化）：video 静态图改由后端传——fac_video_camera 加 `snapshot_bytes` BLOB（V26），`GET /video/cameras/{id}/snapshot` 返回 `image/jpeg`（无则 404）；dev 启动 `VideoSnapshotSeeder`（`CommandLineRunner` + `@Profile dev`）用 `BufferedImage`+`ImageIO` 生成带名称/位置/REC 角标占位 JPEG 写回 BLOB（27/27 张）。前端 `VideoControlGrid` 用 `blob`→`objectURL` 的 `<img>` 替换原雪碧图占位（规避 `<img>` 无法带 JWT 的 401 坑）。门禁：mvn test 309 绿、vue-tsc 0 错、契约守门 0 漂移；运行时冒烟 camera id=1 → 200 image/jpeg 20144 字节。
 - 2026-09-10（写侧后端化第 1 块·预案行动卡 CRUD）：`EmergencyPlanController` 新增 `POST /api/v1/emergency-plans/{planId}/action-cards`、`PUT/DELETE .../{cardId}`（`@RequireAuth(role="ADMIN")`，复用 V18 `fac_plan_action_card` 表，无新迁移）；新增入参 DTO `PlanActionCardCreate`/`PlanActionCardUpdate`；`EmergencyPlanService` 加 `createActionCard/updateActionCard/deleteActionCard`（card_code `ac-`+UUID12，缺省 status=pending）。前端契约 + `usePlanMatrix` 三写函数已同步接线（无 `VITE_API_BASE` 保持本地演示改）。门禁：mvn 337 绿、守门 strict 0/0（可比 158）、vue-tsc 0、vitest 378；8801 运行时冒烟建改删全通。
+- 2026-09-10（写侧第 2 块·黑名单删除）：`BlacklistController` 新增 `DELETE /api/v1/security/blacklist/vehicles/{id}`、`/persons/{id}`（`@RequireAuth(role="ADMIN")`，复用 V21 `fac_blacklist_entry` 表，无新迁移）；`BlacklistService` 加 `removeVehicle/removePerson`（按 id+entryKind 双重校验，未命中返回 `{ok:false}` 不抛异常）。前端契约 + `securityBlacklist.ts` + `BlacklistDialog.vue` 同步接线。门禁：mvn 342 绿、守门 strict 0/0、vue-tsc 0、vitest 378；8801 冒烟删车/删人后 3→2，重复删/错类型/不存在均 ok=false。

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.BlacklistPersonItem;
 import com.sinopec.mmsecurity.dto.BlacklistSummary;
 import com.sinopec.mmsecurity.dto.BlacklistVehicleItem;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.entity.FacBlacklistEntry;
 import com.sinopec.mmsecurity.mapper.FacBlacklistEntryMapper;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 public class BlacklistService {
 
     private static final String KIND_VEHICLE = "VEHICLE";
+    private static final String KIND_PERSON = "PERSON";
 
     private final FacBlacklistEntryMapper blacklistEntryMapper;
 
@@ -39,6 +41,24 @@ public class BlacklistService {
                 .filter(e -> !KIND_VEHICLE.equals(e.getEntryKind()))
                 .map(this::toPersonItem).collect(Collectors.toList()));
         return summary;
+    }
+
+    /** 从车辆黑名单移除记录；id 不存在或类型不符时 ok=false（不抛异常）。 */
+    public DeleteResult removeVehicle(Long id) {
+        return removeEntry(KIND_VEHICLE, id);
+    }
+
+    /** 从人员黑名单移除记录；id 不存在或类型不符时 ok=false（不抛异常）。 */
+    public DeleteResult removePerson(Long id) {
+        return removeEntry(KIND_PERSON, id);
+    }
+
+    private DeleteResult removeEntry(String kind, Long id) {
+        DeleteResult result = new DeleteResult();
+        FacBlacklistEntry entry = id == null ? null : blacklistEntryMapper.selectById(id);
+        result.setOk(entry != null && kind.equals(entry.getEntryKind())
+                && blacklistEntryMapper.deleteById(id) > 0);
+        return result;
     }
 
     private BlacklistVehicleItem toVehicleItem(FacBlacklistEntry entry) {

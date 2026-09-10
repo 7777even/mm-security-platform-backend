@@ -12,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -82,5 +84,31 @@ class BlacklistServiceTest {
         assertEquals("超速行驶", summary.getVehicles().get(0).getReason());
         assertEquals("生效中", summary.getVehicles().get(0).getStatus());
         assertEquals(0, summary.getPersons().size());
+    }
+
+    @Test
+    void removeVehicle_okWhenVehicleEntryExists() {
+        when(blacklistEntryMapper.selectById(1L))
+                .thenReturn(entry(1L, "VEHICLE", "粤K·A4543", null, "违规闯入生产区",
+                        "2026-08-05 14:20:11", "生效中", 1));
+        when(blacklistEntryMapper.deleteById(1L)).thenReturn(1);
+
+        assertTrue(service.removeVehicle(1L).getOk());
+    }
+
+    @Test
+    void removeVehicle_falseWhenKindMismatch() {
+        when(blacklistEntryMapper.selectById(4L))
+                .thenReturn(entry(4L, "PERSON", "张**", "4409**********1234", "未佩戴安全帽",
+                        "2026-08-06 10:02:45", "生效中", 1));
+
+        assertFalse(service.removeVehicle(4L).getOk());
+    }
+
+    @Test
+    void removePerson_falseWhenEntryMissing() {
+        when(blacklistEntryMapper.selectById(99L)).thenReturn(null);
+
+        assertFalse(service.removePerson(99L).getOk());
     }
 }

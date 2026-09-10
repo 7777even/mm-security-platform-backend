@@ -4,6 +4,7 @@ import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.dto.BlacklistPersonItem;
 import com.sinopec.mmsecurity.dto.BlacklistSummary;
 import com.sinopec.mmsecurity.dto.BlacklistVehicleItem;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.service.BlacklistService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,5 +79,29 @@ class BlacklistControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.vehicles.length()").value(0))
                 .andExpect(jsonPath("$.data.persons.length()").value(0));
+    }
+
+    @Test
+    void removeVehicle_returnsDeleteResult() throws Exception {
+        DeleteResult result = new DeleteResult();
+        result.setOk(true);
+        when(service.removeVehicle(1L)).thenReturn(result);
+
+        mvc().perform(delete("/api/v1/security/blacklist/vehicles/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ok").value(true));
+    }
+
+    @Test
+    void removePerson_returnsDeleteResult() throws Exception {
+        DeleteResult result = new DeleteResult();
+        result.setOk(false);
+        when(service.removePerson(99L)).thenReturn(result);
+
+        mvc().perform(delete("/api/v1/security/blacklist/persons/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.ok").value(false));
     }
 }
