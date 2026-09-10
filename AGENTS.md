@@ -163,7 +163,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 1. 零下行控制（§3.1）；WebSocket 通道同样不得下发控制指令。
 2. 密钥 / 口令 / 签名 secret 只从环境变量注入（`JWT_SECRET`、`DB_PASSWORD`、`SIGNATURE_SECRET`），默认值为占位串，生产部署必须覆盖。
-3. 未登录默认拒绝：除下述免鉴权白名单外，新端点默认需鉴权；新增免鉴权端点须在 proposal 中显式说明理由。当前白名单（`JwtFilter.WHITELIST`）：`/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/auth/menus`、`/api/v1/auth/me`、`/api/v1/health`、`/actuator`、`/h2-console`、`/ws`、`/error`（OPTIONS 预检一律放行）。鉴权失败 `JwtFilter` 直接写 HTTP 401 + B3 包络（不抛异常冒泡成 500）；前端 `main.ts` 在 401 时清内存令牌并跳登录（见 `docs/integration/README.md`）。
+3. 未登录默认拒绝：除下述免鉴权白名单外，新端点默认需鉴权；新增免鉴权端点须在 proposal 中显式说明理由。当前白名单（`JwtFilter.WHITELIST`，以代码为准）：`/api/v1/auth/login`、`/api/v1/auth/refresh`、`/api/v1/auth/logout`、`/actuator`、`/h2-console`（dev）、`/ws`、`/error`（OPTIONS 预检一律放行）。**`/auth/me` 与 `/auth/menus` 已移出白名单**（二者依赖 `UserContext` 当前登录态，免鉴权会越权暴露真实身份 / 全量菜单，见 `docs/architecture/auth-design.md §2`）。鉴权失败 `JwtFilter` 直接写 HTTP 401 + B3 包络（不抛异常冒泡成 500）；前端 `main.ts` 在 401 时清内存令牌并跳登录（见 `docs/integration/README.md`）。
 4. 日志脱敏：禁止打印令牌、口令、签名头、完整请求体敏感字段；`traceId` 由 `TraceContext` 透传，前后端联调以它对齐。
 5. SQL 注入：禁止字符串拼接 SQL；MyBatis-Plus 条件构造器优先，`${}` 一律禁止。
 

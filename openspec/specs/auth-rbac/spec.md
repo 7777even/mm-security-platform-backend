@@ -36,12 +36,22 @@ refresh 令牌不得进入响应 body，仅经 `HttpOnly` + `SameSite=Lax` Cooki
 
 ### Requirement: 角色门禁与越权守门
 
-系统须基于 `sys_user.role` 与 `sys_menu.allowed_roles`（逗号分隔）实现 RBAC；端点级角色门禁用 `@RequireAuth(role=...)`，资源级归属校验用 `AuthorizationService.assertSelfOrAdmin`，不可将角色硬编码进业务逻辑。
+系统须基于 `sys_role`（角色）与 `sys_role_menu`（角色-菜单/权限授权）实现 RBAC，权限码即 `sys_menu.perm_code`（`menu_type` = DIR / MENU / BUTTON，BUTTON 不参与导航、只贡献权限码）；`sys_user.role`（**单角色**）引用 `sys_role.role_code`。`sys_menu.allowed_roles` 为遗留列，**不得**再参与任何判定。端点级门禁支持 `@RequireAuth(role=...)`（单角色名）与 `@RequireAuth(perm=...)`（权限码，经 `RoleAuthorityService` 解析，二者同时标注为 AND）；资源级归属校验沿用 `AuthorizationService.assertSelfOrAdmin`；不可将角色硬编码进业务逻辑。角色授权变更须**即时生效**（授权缓存写时失效，不等待令牌过期）。
 
 #### Scenario: 端点角色门禁
 
 - **WHEN** 非 `ADMIN` 角色访问标注 `@RequireAuth(role="ADMIN")` 的端点
 - **THEN** 返回 403，不执行业务逻辑
+
+#### Scenario: 端点权限码门禁
+
+- **WHEN** 当前角色不持有 `@RequireAuth(perm="system:user:create")` 所要求的权限码
+- **THEN** 返回 403，不执行业务逻辑
+
+#### Scenario: 角色授权变更即时生效
+
+- **WHEN** 管理员通过 `PUT /api/v1/system/roles/{id}/menus` 修改某角色授权
+- **THEN** 该角色用户下一次请求的权限解析即为新结果（`reloadRolePerms()` 主动失效，不依赖 5min TTL）
 
 #### Scenario: 资源归属越权
 
@@ -51,7 +61,26 @@ refresh 令牌不得进入响应 body，仅经 `HttpOnly` + `SameSite=Lax` Cooki
 #### Scenario: 菜单按角色过滤
 
 - **WHEN** 某角色请求 `GET /api/v1/auth/menus`
-- **THEN** 返回仅含 `sys_menu.allowed_roles` 命中当前角色的菜单
+- **THEN** 返回仅含该角色经 `sys_role_menu` 授权、且 `menu_type ∈ {DIR,MENU}`、`visible=1`、顶层 `fm-*` 的菜单
+
+### Requirement: 登录身份下发
+
+`GET /api/v1/auth/me` 须下发当前用户的 `username`、`realName`、`role`、`roles`、`perms`、`mustChangePwd`；`perms` 为该用户角色经 `sys_role_menu` 聚合去重后的权限码全集，是前端权限判定的**唯一权威来源**（前端不得再维护硬编码角色权限表）。续期换发的 access 令牌须携带**库中真实角色**，不得硬编码；账号不存在或已停用时拒绝续期。
+
+#### Scenario: 权限码下发
+
+- **WHEN** 携带有效令牌调用 `GET /api/v1/auth/me`
+- **THEN** 返回的 `perms` 与后端门禁判定所用权限码同源一致
+
+#### Scenario: 续期不硬编码角色
+
+- **WHEN** 角色为 `X` 的用户经 `POST /api/v1/auth/refresh` 换发新 access 令牌
+- **THEN** 新令牌角色仍为库中真实角色 `X`，不得被改写为 `ADMIN`
+
+#### Scenario: 已停用账号拒绝续期
+
+- **WHEN** 账号已被停用（`status=0`）但持有未过期 refresh Cookie
+- **THEN** `POST /api/v1/auth/refresh` 返回 401，不签发新令牌
 
 ### Requirement: 鉴权失败语义
 

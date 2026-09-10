@@ -11,7 +11,7 @@
   环境变量 `JAVA_HOME=D:\jdk-17_windows-x64_bin\jdk-17.0.4.1`。
   `mvn` / `mvnw` 均不可用，勿用。
 - **CI 绝不能带 `ci-settings.xml`**：该文件硬编码本机 Windows `.m2` 路径，仅本地冒烟用。
-- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **342 单测全绿**（2026-09-10 含预案行动卡写接口 +9、黑名单删除 +5）；jacoco 行覆盖红线 **0.80**。
+- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **434 单测全绿**（2026-09-10 含系统管理域 RBAC +73）；jacoco 行覆盖红线 **0.80**。
 - 带 DB 的 `*IT` 在引入 Testcontainers 后启用；本机无 Docker 时如实报告未执行，**禁止用零 DB 通过冒充**。
 
 ## 2. 契约真源与四同步
@@ -22,7 +22,7 @@
   2. 前端契约 `docs/api/<domain>.openapi.json`（四条铁律：按域分组 / 接口有注释 / 字段有中文 description / 有 example）
   3. 后端实现 → 跑 `scripts/check-api-contract.mjs`（路由 + schema 双层级守门，`--strict` 进 CI）
   4. 通知前端 `npm run gen:api-types` 重新生成 TS 类型
-- 后端 `node scripts/check-api-contract.mjs --strict`：路由差异 0 / schema 漂移 0（可比约 158 schema）即达标；脚本默认 `--contracts ../frontend-scaffold/docs/api`。
+- 后端 `node scripts/check-api-contract.mjs --strict`：路由差异 0 / schema 漂移 0（可比约 **197** schema）即达标；脚本默认 `--contracts ../frontend-scaffold/docs/api`。
 - 守门输出格式 `字段:契约≠后端`（左契约右实现）。`number≠integer` 类漂移按**后端种子数据**裁决：种子全整数就改契约为 integer，别反过来动已跑通的后端。
 - `oasFamily()` 已修：OpenAPI 3.1 可空联合 `"type":["string","null"]` 剥离 `'null'` 后取剩余类型，多类型联合遇 `null` 不比对（曾误判 90 处假漂移）。再遇批量 `object≠string` 先怀疑脚本而非契约。
 
@@ -59,6 +59,15 @@
   fac_emergency_guidance_roster**（应急流程全景：5 阶段 + 4 响应模式显式列存，15 节点与 9 条处置指引的嵌套结构
   （动作/判据/升级规则/上报链路/岗位任务）序列化为 `detail_json LONGVARCHAR`，与 V27 同范式；
   种子由脚本从前端 `emergencyProcessData.ts` / `nodeGuidanceData.ts` 常量直出，避免手抄漂移）。
+  **V32 sys_role / sys_role_menu / sys_dict_type / sys_dict_item**（系统管理域 RBAC 数据模型）＋ `sys_menu` 加
+  `menu_type`(DIR/MENU/BUTTON) / `perm_code` / `visible`、`sys_user` 加 `pwd_updated_at` / `must_change_pwd`；
+  **V33 种子**：6 条角色（ADMIN 内置 + 总指挥/值班调度/属地班长/内操/外操）＋ 5 条 fm-* 补权限码 ＋
+  system 菜单权限子树（用户/角色/菜单/字典/设备编码 + 15 个 BUTTON 权限码）＋ ADMIN 全量授权、其余角色保留 fm-* 导航。
+  **权限码口径**：业务域**沿用前端既有权限码**（`dashboard:view` / `fire-alarm:view` / `security:view` /
+  `video:view` / `ops:view` / `fire-alarm:ack` / `mobile:field-report:view`），与 `src/router/menu.ts#MENU_ROUTE_SPECS`
+  及 `SECONDARY_ROUTES` 的 `meta.perm` 逐一对齐——**自造新码会让前端路由守卫全量跳 404**。
+  三方言同步：pg 与 h2 同构；达梦因 Oracle 兼容语法不支持多行 VALUES，角色种子拆为逐条 INSERT，
+  且常量 SELECT 补 `FROM dual`（由一次性脚本从 h2 版本派生，见当日工作记忆）。
 - 达梦 DM8 / PG 暂缓（本机无实例、无 docker）；`application-dm.yml` 与 `db/migration/dameng` 保留作迁移资产。代码层 DB 无关（MyBatis-Plus 方言探测、不写方言函数）。
 - **H2 保留字陷阱**：`value` / `command` 既不能作裸列名，也不能作 MyBatis-Plus 别名（`SELECT x AS value` 同样报错）。列名加后缀（value→value_name），**Java 属性名也避开保留字**再 `@TableField` 映射。已验证非保留字：`name/code/type/status/level/time/op_type/op_level/ticket_status/value_text/status_name`。
 
@@ -68,6 +77,28 @@
 - 鉴权失败直出 401/403 + `Result.fail` B3（UTF-8），**不冒泡 500**。
 - 密钥纯 `${JWT_SECRET}` / `${SIGNATURE_SECRET}` 无默认；`SecurityBeans.validateSecrets()` 校验长度与占位符。
 - 越权防护：`AuthorizationService.assertAdmin` / `assertSelfOrAdmin`；建改删警 `@RequireAuth(role="ADMIN")`。
+- **RBAC 模型（V32 起）**：`sys_user.role` **单角色**引用 `sys_role.role_code`；菜单与权限码授权元组为
+  `sys_role_menu`；权限码即 `sys_menu.perm_code`（`menu_type=BUTTON` 节点不参与导航、只贡献权限码）。
+  **`sys_menu.allowed_roles` 已降级为只读兼容列**，不再参与任何判定。角色/权限解析由 `RoleAuthorityService`
+  （Caffeine `role_code→{menuIds,perms}` TTL 5min + 写时失效 `reloadRolePerms()`）提供——**权限码不写入 access 令牌**，
+  故角色授权变更**即时生效**、令牌不膨胀。
+- **`@RequireAuth` 三级门禁**：`value=false` 放行 → 未登录 401 → `role` 不符 403 → `perm` 不持有 403（role 与 perm 为 AND）。
+  `perm` 由 `RequireAuthInterceptor` 经 `RoleAuthorityService` 判定。系统管理域当前统一用 `role="ADMIN"`（ADR-5 第一步），
+  权限码已全量登记，后续可逐端点切 `perm="system:user:create"` 等而不改路径。
+- **强制首登改密（服务端兜底）**：`PasswordLifecycleInterceptor` 对**变更类请求**（非 GET/HEAD/OPTIONS）校验
+  `must_change_pwd`，命中则 403；豁免 `/api/v1/auth/**`（否则改密路径自身被堵死）与 `/api/v1/uplink/audit`（审计旁路）。
+  状态缓存 `PasswordStateCache`（TTL 5min + 改密/重置时 evict）。
+  **dev 关闭种子标记**（`app.password.force-change-default-admin=false`，因 H2 内存库每次重启重建，强制改密会反复阻断联调）；
+  **生产默认 true**（`admin@2026` 属已知弱口令）。
+- **系统管理域硬防护**（服务端强制，不依赖前端禁用按钮）：禁删/禁停用/禁改自己角色（403）；
+  **保护最后一个启用 ADMIN**（409）；内置角色与内置字典禁删禁停（403）；角色被用户引用、字典有字典项、
+  菜单节点有子节点或已被授权时禁删（409）。
+- **唯一索引 × 逻辑删除的语义鸿沟（2026-09-10 冒烟发现）**：`sys_user.username` / `sys_role.role_code` /
+  `sys_dict_type.dict_code` 均有唯一索引，而删除是逻辑删除（行仍物理存在）。MyBatis-Plus 查询自动追加 `deleted=0`，
+  故 `selectCount` **看不到已删行** → 预检查放行、DB 唯一键拒绝，只能抛笼统「数据冲突」。已在三个 Mapper 加
+  `countXxxIncludingDeleted(value[, excludeId])`（`@Select` 原生 SQL 绕过逻辑删除过滤）使判定与约束一致，
+  并明确**标识符不回收**（回收会让新旧记录在审计上无法区分）。
+- 新增对外接口须同步契约（§2），系统管理域契约文件为 `frontend-scaffold/docs/api/system.openapi.json`（tags: system）。
 - 刷新令牌 Cookie 化（`rt`，HttpOnly / SameSite=Lax / 7d），**绝不进 body**；`refresh` 用 `@CookieValue`，前端 `http.ts` 须 `withCredentials`。
 - **JwtFilter 白名单（全局，覆盖所有 Controller）**：仅 `/auth/{login,refresh,logout}` 与 `/ws` 免鉴权。
   `/auth/me`、`/auth/menus` 已移出白名单（契约声明 401/403）；`/ws` 免鉴权是刻意设计（内网只读流，勿给 `ws.ts` 加 query 令牌）。
@@ -96,4 +127,19 @@
 - 2026-09-10（写侧第 2 块·黑名单删除）：`BlacklistController` 新增 `DELETE /api/v1/security/blacklist/vehicles/{id}`、`/persons/{id}`（`@RequireAuth(role="ADMIN")`，复用 V21 `fac_blacklist_entry` 表，无新迁移）；`BlacklistService` 加 `removeVehicle/removePerson`（按 id+entryKind 双重校验，未命中返回 `{ok:false}` 不抛异常）。前端契约 + `securityBlacklist.ts` + `BlacklistDialog.vue` 同步接线。门禁：mvn 342 绿、守门 strict 0/0、vue-tsc 0、vitest 378；8801 冒烟删车/删人后 3→2，重复删/错类型/不存在均 ok=false。
 - 2026-09-10（写侧第 3 块·视频联动配置保存/删除）：`VideoController` 新增 `POST /api/v1/video/linkages`、`PUT/DELETE /api/v1/video/linkages/{configCode}`（`@RequireAuth(role="ADMIN")`，复用 V14 `fac_video_linkage` + `fac_video_linkage_rule`，无新迁移）；新增入参 DTO `VideoLinkageSaveRequest`/`VideoLinkageRuleInput`；`VideoService.saveLinkage(configCode 可空＝新建/更新，规则行整表替换，linkageCount/businessObjects 由 rules 推导)` + `deleteLinkage`（configCode 形如 `lk-NNN`，新建按现有最大数字后缀 +1；更新未命中返回 null、删除未命中 ok=false）。前端契约 +2 schema（`VideoLinkageSaveRequest`/`VideoLinkageRuleInput`）+ 复用本地 `DeleteResult`；`useVideoLinkageConfig.saveLinkageEdit(payload)` 改 async 落库、新增 `removeLinkageConfig`，`VideoLinkageConfigDialog` 提交/删除改接。门禁：mvn 356 绿、守门 strict 0/0（可比 163 / 路由 0 差异）、vue-tsc 0、vitest 378。
 - 2026-09-10（写侧第 4 块·组态节点联动配置读+写）：新增 **V30 fac_node_phase_config**（9 节点：alarmJudgement/1min/3min/5min/plantArea/companyLevel/govLevel/handling/archive；列表字段 `camera_anchors`/`right_hidden_tabs`/`left_hidden_panels` 逗号串落库，`custom_center` 存 "lon,lat"）；新增实体 `FacNodePhaseConfig` + `FacNodePhaseConfigMapper` + DTO `NodePhaseConfig`/`NodePhaseMapCamera`/`NodePhaseDuty`；`EmergencyController` 新增 `GET /api/v1/emergency/process/node-configs`、`PUT /api/v1/emergency/process/node-configs`（`@RequireAuth(role="ADMIN")`，按 nodeId 整体 upsert、返回全量列表）；`EmergencyService.nodePhaseConfigs/saveNodePhaseConfigs` 负责逗号串↔数组互转。前端新增 `services/emergencyProcess.ts`，`nodeConfigData.ts` 契约类型上收至 service 并新增 `mergeNodeConfigs/cloneDefaultNodeConfigs`（保留默认值 + localStorage 离线缓存），`useEmergencyProcess` 的 `openNodeConfig` 触发远程拉取、`saveNodeConfig/resetNodeConfig` 改 async 落库（失败不假成功）。门禁：mvn 356 绿、守门 strict 0/0、vue-tsc 0、vitest 378。
+- 2026-09-10（③类最后一项·系统管理域 + RBAC 模型）：L4 变更，四件套在
+  `openspec/changes/2026-09-10-system-management-rbac/`（proposal/design/spec-delta/tasks，已人工确认后实施）。
+  **数据模型**：V32/V33（见 §5）。**鉴权链路**：`RequireAuth` 加 `perm` 属性 + `RoleAuthorityService`（缓存解析）+
+  `PasswordLifecycleInterceptor` / `PasswordStateCache`；`AuthService.menus()` 数据源由 `allowed_roles` 切到 `sys_role_menu`
+  （返回结构不变，仍仅 5 个 fm-* 顶层）；`AuthService.me()` 由 `Map` 改强类型 `MeResult` 并增补 `roles`/`perms`/`mustChangePwd`；
+  **修复 `AuthService.refresh()` 硬编码角色 `"ADMIN"` 的潜伏提权缺陷**（改为回查库中真实角色，账号不存在/已停用则拒绝续期）。
+  **端点**：`/api/v1/system/{users,roles,menus,dict-types,dict-items,permissions,dicts}` 四组 CRUD（统一 `role="ADMIN"`，
+  唯一例外 `GET /system/dicts/{dictCode}` 登录即可读）；`/auth/password`（本人改密）、`/auth/profile`（本人资料）。
+  **口令生命周期**：`PasswordPolicy`（配置化：`app.password.{enabled,min-length,require-categories,force-change-default-admin}`）、
+  管理员重置口令（随机临时口令 + `must_change_pwd=1`）。**服务端审计**：`SystemAuditHelper` 落 `fac_audit_log`（`module=system`，
+  尽力而为、不含口令）。**启动种子**：原 `AuthService.ensureAdmin()` 拆出为 `RbacBootstrapService`（角色幂等 upsert +
+  默认管理员 + ADMIN 授权兜底）。门禁：mvn **434** 绿 + jacoco 过、守门 strict 0/0（可比 **197**）、契约校验 28 域通过、
+  vue-tsc 0、vitest **379**；8801 冒烟 **51 项 PASS**（含三条硬防护、强制改密兜底、字典两级与业务只读端点）。
+  前端：`services/system.ts` 新增；`stores/auth.ts` 退役硬编码 `ROLE_PERMS`，改为 `/auth/me` 下发；新增
+  `views/system/{roles,menus,dict}.vue` 与 `users.vue` 落地。
 - 2026-09-10（③类·应急流程全景 后端化）：新增 **V31** 五表（`fac_emergency_phase` 5 阶段 / `fac_emergency_response_mode` 4 模式 / `fac_emergency_process_stage` 15 节点 / `fac_emergency_node_guidance` 9 指引 / `fac_emergency_guidance_roster` 1 值班表）；**种子由脚本经 esbuild 从前端 `emergencyProcessData.ts` / `nodeGuidanceData.ts` 常量直出**（避免手抄 25KB 嵌套 JSON），节点与指引的嵌套结构（处置动作 / 完成判据 / 升级规则 / 上报链路 / 岗位任务）序列化为 `detail_json LONGVARCHAR`（与 V27 同范式），阶段与响应模式用显式列（`start_stage`/`end_stage`/`mode_code`/`mode_label` 回避保留字）。新增 5 实体 + 5 Mapper + **14 个契约同名 DTO**（`EmergencyPhase`/`ResponseModeOption`/`ProcessStage`/`ProcessAction`/`CriteriaChecklistItem`/`SubStageItem`/`StageEscalationRule`/`StageEscalationDetails`/`EmergencyProcessPanorama`/`NodeGuidance`/`NodeGuidanceReportingStep`/`NodeGuidanceRoleTask`/`GuidanceDutyRoster`/`EmergencyProcessGuidance`）；`EmergencyController` 加 `GET /api/v1/emergency/process/panorama`、`/process/guidances`；`EmergencyService` 加 `processPanorama()/processGuidances()` + `readJson()` 防御式反序列化（解析失败返回空实例，避免列表出现 null）。前端 `services/emergencyProcess.ts` 收口该域全部契约类型并加 2 个 fetch；`emergencyProcessData.ts`/`nodeGuidanceData.ts` 降级为「契约类型 re-export + 离线兜底默认值」；`useEmergencyProcess` 把 phases/响应模式/stages/指引/值班表改 ref + 新增 `loadEmergencyProcessRemote()`（成功覆盖、失败告警保留默认值），由 `PlanPanoramaModule` onMounted 与 `openGuidance()` 触发；`PlanPanoramaModule`（2308 行）不再直引 `EMERGENCY_PHASES`，改用组件 computed `phaseList`/`roster`。门禁：mvn **361** 绿、守门 strict 0/0（可比 177）、vue-tsc 0、vitest 378、eslint 0；8801 冒烟 **34 项全 PASS**（5 阶段 / 4 模式 / 15 节点连续性 / 模板生成节点 / 9 指引字段与值班表逐项核对）。
