@@ -3,7 +3,10 @@ package com.sinopec.mmsecurity.controller;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
+import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.DutyRoster;
+import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
+import com.sinopec.mmsecurity.dto.EmergencyCommandInstruction;
 import com.sinopec.mmsecurity.dto.EmergencyPhone;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyResource;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -104,6 +108,44 @@ class EmergencyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.items[0].title").value("岗位应急处置卡"));
+    }
+
+    @Test
+    void commands_returnsGroups() throws Exception {
+        EmergencyCommandGroup g = new EmergencyCommandGroup();
+        g.setId("notify");
+        g.setLabel("一键通知");
+        EmergencyCommandInstruction it = new EmergencyCommandInstruction();
+        it.setId("n1");
+        it.setName("通知值班人员");
+        it.setStatus("待处置");
+        g.setItems(new ArrayList<>(List.of(it)));
+        when(service.commandGroups("fixed")).thenReturn(List.of(g));
+
+        mockMvc.perform(get("/api/v1/emergency/commands").param("tab", "fixed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].id").value("notify"))
+                .andExpect(jsonPath("$.data[0].items[0].name").value("通知值班人员"))
+                .andExpect(jsonPath("$.data[0].items[0].status").value("待处置"));
+    }
+
+    @Test
+    void commandDetail_returnsDetail() throws Exception {
+        CommandActionDetail d = new CommandActionDetail();
+        d.setId("n1");
+        d.setName("通知值班人员");
+        d.setType("通知");
+        d.setStatus("待处置");
+        d.setNotifyChannels(List.of("app", "sms", "voice"));
+        when(service.commandDetail("n1")).thenReturn(d);
+
+        mockMvc.perform(get("/api/v1/emergency/commands/n1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value("n1"))
+                .andExpect(jsonPath("$.data.name").value("通知值班人员"))
+                .andExpect(jsonPath("$.data.notifyChannels[0]").value("app"));
     }
 
     private EmergencyResource res(String kind, int count) {

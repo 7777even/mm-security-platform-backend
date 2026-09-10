@@ -1,10 +1,14 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
+import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.DutyMember;
 import com.sinopec.mmsecurity.dto.DutyRoster;
+import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
+import com.sinopec.mmsecurity.dto.EmergencyCommandInstruction;
 import com.sinopec.mmsecurity.dto.EmergencyPhone;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyResource;
@@ -12,11 +16,13 @@ import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
@@ -25,7 +31,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -48,6 +56,8 @@ public class EmergencyService {
     private final SysEmergencyPhoneMapper phoneMapper;
     private final SysKnowledgeItemMapper knowledgeMapper;
     private final SysDutyMemberMapper dutyMapper;
+    private final FacEmergencyCmdMapper cmdMapper;
+    private final ObjectMapper objectMapper;
 
     /** 应急力量统计：来自 sys_emergency_strength 参考表 */
     public EmergencyStrength strength() {
@@ -146,5 +156,53 @@ public class EmergencyService {
         }
         k.setItems(items);
         return k;
+    }
+
+    /** 应急指挥指令分组（固定/临时），按 tab 过滤。来自 fac_emergency_cmd 参考表。 */
+    public List<EmergencyCommandGroup> commandGroups(String tab) {
+        List<FacEmergencyCmd> rows = cmdMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyCmd>().eq(FacEmergencyCmd::getGrpTab, tab)
+                        .orderByAsc(FacEmergencyCmd::getGrpId));
+        Map<String, EmergencyCommandGroup> groups = new LinkedHashMap<>();
+        for (FacEmergencyCmd r : rows) {
+            EmergencyCommandGroup g = groups.computeIfAbsent(r.getGrpId(), k -> {
+                EmergencyCommandGroup ng = new EmergencyCommandGroup();
+                ng.setId(k);
+                ng.setLabel(r.getGrpLabel());
+                ng.setItems(new ArrayList<>());
+                return ng;
+            });
+            EmergencyCommandInstruction it = new EmergencyCommandInstruction();
+            it.setId(r.getId());
+            it.setType(r.getInstructionType());
+            it.setName(r.getName());
+            it.setLocation(r.getLocation());
+            it.setStatus(r.getStatus());
+            it.setActionLabel(r.getActionLabel());
+            it.setDone(r.getDone());
+            g.getItems().add(it);
+        }
+        return new ArrayList<>(groups.values());
+    }
+
+    /** 应急指挥指令行动详情：detail_json 反序列化为 CommandActionDetail 后补全标量字段。 */
+    public CommandActionDetail commandDetail(String commandId) {
+        FacEmergencyCmd row = cmdMapper.selectById(commandId);
+        if (row == null) return null;
+        CommandActionDetail d;
+        try {
+            d = objectMapper.readValue(row.getDetailJson(), CommandActionDetail.class);
+        } catch (Exception e) {
+            d = new CommandActionDetail();
+        }
+        if (d == null) {
+            d = new CommandActionDetail();
+        }
+        d.setId(row.getId());
+        d.setName(row.getName());
+        d.setType(row.getInstructionType());
+        d.setStatus(row.getStatus());
+        d.setLocation(row.getLocation());
+        return d;
     }
 }

@@ -3,17 +3,22 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
+import com.sinopec.mmsecurity.dto.CommandActionDetail;
+import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -21,6 +26,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -36,8 +43,11 @@ class EmergencyServiceTest {
     private final SysEmergencyPhoneMapper phoneMapper = mock(SysEmergencyPhoneMapper.class);
     private final SysKnowledgeItemMapper knowledgeMapper = mock(SysKnowledgeItemMapper.class);
     private final SysDutyMemberMapper dutyMapper = mock(SysDutyMemberMapper.class);
+    private final FacEmergencyCmdMapper cmdMapper = mock(FacEmergencyCmdMapper.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final EmergencyService service = new EmergencyService(
-            alarmMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper);
+            alarmMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper,
+            cmdMapper, objectMapper);
 
     private static SysEmergencyStrength strength(String kind, int count, String icon) {
         SysEmergencyStrength s = new SysEmergencyStrength();
@@ -136,5 +146,56 @@ class EmergencyServiceTest {
         assertEquals("白班", service.duty().getShift());
         assertEquals(2, service.duty().getMembers().size());
         assertEquals("全部", service.duty().getDepartments().get(0));
+    }
+
+    @Test
+    void commandGroups_groupsByGrpId() {
+        FacEmergencyCmd r1 = new FacEmergencyCmd();
+        r1.setId("n1");
+        r1.setGrpId("notify");
+        r1.setGrpLabel("一键通知");
+        r1.setGrpTab("fixed");
+        r1.setInstructionType("通知");
+        r1.setName("通知值班人员");
+        r1.setLocation("中海壳牌石油化工有限公司");
+        r1.setStatus("待处置");
+        r1.setActionLabel(null);
+        r1.setDone(false);
+        when(cmdMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(r1));
+
+        List<EmergencyCommandGroup> groups = service.commandGroups("fixed");
+        assertEquals(1, groups.size());
+        assertEquals("notify", groups.get(0).getId());
+        assertEquals(1, groups.get(0).getItems().size());
+        assertEquals("n1", groups.get(0).getItems().get(0).getId());
+        assertEquals("待处置", groups.get(0).getItems().get(0).getStatus());
+    }
+
+    @Test
+    void commandDetail_deserializesDetailJson() {
+        FacEmergencyCmd row = new FacEmergencyCmd();
+        row.setId("n1");
+        row.setInstructionType("通知");
+        row.setName("通知值班人员");
+        row.setStatus("待处置");
+        row.setLocation("中海壳牌石油化工有限公司");
+        row.setDetailJson("{\"notifyChannels\":[\"app\",\"sms\",\"voice\"],\"dispatchMode\":\"自动派发\","
+                + "\"description\":\"x\",\"attachment\":\"—\",\"addressBookRecipients\":[],"
+                + "\"dutyRecipients\":[],\"dynamics\":[]}");
+        when(cmdMapper.selectById("n1")).thenReturn(row);
+
+        CommandActionDetail result = service.commandDetail("n1");
+        assertEquals("n1", result.getId());
+        assertEquals("通知", result.getType());
+        assertEquals("通知值班人员", result.getName());
+        assertEquals("待处置", result.getStatus());
+        assertEquals("中海壳牌石油化工有限公司", result.getLocation());
+        assertEquals(List.of("app", "sms", "voice"), result.getNotifyChannels());
+    }
+
+    @Test
+    void commandDetail_unknownIdReturnsNull() {
+        when(cmdMapper.selectById("unknown")).thenReturn(null);
+        assertEquals(null, service.commandDetail("unknown"));
     }
 }
