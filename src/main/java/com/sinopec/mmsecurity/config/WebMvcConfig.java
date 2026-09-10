@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.config;
 
 import com.sinopec.mmsecurity.security.HardControlInterceptor;
+import com.sinopec.mmsecurity.security.PasswordLifecycleInterceptor;
 import com.sinopec.mmsecurity.security.RequireAuthInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 拦截器顺序影响安全检查流：
  *   1. HardControlInterceptor —— 硬控路径兜底（最先挡住非法下行）
  *   2. RequireAuthInterceptor —— 鉴权（确保硬控请求也有身份）
+ *   3. PasswordLifecycleInterceptor —— 强制首登改密的服务端兜底（仅变更类请求）
  */
 @Configuration
 @RequiredArgsConstructor
@@ -24,10 +26,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final HardControlInterceptor hardControlInterceptor;
     private final RequireAuthInterceptor requireAuthInterceptor;
+    private final PasswordLifecycleInterceptor passwordLifecycleInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(hardControlInterceptor).addPathPatterns("/api/**");
         registry.addInterceptor(requireAuthInterceptor).addPathPatterns("/api/**");
+        registry.addInterceptor(passwordLifecycleInterceptor).addPathPatterns("/api/**");
     }
 }
