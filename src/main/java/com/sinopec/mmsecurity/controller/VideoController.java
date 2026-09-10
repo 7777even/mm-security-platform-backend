@@ -4,6 +4,7 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
+import com.sinopec.mmsecurity.dto.VideoLinkageOptions;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
 import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
@@ -57,6 +58,15 @@ public class VideoController {
     @GetMapping("/linkages")
     public Result<List<VideoLinkageItem>> linkages() {
         return Result.ok(videoService.linkages());
+    }
+
+    /**
+     * 视频联动配置弹窗的四组下拉选项（监控器名称 / 预置点 / 业务对象分类 / 业务对象）。
+     * 合并为一个端点：四个下拉同属一个弹窗，一次取回避免竞态。
+     */
+    @GetMapping("/linkage-options")
+    public Result<VideoLinkageOptions> linkageOptions() {
+        return Result.ok(videoService.linkageOptions());
     }
 
     /** 新建视频联动配置（configCode 由服务端生成）。 */

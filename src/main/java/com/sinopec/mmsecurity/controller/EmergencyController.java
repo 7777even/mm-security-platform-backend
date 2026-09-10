@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
+import com.sinopec.mmsecurity.dto.DispatchPersonnel;
 import com.sinopec.mmsecurity.dto.DutyRoster;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
@@ -45,6 +46,12 @@ public class EmergencyController {
     @GetMapping("/duty")
     public Result<DutyRoster> duty() {
         return Result.ok(emergencyService.duty());
+    }
+
+    /** 应急派单人员名册（告警详情「派单人员」下拉数据源，登录可见）。 */
+    @GetMapping("/dispatch-personnel")
+    public Result<List<DispatchPersonnel>> dispatchPersonnel() {
+        return Result.ok(emergencyService.dispatchPersonnel());
     }
 
     @GetMapping("/phones")

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
+import com.sinopec.mmsecurity.dto.DispatchPersonnel;
 import com.sinopec.mmsecurity.dto.DutyMember;
 import com.sinopec.mmsecurity.dto.DutyRoster;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
@@ -26,6 +27,7 @@ import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
 import com.sinopec.mmsecurity.dto.ProcessStage;
 import com.sinopec.mmsecurity.dto.ResponseModeOption;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.FacDispatchPersonnel;
 import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
 import com.sinopec.mmsecurity.entity.FacEmergencyGuidanceRoster;
 import com.sinopec.mmsecurity.entity.FacEmergencyNodeGuidance;
@@ -38,6 +40,7 @@ import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyNodeGuidanceMapper;
@@ -79,6 +82,7 @@ public class EmergencyService {
     private final SysEmergencyPhoneMapper phoneMapper;
     private final SysKnowledgeItemMapper knowledgeMapper;
     private final SysDutyMemberMapper dutyMapper;
+    private final FacDispatchPersonnelMapper dispatchPersonnelMapper;
     private final FacEmergencyCmdMapper cmdMapper;
     private final FacNodePhaseConfigMapper nodePhaseConfigMapper;
     private final FacEmergencyPhaseMapper emergencyPhaseMapper;
@@ -122,6 +126,29 @@ public class EmergencyService {
         }
         ClosedCaseList list = new ClosedCaseList();
         list.setCases(cases);
+        return list;
+    }
+
+    /**
+     * 应急派单人员名册：来自 fac_dispatch_personnel 参考表（V35）。
+     * 供告警详情「派单人员」下拉使用。不复用 sys_duty_member（出参经脱敏，无法辨识）
+     * 与救援人员（375 人，过多不适合下拉）。
+     */
+    public List<DispatchPersonnel> dispatchPersonnel() {
+        List<FacDispatchPersonnel> rows = dispatchPersonnelMapper.selectList(
+                new LambdaQueryWrapper<FacDispatchPersonnel>()
+                        .eq(FacDispatchPersonnel::getStatus, 1)
+                        .orderByAsc(FacDispatchPersonnel::getSortNo));
+        List<DispatchPersonnel> list = new ArrayList<>();
+        for (FacDispatchPersonnel r : rows) {
+            DispatchPersonnel p = new DispatchPersonnel();
+            p.setId(r.getId());
+            p.setName(r.getPersonName());
+            p.setRole(r.getDutyRole());
+            p.setDepartment(r.getDepartment());
+            p.setPhone(r.getPhone());
+            list.add(p);
+        }
         return list;
     }
 

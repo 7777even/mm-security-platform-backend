@@ -1,0 +1,136 @@
+-- =============================================================================
+-- V35 大屏端剩余数据补接（H2 方言）
+--   1) fac_dispatch_personnel 派单人员名册（A3：替代前端 AlarmDetailPanel 硬编码 5 人名）
+--   2) fac_video_linkage_option 视频联动选项（A2：预置点 / 业务对象两类无法派生的词表）
+--   3) fac_perimeter_alarm.dispatch_personnel 回填（实测该字段全表为空，导致前端只能硬钉）
+--   4) 数据集加厚（B 类）：值班部门 / 闭环案例 / 知识库 / 监测告警 / 系统消息 / 通讯设备
+--   设计：openspec/changes/2026-09-10-screen-remaining-data-backend/design.md
+--   纪律：V1–V34 已进共享环境，禁改禁删；本期只新增。
+--   H2 保留字规避：列名不用裸 role/name/order（→duty_role/person_name/sort_no）。
+-- =============================================================================
+
+-- 1) 派单人员名册
+CREATE TABLE fac_dispatch_personnel (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    person_name VARCHAR(32)  NOT NULL,
+    duty_role   VARCHAR(32)  NOT NULL,
+    department  VARCHAR(64)  NOT NULL,
+    phone       VARCHAR(32)  NOT NULL,
+    sort_no     INT          NOT NULL DEFAULT 0,
+    status      TINYINT      NOT NULL DEFAULT 1,
+    deleted     TINYINT      NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO fac_dispatch_personnel (person_name, duty_role, department, phone, sort_no, status) VALUES
+  ('杨恒朋', '值班领导',   '公司总值班室', '137-9253-6966', 1, 1),
+  ('宋文帅', '副总指挥',   '公司总值班室', '137-9253-6967', 2, 1),
+  ('王钰',   '消防队长',   '炼油消防一中队', '183-0055-6145', 3, 1),
+  ('高策',   '工艺处置组长', '炼油分部工艺组', '183-0055-6146', 4, 1),
+  ('高颖',   '值班员',     '公司总值班室', '183-0055-6147', 5, 1),
+  ('张建国', 'DCS内操',    '炼油分部中控室', '139-0668-2233', 6, 1),
+  ('李明辉', '值班长',     '加氢制氢部',   '138-0288-3456', 7, 1),
+  ('王安全', '现场外操',   '炼油分部外操班', '139-0668-2234', 8, 1),
+  ('赵启明', '安全员',     '安全环保部',   '138-0288-3457', 9, 1),
+  ('陈立群', '环保监测员', '安全环保部',   '138-0288-3458', 10, 1);
+
+-- 2) 视频联动选项（预置点 / 业务对象；相机名与相机类型由 fac_video_camera 派生，不落此表）
+CREATE TABLE fac_video_linkage_option (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    option_type  VARCHAR(32) NOT NULL,
+    option_label VARCHAR(64) NOT NULL,
+    sort_no      INT         NOT NULL DEFAULT 0
+);
+
+INSERT INTO fac_video_linkage_option (option_type, option_label, sort_no) VALUES
+  ('PRESET_POINT', '预置点1', 1),
+  ('PRESET_POINT', '预置点2', 2),
+  ('PRESET_POINT', '预置点3', 3),
+  ('PRESET_POINT', '预置点4', 4),
+  ('PRESET_POINT', '预置点5', 5),
+  ('PRESET_POINT', '预置点6', 6),
+  ('PRESET_POINT', '预置点7', 7),
+  ('PRESET_POINT', '预置点8', 8),
+  ('PRESET_POINT', '预置点9', 9);
+
+INSERT INTO fac_video_linkage_option (option_type, option_label, sort_no) VALUES
+  ('BUSINESS_OBJECT', '石脑油罐区', 1),
+  ('BUSINESS_OBJECT', '催化裂化装置', 2),
+  ('BUSINESS_OBJECT', '催化氢解装置', 3),
+  ('BUSINESS_OBJECT', '储油罐区', 4),
+  ('BUSINESS_OBJECT', 'A生产区', 5),
+  ('BUSINESS_OBJECT', 'B生产区', 6),
+  ('BUSINESS_OBJECT', '乙烯装置区', 7),
+  ('BUSINESS_OBJECT', '乙烯罐区', 8),
+  ('BUSINESS_OBJECT', '装卸台', 9),
+  ('BUSINESS_OBJECT', '公用工程站', 10),
+  ('BUSINESS_OBJECT', '危化品仓库', 11),
+  ('BUSINESS_OBJECT', '消防泵房', 12);
+
+-- 3) 回填周界告警派单人员（原种子该列为空，导致 /security/perimeter-alarms/latest 的
+--    dispatchPersonnel 恒为空数组，前端 AlarmDetailPanel 只能硬编码人名）
+UPDATE fac_perimeter_alarm SET dispatch_personnel = '杨恒朋、王钰、高策' WHERE id = 1;
+UPDATE fac_perimeter_alarm SET dispatch_personnel = '李明辉、赵启明'     WHERE id = 2;
+
+-- 4) 数据集加厚
+-- 4.1 值班人员：补三个部门（原有 8 人均为「全部」部门）
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES
+  ('周振华', '139-0118-2201', '调度主任', '生产调度部', '白班'),
+  ('吴俊杰', '139-0118-2202', '调度员',   '生产调度部', '白班'),
+  ('郑海涛', '139-0118-2203', '调度员',   '生产调度部', '夜班'),
+  ('马国强', '139-0118-2204', '中队长',   '消防救援部', '白班'),
+  ('孙立伟', '139-0118-2205', '战斗员',   '消防救援部', '白班'),
+  ('何建华', '139-0118-2206', '驾驶员',   '消防救援部', '夜班'),
+  ('林素芬', '139-0118-2207', '环保专员', '安全环保部', '白班'),
+  ('徐文斌', '139-0118-2208', '安全主管', '安全环保部', '夜班');
+
+-- 4.2 闭环案例（/emergency/closed-cases 取自 fac_alarm status=3 CLOSED；alarm_id 取 1xx 段避开 V2 种子 001-012）
+INSERT INTO fac_alarm (alarm_id, device_code, level, type, title, content, status, occurred_at, location, category, warned) VALUES
+  ('AE-2026-101', 'F0123456789012345678', 2, 'FIRE',   '装置C消防探头-F03 误报',     '现场确认为蒸汽干扰，探头复位后恢复正常。', 3, '2026-09-05 11:20:00', '装置C', '消防', TRUE),
+  ('AE-2026-102', 'G0123456789012345678', 2, 'GAS',    '罐区A可燃气体探测器报警',     '检测为阀门微量渗漏，紧固后复检合格。',     3, '2026-09-04 09:42:00', '罐区A', '气体', TRUE),
+  ('AE-2026-103', 'C0123456789012345678', 1, 'CCTV',   '周界东段人员越界识别',        '确认为施工人员临时通行，已补办手续。',     3, '2026-09-03 16:08:00', '周界东段', '安防', TRUE),
+  ('AE-2026-104', 'F0123456789012345679', 3, 'FIRE',   '装卸台静电接地报警',          '接地线重新连接后报警消除。',               3, '2026-09-02 14:35:00', '装卸台', '消防', TRUE),
+  ('AE-2026-105', 'G0123456789012345679', 2, 'GAS',    '乙烯装置区有毒气体报警',      '仪表故障误报，已更换传感器并校准。',       3, '2026-09-01 10:15:00', '乙烯装置区', '气体', TRUE),
+  ('AE-2026-106', 'F0123456789012345680', 1, 'FIRE',   '公用工程站烟感报警',          '焊接作业扬尘触发，作业结束通风后恢复。',   3, '2026-08-30 15:50:00', '公用工程站', '消防', TRUE),
+  ('AE-2026-107', 'C0123456789012345679', 2, 'CCTV',   '危化品仓库未授权进入',        '核实为巡检人员刷卡记录延迟，已补录。',     3, '2026-08-29 08:22:00', '危化品仓库', '安防', TRUE);
+
+-- 4.3 应急知识库（原有 3 条）
+INSERT INTO sys_knowledge_item (title, count, icon) VALUES
+  ('危险化学品泄漏处置', 54, 'Warning'),
+  ('人员中毒窒息急救',   33, 'FirstAidKit'),
+  ('应急疏散与集合清点', 41, 'Guide'),
+  ('消防器材使用规范',   76, 'Fire'),
+  ('环境保护应急监测',   28, 'Monitor'),
+  ('事故上报与信息发布', 19, 'Document');
+
+-- 4.4 监测告警（fac_monitoring_alarm，id 为字符串主键）
+INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES
+  ('ma-04', '可燃气体浓度越限', '3#罐区北侧检测值 22% LEL，接近报警阈值', '罐区A',   '2026-09-10 09:12', 'warning'),
+  ('ma-05', '液位高高位报警',   '石脑油罐 T-203 液位 92%，触发高高位',     '储油罐区', '2026-09-10 08:47', 'danger'),
+  ('ma-06', '温度越限',         '催化裂化装置反应器出口温度 512℃',        '装置B',   '2026-09-10 08:05', 'warning'),
+  ('ma-07', '压力异常',         '加氢装置系统压力 15.8MPa，超出上限',      '装置A',   '2026-09-10 07:33', 'danger'),
+  ('ma-08', '视频智能识别',     '周界西段识别到未戴安全帽人员',            '周界西段', '2026-09-10 07:10', 'warning'),
+  ('ma-09', '设备离线',         '乙烯装置区 5# 监测点通讯中断',            '乙烯装置区','2026-09-09 22:41', 'warning'),
+  ('ma-10', '烟气排放超标',     '脱硫出口二氧化硫浓度瞬时超标',            '公用工程站','2026-09-09 20:18', 'danger'),
+  ('ma-11', '消防水压不足',     '消防泵房稳压泵压力 0.42MPa 低于下限',     '消防泵房', '2026-09-09 18:55', 'warning'),
+  ('ma-12', '门禁异常',         '东门卡口连续三次刷卡失败',                '门禁卡口', '2026-09-09 17:26', 'warning');
+
+-- 4.5 系统消息（大屏底部滚动，原有 2 条）
+INSERT INTO fac_system_message (msg_type, title, content, occurred_at, sort_no) VALUES
+  ('warning', '台风预警',     '第 12 号台风「海葵」外围云系将于明日影响厂区，请做好防台防汛准备。', '2026-09-10 18:20', 3),
+  ('danger',  '消防水压偏低', '消防泵房稳压泵压力 0.42MPa，低于运行下限，请立即排查。',            '2026-09-10 17:05', 4),
+  ('warning', '设备离线',     '乙烯装置区 5# 监测点通讯中断，已通知仪表班组处理。',                 '2026-09-10 15:40', 5),
+  ('danger',  '可燃气体报警', '3#罐区北侧检测值 22% LEL，请现场确认。',                             '2026-09-10 14:12', 6),
+  ('warning', '演练提醒',     '本周六上午 9:00 举行公司级综合应急演练，请相关单位准时参加。',       '2026-09-10 11:30', 7);
+
+-- 4.6 通讯设备（原有广播 3 台）
+INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name, location_name, device_status, longitude, latitude, category_name, install_time, owner_name, ip_address, last_check_time, sort_no) VALUES
+  ('BCD-004', 'BROADCAST', 'broadcast', '广播', 'A装置区广播4#', 'A装置区', 'A装置区东侧', 'ONLINE',    110.8861, 21.6772, '应急广播', '2024-05-12', '李强', '10.18.6.24', '2026-09-08', 4),
+  ('BCD-005', 'BROADCAST', 'broadcast', '广播', 'B装置区广播3#', 'B装置区', 'B装置区西侧', 'ONLINE',    110.8792, 21.6741, '应急广播', '2024-05-12', '李强', '10.18.6.25', '2026-09-08', 5),
+  ('BCD-006', 'BROADCAST', 'broadcast', '广播', '罐区广播2#',    '罐区A',  '罐区A北侧',   'OFFLINE',   110.8821, 21.6802, '应急广播', '2024-05-12', '李强', '10.18.6.26', '2026-09-08', 6),
+  ('TEL-001', 'TELEPHONE', 'telephone', '电话', '中控室调度电话', '中控室', '中控室操作台', 'ONLINE',   110.8868, 21.6762, '调度电话', '2023-11-02', '周振华', '10.18.7.11', '2026-09-09', 7),
+  ('TEL-002', 'TELEPHONE', 'telephone', '电话', '消防队值班电话', '消防队', '消防队值班室', 'ONLINE',   110.8842, 21.6788, '调度电话', '2023-11-02', '马国强', '10.18.7.12', '2026-09-09', 8),
+  ('RAD-001', 'RADIO',     'radio',     '对讲', '应急指挥对讲1#', '全厂',   '指挥中心',    'ONLINE',    110.8865, 21.6765, '集群对讲', '2023-11-02', '宋文帅', '10.18.8.31', '2026-09-09', 9),
+  ('RAD-002', 'RADIO',     'radio',     '对讲', '现场处置对讲2#', '全厂',   '现场指挥车',  'ONLINE',    110.8865, 21.6765, '集群对讲', '2023-11-02', '王钰',   '10.18.8.32', '2026-09-09', 10),
+  ('RAD-003', 'RADIO',     'radio',     '对讲', '现场处置对讲3#', '全厂',   '现场指挥车',  'MAINTENANCE',110.8865, 21.6765, '集群对讲', '2023-11-02', '王钰',   '10.18.8.33', '2026-09-08', 11);

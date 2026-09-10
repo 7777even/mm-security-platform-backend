@@ -8,6 +8,7 @@ import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoCategoryItem;
 import com.sinopec.mmsecurity.dto.VideoGroupNode;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
+import com.sinopec.mmsecurity.dto.VideoLinkageOptions;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleInput;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
 import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
@@ -15,10 +16,12 @@ import com.sinopec.mmsecurity.dto.VideoNavigation;
 import com.sinopec.mmsecurity.entity.FacVideoCamera;
 import com.sinopec.mmsecurity.entity.FacVideoGroup;
 import com.sinopec.mmsecurity.entity.FacVideoLinkage;
+import com.sinopec.mmsecurity.entity.FacVideoLinkageOption;
 import com.sinopec.mmsecurity.entity.FacVideoLinkageRule;
 import com.sinopec.mmsecurity.mapper.FacVideoCameraMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoGroupMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageMapper;
+import com.sinopec.mmsecurity.mapper.FacVideoLinkageOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageRuleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,6 +49,7 @@ public class VideoService {
     private final FacVideoCameraMapper cameraMapper;
     private final FacVideoLinkageMapper linkageMapper;
     private final FacVideoLinkageRuleMapper linkageRuleMapper;
+    private final FacVideoLinkageOptionMapper linkageOptionMapper;
 
     /** 左侧导航：顶部分类（扁平）+ 分组树。 */
     public VideoNavigation navigation() {
@@ -119,6 +123,39 @@ public class VideoService {
     }
 
     /** 视频联动配置列表。 */
+    /**
+     * 视频联动配置弹窗的四组下拉选项。
+     * 相机名 / 相机类型由 fac_video_camera 派生；预置点 / 业务对象读 fac_video_linkage_option（V35）。
+     */
+    public VideoLinkageOptions linkageOptions() {
+        List<FacVideoCamera> cameras = cameraMapper.selectList(new LambdaQueryWrapper<FacVideoCamera>()
+                .orderByAsc(FacVideoCamera::getSortNo)
+                .orderByAsc(FacVideoCamera::getId));
+        VideoLinkageOptions options = new VideoLinkageOptions();
+        options.setMonitorNames(cameras.stream()
+                .map(FacVideoCamera::getName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+        options.setBusinessObjectCategories(cameras.stream()
+                .map(FacVideoCamera::getCameraType)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList());
+        options.setPresetPoints(optionLabels("PRESET_POINT"));
+        options.setBusinessObjects(optionLabels("BUSINESS_OBJECT"));
+        return options;
+    }
+
+    private List<String> optionLabels(String optionType) {
+        return linkageOptionMapper.selectList(new LambdaQueryWrapper<FacVideoLinkageOption>()
+                        .eq(FacVideoLinkageOption::getOptionType, optionType)
+                        .orderByAsc(FacVideoLinkageOption::getSortNo)).stream()
+                .map(FacVideoLinkageOption::getOptionLabel)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
     public List<VideoLinkageItem> linkages() {
         return linkageMapper.selectList(new LambdaQueryWrapper<FacVideoLinkage>()
                         .orderByAsc(FacVideoLinkage::getSortNo)).stream()

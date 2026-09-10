@@ -22,6 +22,7 @@ import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyNodeGuidanceMapper;
@@ -61,6 +62,8 @@ class EmergencyServiceTest {
     private final SysEmergencyPhoneMapper phoneMapper = mock(SysEmergencyPhoneMapper.class);
     private final SysKnowledgeItemMapper knowledgeMapper = mock(SysKnowledgeItemMapper.class);
     private final SysDutyMemberMapper dutyMapper = mock(SysDutyMemberMapper.class);
+    private final FacDispatchPersonnelMapper dispatchPersonnelMapper =
+            mock(FacDispatchPersonnelMapper.class);
     private final FacEmergencyCmdMapper cmdMapper = mock(FacEmergencyCmdMapper.class);
     private final FacNodePhaseConfigMapper nodePhaseConfigMapper =
             mock(FacNodePhaseConfigMapper.class);
@@ -76,8 +79,9 @@ class EmergencyServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final EmergencyService service = new EmergencyService(
             alarmMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper,
-            cmdMapper, nodePhaseConfigMapper, emergencyPhaseMapper, responseModeMapper,
-            processStageMapper, nodeGuidanceMapper, guidanceRosterMapper, objectMapper);
+            dispatchPersonnelMapper, cmdMapper, nodePhaseConfigMapper, emergencyPhaseMapper,
+            responseModeMapper, processStageMapper, nodeGuidanceMapper, guidanceRosterMapper,
+            objectMapper);
 
     private static SysEmergencyStrength strength(String kind, int count, String icon) {
         SysEmergencyStrength s = new SysEmergencyStrength();
