@@ -27,8 +27,9 @@ import java.util.List;
 /**
  * 数据字典管理接口。
  *
- * <p>类级门禁为 ADMIN（字典维护属系统管理域）；唯一例外是
- * {@link #options(String)}——业务只读端点，任何已登录用户可用（方法级注解覆盖类级）。</p>
+ * <p>类级 {@code @RequireAuth(role = "ADMIN")} 兜底；方法级 {@code @RequireAuth(perm = "system:dict:*")}
+ * 为 ADR-5 第二步细粒度判定。唯一例外是 {@link #options(String)}——业务只读端点，
+ * 方法级 {@code @RequireAuth}（无 perm）覆盖类级，登录即可读，无需管理员。</p>
  */
 @RestController
 @RequestMapping("/api/v1/system")
@@ -39,6 +40,7 @@ public class SystemDictController {
     private final SystemDictService systemDictService;
 
     /** 字典类型分页。 */
+    @RequireAuth(perm = "system:dict:view")
     @GetMapping("/dict-types")
     public Result<DictTypePageResult> typePage(
             @RequestParam(defaultValue = "1") long page,
@@ -48,24 +50,28 @@ public class SystemDictController {
     }
 
     /** 新增字典类型。 */
+    @RequireAuth(perm = "system:dict:create")
     @PostMapping("/dict-types")
     public Result<DictTypeItem> createType(@Valid @RequestBody DictTypeSaveRequest payload) {
         return Result.ok(systemDictService.createType(payload));
     }
 
     /** 修改字典类型（内置字典禁改标识；改标识时同步迁移字典项）。 */
+    @RequireAuth(perm = "system:dict:edit")
     @PutMapping("/dict-types/{id}")
     public Result<DictTypeItem> updateType(@PathVariable Long id, @Valid @RequestBody DictTypeSaveRequest payload) {
         return Result.ok(systemDictService.updateType(id, payload));
     }
 
     /** 删除字典类型（内置禁删、有字典项禁删）。 */
+    @RequireAuth(perm = "system:dict:delete")
     @DeleteMapping("/dict-types/{id}")
     public Result<DeleteResult> deleteType(@PathVariable Long id) {
         return Result.ok(systemDictService.deleteType(id));
     }
 
     /** 字典项分页（须指定 dictCode）。 */
+    @RequireAuth(perm = "system:dict:view")
     @GetMapping("/dict-items")
     public Result<DictItemPageResult> itemPage(
             @RequestParam String dictCode,
@@ -75,18 +81,21 @@ public class SystemDictController {
     }
 
     /** 新增字典项。 */
+    @RequireAuth(perm = "system:dict:create")
     @PostMapping("/dict-items")
     public Result<DictItemItem> createItem(@Valid @RequestBody DictItemSaveRequest payload) {
         return Result.ok(systemDictService.createItem(payload));
     }
 
     /** 修改字典项。 */
+    @RequireAuth(perm = "system:dict:edit")
     @PutMapping("/dict-items/{id}")
     public Result<DictItemItem> updateItem(@PathVariable Long id, @Valid @RequestBody DictItemSaveRequest payload) {
         return Result.ok(systemDictService.updateItem(id, payload));
     }
 
     /** 删除字典项。 */
+    @RequireAuth(perm = "system:dict:delete")
     @DeleteMapping("/dict-items/{id}")
     public Result<DeleteResult> deleteItem(@PathVariable Long id) {
         return Result.ok(systemDictService.deleteItem(id));
