@@ -226,6 +226,16 @@ INSERT INTO sys_role(role_code, role_name, data_scope, status, built_in, sort_or
 
 ---
 
+### 5.5 标识唯一性与逻辑删除（实施期发现的既有语义鸿沟）
+
+`sys_user.username` / `sys_role.role_code` / `sys_dict_type.dict_code` 均带**唯一索引**，而删除是**逻辑删除**（行仍物理存在）。MyBatis-Plus 的查询会自动追加 `deleted=0`，因此 `selectCount` **看不到已删行** → 预检查放行、数据库唯一键拒绝，只能抛出笼统的「数据冲突：请检查唯一键或必填字段」，且用户无法判断原因。
+
+**处置**：三个 Mapper 增加 `countXxxIncludingDeleted(value[, excludeId])`（`@Select` 原生 SQL 绕过逻辑删除过滤），使应用层判重与数据库约束口径一致，返回准确提示「不可复用（含历史已删除账号/角色/字典）」。**标识符不回收是有意设计**——回收会让新旧记录在审计上无法区分。
+
+> 冒烟首轮正是因此暴露（`smoke_system_rbac.py` 复跑时创建同名用户返回笼统 409），非脚本缺陷而是真实产品缺陷。
+
+---
+
 ## 6. 端点清单
 
 > 前缀 `/api/v1`；B3 包络 `Result<T>`；分页返回 `XxxPageResult{list,total,page,size}`（与前端 `PageResult` 同构）。
@@ -332,7 +342,7 @@ INSERT INTO sys_role(role_code, role_name, data_scope, status, built_in, sort_or
 | 本人改密 | `POST /auth/password`：校验旧密码 → 校验策略 → 写新哈希 → 更新 `pwd_updated_at` → 清 `must_change_pwd`；**失效当前 access 令牌由前端主动登出重登**（无状态无黑名单，不做服务端失效） |
 | 管理员重置 | `POST /system/users/{id}/password/reset`：随机临时密码（12 位含大小写数字符号）→ 置 `must_change_pwd=1` → 返回一次性临时密码 |
 | 强制首登改密 | 登录成功后若 `must_change_pwd=1`，响应 `LoginResult` 带 `mustChangePwd=true`；前端强制跳改密页，改密前不放行到业务路由（**前端拦截 + 后端在业务写端点拒绝**双保险） |
-| 默认账号 | `admin/admin@2026` 种子时置 `must_change_pwd=1`（`password-security.md` 反模式已点名「`admin@2026` 不得当生产凭证」） |
+| 默认账号 | `admin/admin@2026` 种子时置 `must_change_pwd=1`（`password-security.md` 反模式已点名「`admin@2026` 不得当生产凭证」）。**实施期细化**：该标记由 `app.password.force-change-default-admin` 控制——**生产默认 true，dev 置 false**（H2 内存库每次重启重建，强制改密会反复阻断联调）；`PasswordLifecycleInterceptor` 本身在**任何 profile 都启用**，故管理员手动重置口令产生的强制改密在 dev 同样被拦，行为由 `PasswordLifecycleInterceptorTest` 固化 |
 | 复杂度 | 长度 ≥ 8；至少含 大写 / 小写 / 数字 / 符号 中 3 类；不含用户名；不得与旧密码相同。**配置化**（`app.password.*`），默认开启 |
 | 失败锁定 | **本期不做**（§14 Q6） |
 
@@ -373,7 +383,7 @@ INSERT INTO sys_role(role_code, role_name, data_scope, status, built_in, sort_or
 
 ### 10.4 出口脱敏
 
-- 用户列表 / 详情 `realName` 用 `@Masked`（`common/mask` 已落地注解 + `MaskingSerializer`）。
+- 用户列表 / 详情 `realName` **不脱敏，原样返回**（实施期细化）：系统管理端点仅 `ADMIN` 可访问，属 `data-masking.md` 明确允许的「独立权限层下可看明文」出口——用户管理场景若掩名（张*）将无法辨识与核对，反而不满足等保审计可读性。`@Masked` 仍用于通用/非管理出口。
 - `passwordHash` **永不**入任何 DTO；禁止用 `Map.of` 直接回实体（`data-masking.md` 反模式）。
 - 审计 `detail_json` 写入前脱敏。
 
