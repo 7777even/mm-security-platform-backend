@@ -4,12 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
 import com.sinopec.mmsecurity.dto.RiskHeatItem;
+import com.sinopec.mmsecurity.dto.SystemMessageItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacDevice;
+import com.sinopec.mmsecurity.entity.FacSystemMessage;
 import com.sinopec.mmsecurity.entity.FacWorkstation;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
+import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +36,9 @@ class DashboardServiceTest {
     private final FacDeviceMapper deviceMapper = mock(FacDeviceMapper.class);
     private final AlarmMapper alarmMapper = mock(AlarmMapper.class);
     private final FacWorkstationMapper workstationMapper = mock(FacWorkstationMapper.class);
-    private final DashboardService service = new DashboardService(deviceMapper, alarmMapper, workstationMapper);
+    private final FacSystemMessageMapper systemMessageMapper = mock(FacSystemMessageMapper.class);
+    private final DashboardService service =
+            new DashboardService(deviceMapper, alarmMapper, workstationMapper, systemMessageMapper);
 
     @Test
     void overview_aggregatesRealCounts() {
@@ -170,5 +175,29 @@ class DashboardServiceTest {
         a.setDeviceCode(code);
         a.setStatus(0);
         return a;
+    }
+
+    @Test
+    void systemMessages_mapsRealTable() {
+        FacSystemMessage m1 = new FacSystemMessage();
+        m1.setId(1L);
+        m1.setMsgType("danger");
+        m1.setTitle("人员违规进入");
+        m1.setContent("A装置区域发现非注册人员，请核实。");
+        m1.setOccurredAt("2026-03-17 14:21:30");
+        FacSystemMessage m2 = new FacSystemMessage();
+        m2.setId(2L);
+        m2.setMsgType("warning");
+        m2.setTitle("有毒气体超标");
+        m2.setContent("有毒气体浓度超标，请撤离。");
+        m2.setOccurredAt("2026-03-17 14:21:30");
+        when(systemMessageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(m1, m2));
+
+        List<SystemMessageItem> out = service.systemMessages();
+        assertEquals(2, out.size());
+        assertEquals("danger", out.get(0).getType());
+        assertEquals("人员违规进入", out.get(0).getTitle());
+        assertEquals("2026-03-17 14:21:30", out.get(0).getTime());
+        assertEquals("warning", out.get(1).getType());
     }
 }

@@ -1,17 +1,20 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.dto.FireEquipmentItem;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolCheckItem;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
+import com.sinopec.mmsecurity.entity.FacFireEquipmentCategory;
 import com.sinopec.mmsecurity.entity.FacFireEquipmentStatus;
 import com.sinopec.mmsecurity.entity.FacFirePatrol;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemDef;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemResult;
 import com.sinopec.mmsecurity.entity.FacRescueForceStat;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationStat;
+import com.sinopec.mmsecurity.mapper.FacFireEquipmentCategoryMapper;
 import com.sinopec.mmsecurity.mapper.FacFireEquipmentStatusMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemDefMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
@@ -53,6 +56,7 @@ public class FireMonitoringService {
     private final FacFirePatrolMapper firePatrolMapper;
     private final FacFirePatrolItemDefMapper patrolItemDefMapper;
     private final FacFirePatrolItemResultMapper patrolItemResultMapper;
+    private final FacFireEquipmentCategoryMapper fireEquipmentCategoryMapper;
 
     /** 消防救援力量统计：来自 fac_rescue_force_stat */
     public List<RescueForceStat> rescueForces() {
@@ -81,6 +85,21 @@ public class FireMonitoringService {
             s.setLabel(r.getLabel());
             s.setCount(r.getStatCount());
             out.add(s);
+        }
+        return out;
+    }
+
+    /** 消防设备分类清单：来自 V24 fac_fire_equipment_category，取代大屏硬编码 fireEquipment。 */
+    public List<FireEquipmentItem> equipment() {
+        List<FacFireEquipmentCategory> rows = fireEquipmentCategoryMapper.selectList(
+                new LambdaQueryWrapper<FacFireEquipmentCategory>().orderByAsc(FacFireEquipmentCategory::getSortNo));
+        List<FireEquipmentItem> out = new ArrayList<>();
+        for (FacFireEquipmentCategory r : rows) {
+            FireEquipmentItem item = new FireEquipmentItem();
+            item.setId(r.getId());
+            item.setName(r.getCategoryName());
+            item.setCount(r.getEquipCount());
+            out.add(item);
         }
         return out;
     }

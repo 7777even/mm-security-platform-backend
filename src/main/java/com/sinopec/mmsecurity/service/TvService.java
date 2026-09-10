@@ -5,18 +5,25 @@ import com.sinopec.mmsecurity.dto.TvEventBreakdownItem;
 import com.sinopec.mmsecurity.dto.TvInspectionItem;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
 import com.sinopec.mmsecurity.dto.TvMaintenanceOrder;
+import com.sinopec.mmsecurity.dto.TvMapPoint;
+import com.sinopec.mmsecurity.dto.TvMonitorDetail;
 import com.sinopec.mmsecurity.dto.TvOperationStats;
 import com.sinopec.mmsecurity.dto.TvOverview;
 import com.sinopec.mmsecurity.dto.TvOverviewItem;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
+import com.sinopec.mmsecurity.entity.FacTvMapPoint;
+import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
+import com.sinopec.mmsecurity.mapper.FacTvMapPointMapper;
+import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +45,8 @@ public class TvService {
     private final FacTvStatItemMapper statItemMapper;
     private final FacTvOperationStatMapper operationStatMapper;
     private final FacTvInspectionRecordMapper inspectionRecordMapper;
+    private final FacTvMapPointMapper tvMapPointMapper;
+    private final FacTvMonitorMapper tvMonitorMapper;
 
     /** 首屏聚合：概览卡片 + 运行统计 + 维保工单 + 事件分析。 */
     public TvOverview overview() {
@@ -100,6 +109,43 @@ public class TvService {
                 .filter(r -> !KIND_VEHICLE.equals(r.getRecordKind()))
                 .map(this::toInspectionItem).collect(Collectors.toList()));
         return summary;
+    }
+
+    /** 工业电视地图撒点：来自 V24 fac_tv_map_point，取代前端硬编码 tvVideoMapPoints。 */
+    public List<TvMapPoint> tvMapPoints() {
+        List<FacTvMapPoint> rows = tvMapPointMapper.selectList(
+                new LambdaQueryWrapper<FacTvMapPoint>().orderByAsc(FacTvMapPoint::getSortNo));
+        List<TvMapPoint> out = new ArrayList<>();
+        for (FacTvMapPoint r : rows) {
+            TvMapPoint p = new TvMapPoint();
+            p.setId(r.getPointCode());
+            p.setLabel(r.getPointLabel());
+            p.setGroup(r.getPointGroup());
+            p.setLongitude(r.getLongitude());
+            p.setLatitude(r.getLatitude());
+            p.setHeight(r.getHeight());
+            p.setOnline(Boolean.TRUE.equals(r.getOnline()));
+            out.add(p);
+        }
+        return out;
+    }
+
+    /** 视频监控点位档案：来自 V24 fac_tv_monitor，取代前端硬编码 tvVideoMonitorDetails。 */
+    public TvMonitorDetail tvMonitorByCode(String code) {
+        FacTvMonitor m = tvMonitorMapper.selectOne(
+                new LambdaQueryWrapper<FacTvMonitor>().eq(FacTvMonitor::getMonitorCode, code));
+        if (m == null) return null;
+        TvMonitorDetail d = new TvMonitorDetail();
+        d.setId(m.getMonitorCode());
+        d.setName(m.getMonitorName());
+        d.setOnline(Boolean.TRUE.equals(m.getOnline()));
+        d.setIntegrity(m.getIntegrity());
+        d.setMonitorType(m.getMonitorType());
+        d.setDepartment(m.getDepartment());
+        d.setLocation(m.getLocation());
+        d.setHeight(m.getHeight());
+        d.setAngle(m.getAngle());
+        return d;
     }
 
     private TvInspectionItem toInspectionItem(FacTvInspectionRecord record) {

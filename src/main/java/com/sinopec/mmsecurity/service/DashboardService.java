@@ -4,13 +4,16 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
 import com.sinopec.mmsecurity.dto.RiskHeatItem;
+import com.sinopec.mmsecurity.dto.SystemMessageItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacDevice;
 import com.sinopec.mmsecurity.entity.FacWorkstation;
+import com.sinopec.mmsecurity.entity.FacSystemMessage;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
+import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 态势总览服务。
@@ -38,6 +42,7 @@ public class DashboardService {
     private final FacDeviceMapper deviceMapper;
     private final AlarmMapper alarmMapper;
     private final FacWorkstationMapper workstationMapper;
+    private final FacSystemMessageMapper systemMessageMapper;
 
     /** 综合风险指数权重（活动报警权重更高，离线设备次之），结果四舍五入到 2 位小数 */
     private static final double WEIGHT_ACTIVE_ALARM = 0.7;
@@ -71,6 +76,21 @@ public class DashboardService {
         List<FacWorkstation> rows = workstationMapper.selectList(
                 new LambdaQueryWrapper<FacWorkstation>().eq(FacWorkstation::getDeleted, 0));
         return rows.stream().map(this::toWorkstation).toList();
+    }
+
+    /** 大屏底部滚动系统消息（危险/预警两类），来自 V24 fac_system_message 真实表。 */
+    public List<SystemMessageItem> systemMessages() {
+        List<FacSystemMessage> rows = systemMessageMapper.selectList(
+                new LambdaQueryWrapper<FacSystemMessage>().orderByAsc(FacSystemMessage::getSortNo));
+        return rows.stream().map(r -> {
+            SystemMessageItem item = new SystemMessageItem();
+            item.setId(r.getId());
+            item.setType(r.getMsgType());
+            item.setTitle(r.getTitle());
+            item.setContent(r.getContent());
+            item.setTime(r.getOccurredAt());
+            return item;
+        }).collect(Collectors.toList());
     }
 
     /**

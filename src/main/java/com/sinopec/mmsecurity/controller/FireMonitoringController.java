@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
+import com.sinopec.mmsecurity.dto.FireEquipmentItem;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
@@ -41,5 +42,10 @@ public class FireMonitoringController {
     @GetMapping("/patrols")
     public Result<List<FirePatrolRecord>> patrols() {
         return Result.ok(fireMonitoringService.patrols());
+    }
+
+    @GetMapping("/equipment")
+    public Result<List<FireEquipmentItem>> equipment() {
+        return Result.ok(fireMonitoringService.equipment());
     }
 }

@@ -1,15 +1,18 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.dto.FireEquipmentItem;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
+import com.sinopec.mmsecurity.entity.FacFireEquipmentCategory;
 import com.sinopec.mmsecurity.entity.FacFireEquipmentStatus;
 import com.sinopec.mmsecurity.entity.FacFirePatrol;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemDef;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemResult;
 import com.sinopec.mmsecurity.entity.FacRescueForceStat;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationStat;
+import com.sinopec.mmsecurity.mapper.FacFireEquipmentCategoryMapper;
 import com.sinopec.mmsecurity.mapper.FacFireEquipmentStatusMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemDefMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
@@ -40,10 +43,12 @@ class FireMonitoringServiceTest {
     private final FacFirePatrolItemDefMapper patrolItemDefMapper = Mockito.mock(FacFirePatrolItemDefMapper.class);
     private final FacFirePatrolItemResultMapper patrolItemResultMapper =
             Mockito.mock(FacFirePatrolItemResultMapper.class);
+    private final FacFireEquipmentCategoryMapper fireEquipmentCategoryMapper =
+            Mockito.mock(FacFireEquipmentCategoryMapper.class);
 
     private final FireMonitoringService service = new FireMonitoringService(
             rescueForceStatMapper, specialOperationStatMapper, fireEquipmentStatusMapper,
-            firePatrolMapper, patrolItemDefMapper, patrolItemResultMapper);
+            firePatrolMapper, patrolItemDefMapper, patrolItemResultMapper, fireEquipmentCategoryMapper);
 
     @Test
     void rescueForces_mapsStatCountToValue() {
@@ -180,5 +185,25 @@ class FireMonitoringServiceTest {
         p.setLocations(locations);
         p.setCompleted(true);
         return p;
+    }
+
+    @Test
+    void equipment_mapsCategoryTable() {
+        FacFireEquipmentCategory c1 = new FacFireEquipmentCategory();
+        c1.setId(1L);
+        c1.setCategoryName("火灾自动报警系统");
+        c1.setEquipCount(665);
+        FacFireEquipmentCategory c2 = new FacFireEquipmentCategory();
+        c2.setId(2L);
+        c2.setCategoryName("消防水源");
+        c2.setEquipCount(665);
+        Mockito.when(fireEquipmentCategoryMapper.selectList(ArgumentMatchers.any()))
+                .thenReturn(List.of(c1, c2));
+
+        List<FireEquipmentItem> out = service.equipment();
+        assertEquals(2, out.size());
+        assertEquals("火灾自动报警系统", out.get(0).getName());
+        assertEquals(665, out.get(0).getCount());
+        assertEquals(2L, out.get(1).getId());
     }
 }
