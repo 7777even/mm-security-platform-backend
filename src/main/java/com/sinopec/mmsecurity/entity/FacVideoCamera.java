@@ -34,4 +34,8 @@ public class FacVideoCamera implements Serializable {
     private Integer thumbIndex;
 
     private Integer sortNo;
+
+    /** 静态截图字节（演示占位图，dev seeder 生成；后续接真流时替换为媒体网关转发的流地址/截图）。 */
+    @com.baomidou.mybatisplus.annotation.TableField("snapshot_bytes")
+    private byte[] snapshotBytes;
 }

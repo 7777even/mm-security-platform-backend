@@ -13,7 +13,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** 视频控制/视频墙大屏（fm-video-control / fm-video-wall）只读接口，数据源为 V14 fac_video_* 真实表。 */
 @RestController
@@ -47,5 +55,22 @@ public class VideoController {
     @GetMapping("/linkages/{configCode}/rules")
     public Result<List<VideoLinkageRuleRow>> linkageRules(@PathVariable String configCode) {
         return Result.ok(videoService.linkageRules(configCode));
+    }
+
+    /**
+     * 摄像头静态截图（演示）：返回 snapshot_bytes 列中的 JPEG 字节。
+     * 当前为 dev seeder 生成的占位图；后续接真流时替换为媒体网关转发的流地址/截图。
+     * 鉴权同 /video/*（需 JWT），直接走字节端点（前端用带 token 的 http 客户端取 blob）。
+     */
+    @GetMapping("/cameras/{id}/snapshot")
+    public ResponseEntity<Resource> cameraSnapshot(@PathVariable Long id) {
+        byte[] bytes = videoService.getSnapshotBytes(id);
+        if (bytes == null || bytes.length == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS))
+                .body(new ByteArrayResource(bytes));
     }
 }

@@ -96,6 +96,12 @@ public class VideoService {
         return result;
     }
 
+    /** 摄像头静态截图字节（演示占位图）。无则返 null，由端点层转 404。 */
+    public byte[] getSnapshotBytes(Long id) {
+        FacVideoCamera camera = cameraMapper.selectById(id);
+        return camera == null ? null : camera.getSnapshotBytes();
+    }
+
     private VideoCameraItem toCameraItem(FacVideoCamera camera) {
         VideoCameraItem item = new VideoCameraItem();
         item.setId(camera.getId());

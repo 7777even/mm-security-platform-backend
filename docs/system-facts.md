@@ -45,7 +45,7 @@
 - dev 唯一可实跑：H2 内存 + Flyway（`src/main/resources/db/migration/h2`），`spring.sql.init.enabled=false`。
 - **Flyway 版本纪律**：已进入共享环境的 V-file **禁改/删**，新增只加 V17+。已落地：
   V6 `fac_field_report`；V7 `sys_menu` 加 `allowed_roles` + 重种 5 个 fm-* 顶部菜单；
-  V8 应急力量/通讯录/知识库/值班表（硬编码迁 DB）；V13 production 域；V14 fac_video_*；
+  V8 应急力量/通讯录/知识库/值班表（硬编码迁 DB）；V13 production 域；V14 fac_video_*；V26 fac_video_camera 加 snapshot_bytes BLOB + GET /video/cameras/{id}/snapshot（dev VideoSnapshotSeeder 生成占位 JPEG）。
   V15 fac_tv_*；V16 fac_special_operation_*；V17 emergency_event / V18 emergency_plan /
   V19 rescue_resource / V20 fire_facility / V21 blacklist+fire_situation /
   V22 communication+weather；V23 duty 夜班种子；V24 大屏面板数据集（消防设备分类/系统消息/电视地图撒点/监控档案）。
@@ -80,3 +80,4 @@
 - 2026-09-08：两仓 CI/CD + 跨库契约守门；Dockerfile/compose（本地无 docker 未实跑）；jacoco 0.80；openspec 回填；Prometheus `/actuator/prometheus`。
 - 2026-09-09：生产应急域全栈接线（V13）；video/tv/special-operation 三域（V14–V16）+ 前端契约/services/面板改接；大屏去 mock 收尾（V24 + 4 域端点）。
 - 2026-09-10：续验大屏四端点冒烟全 `code=0`；前端 `vue-tsc` 全绿；契约守门 0 漂移；本系统事实基线分库落地。
+- 2026-09-10（video 流媒体递延项·静态图后端化）：video 静态图改由后端传——fac_video_camera 加 `snapshot_bytes` BLOB（V26），`GET /video/cameras/{id}/snapshot` 返回 `image/jpeg`（无则 404）；dev 启动 `VideoSnapshotSeeder`（`CommandLineRunner` + `@Profile dev`）用 `BufferedImage`+`ImageIO` 生成带名称/位置/REC 角标占位 JPEG 写回 BLOB（27/27 张）。前端 `VideoControlGrid` 用 `blob`→`objectURL` 的 `<img>` 替换原雪碧图占位（规避 `<img>` 无法带 JWT 的 401 坑）。门禁：mvn test 309 绿、vue-tsc 0 错、契约守门 0 漂移；运行时冒烟 camera id=1 → 200 image/jpeg 20144 字节。
