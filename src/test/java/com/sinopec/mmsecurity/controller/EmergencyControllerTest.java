@@ -5,6 +5,8 @@ import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.DutyRoster;
+import com.sinopec.mmsecurity.dto.EmergencyAssistStat;
+import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.EmergencyCommandInstruction;
 import com.sinopec.mmsecurity.dto.EmergencyPhase;
@@ -62,6 +64,26 @@ class EmergencyControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.resources[0].kind").value("应急专家"))
                 .andExpect(jsonPath("$.data.resources[0].count").value(47));
+    }
+
+    @Test
+    void assistStats_returnsItems() throws Exception {
+        EmergencyAssistStatSummary summary = new EmergencyAssistStatSummary();
+        EmergencyAssistStat stat = new EmergencyAssistStat();
+        stat.setLabel("应急预案");
+        stat.setValue(15);
+        stat.setUnit("套");
+        stat.setTone("blue");
+        summary.setItems(List.of(stat));
+        when(service.assistStats()).thenReturn(summary);
+
+        mockMvc.perform(get("/api/v1/emergency/assist-stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.items[0].label").value("应急预案"))
+                .andExpect(jsonPath("$.data.items[0].value").value(15))
+                .andExpect(jsonPath("$.data.items[0].unit").value("套"))
+                .andExpect(jsonPath("$.data.items[0].tone").value("blue"));
     }
 
     @Test

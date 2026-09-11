@@ -2,6 +2,8 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.DeleteResult;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogSummary;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSummary;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
 import com.sinopec.mmsecurity.dto.PlanActionCard;
 import com.sinopec.mmsecurity.dto.PlanActionCardCreate;
@@ -33,6 +35,18 @@ public class EmergencyPlanController {
     @GetMapping("/options")
     public Result<EmergencyPlanOptions> options() {
         return Result.ok(emergencyPlanService.options());
+    }
+
+    /** 预案目录（4 行层级：上级单位 / 公司级 / 消防救援 / 现场处置）。V39。 */
+    @GetMapping("/catalog")
+    public Result<EmergencyPlanCatalogSummary> catalog() {
+        return Result.ok(emergencyPlanService.planCatalog());
+    }
+
+    /** 预案详情字段（5 段：基础 / 评审 / 备案 / 公布 / 评估信息）。V39。 */
+    @GetMapping("/catalog-detail")
+    public Result<EmergencyPlanDetailSummary> catalogDetail() {
+        return Result.ok(emergencyPlanService.planCatalogDetail());
     }
 
     /** 预案矩阵：按 planId 返回预案实例，缺省或未命中时返回默认预案。 */

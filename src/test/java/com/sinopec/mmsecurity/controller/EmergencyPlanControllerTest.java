@@ -2,6 +2,11 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.dto.DeleteResult;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogItem;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogSummary;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailField;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSection;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSummary;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
 import com.sinopec.mmsecurity.dto.EmergencyPlanTab;
 import com.sinopec.mmsecurity.dto.PlanActionCard;
@@ -164,5 +169,47 @@ class EmergencyPlanControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.ok").value(true));
+    }
+
+    @Test
+    void catalog_returnsPlanHierarchyRows() throws Exception {
+        EmergencyPlanCatalogSummary summary = new EmergencyPlanCatalogSummary();
+        EmergencyPlanCatalogItem company = new EmergencyPlanCatalogItem();
+        company.setId("company");
+        company.setLabel("公司级预案");
+        company.setPlanName("茂名石化应急预案");
+        company.setCanSwitch(true);
+        company.setIsCurrent(true);
+        summary.setItems(List.of(company));
+        when(service.planCatalog()).thenReturn(summary);
+
+        mvc().perform(get("/api/v1/emergency-plans/catalog"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.items[0].id").value("company"))
+                .andExpect(jsonPath("$.data.items[0].label").value("公司级预案"))
+                .andExpect(jsonPath("$.data.items[0].planName").value("茂名石化应急预案"))
+                .andExpect(jsonPath("$.data.items[0].canSwitch").value(true))
+                .andExpect(jsonPath("$.data.items[0].isCurrent").value(true));
+    }
+
+    @Test
+    void catalogDetail_returnsSectionedFields() throws Exception {
+        EmergencyPlanDetailSummary summary = new EmergencyPlanDetailSummary();
+        EmergencyPlanDetailSection section = new EmergencyPlanDetailSection();
+        section.setTitle("基础信息");
+        EmergencyPlanDetailField field = new EmergencyPlanDetailField();
+        field.setLabel("所属组织");
+        field.setValue("茂名石化应急指挥中心");
+        section.setFields(List.of(field));
+        summary.setSections(List.of(section));
+        when(service.planCatalogDetail()).thenReturn(summary);
+
+        mvc().perform(get("/api/v1/emergency-plans/catalog-detail"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.sections[0].title").value("基础信息"))
+                .andExpect(jsonPath("$.data.sections[0].fields[0].label").value("所属组织"))
+                .andExpect(jsonPath("$.data.sections[0].fields[0].value").value("茂名石化应急指挥中心"));
     }
 }

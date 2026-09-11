@@ -4,6 +4,7 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.DispatchPersonnel;
 import com.sinopec.mmsecurity.dto.DutyRoster;
+import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
 import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
@@ -36,6 +37,12 @@ public class EmergencyController {
     @GetMapping("/strength")
     public Result<EmergencyStrength> strength() {
         return Result.ok(emergencyService.strength());
+    }
+
+    /** 应急辅助信息统计（4 项 KPI：应急预案/现场处置卡/应急联络人/可用消防水源）。V39。 */
+    @GetMapping("/assist-stats")
+    public Result<EmergencyAssistStatSummary> assistStats() {
+        return Result.ok(emergencyService.assistStats());
     }
 
     @GetMapping("/closed-cases")

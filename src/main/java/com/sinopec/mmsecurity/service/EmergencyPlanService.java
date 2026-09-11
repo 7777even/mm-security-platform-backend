@@ -13,7 +13,14 @@ import com.sinopec.mmsecurity.dto.PlanMajorPhase;
 import com.sinopec.mmsecurity.dto.PlanRiskEvent;
 import com.sinopec.mmsecurity.dto.PlanSubPhase;
 import com.sinopec.mmsecurity.dto.SelectableEmergencyPlan;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogItem;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogSummary;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailField;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSection;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSummary;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlan;
+import com.sinopec.mmsecurity.entity.FacEmergencyPlanCatalog;
+import com.sinopec.mmsecurity.entity.FacEmergencyPlanDetail;
 import com.sinopec.mmsecurity.entity.FacPlanActionCard;
 import com.sinopec.mmsecurity.entity.FacPlanInstance;
 import com.sinopec.mmsecurity.entity.FacPlanMajorPhase;
@@ -27,11 +34,16 @@ import com.sinopec.mmsecurity.mapper.FacPlanMajorPhaseMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanResourceMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanRiskEventMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanSubPhaseMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPlanCatalogMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPlanDetailMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,6 +77,8 @@ public class EmergencyPlanService {
     private final FacPlanRiskEventMapper planRiskEventMapper;
     private final FacPlanResourceMapper planResourceMapper;
     private final FacPlanActionCardMapper planActionCardMapper;
+    private final FacEmergencyPlanCatalogMapper planCatalogMapper;
+    private final FacEmergencyPlanDetailMapper planDetailMapper;
 
     /** 预案切换面板：页签 + 事故类型/装置筛选字典 + 预案目录。 */
     public EmergencyPlanOptions options() {
@@ -82,6 +96,57 @@ public class EmergencyPlanService {
         options.setFacilities(FACILITIES);
         options.setPlans(plans.stream().map(this::toSelectable).collect(Collectors.toList()));
         return options;
+    }
+
+    /**
+     * 应急预案目录（4 行层级：上级单位 / 公司级 / 消防救援 / 现场处置）。
+     * 来自 V39 fac_emergency_plan_catalog 参考表，取代前端 EmergencyPlanPanel 硬编码的 planRows。
+     */
+    public EmergencyPlanCatalogSummary planCatalog() {
+        List<FacEmergencyPlanCatalog> rows = planCatalogMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyPlanCatalog>().orderByAsc(FacEmergencyPlanCatalog::getSortNo));
+        EmergencyPlanCatalogSummary summary = new EmergencyPlanCatalogSummary();
+        summary.setItems(rows.stream().map(this::toCatalogItem).collect(Collectors.toList()));
+        return summary;
+    }
+
+    /**
+     * 应急预案详情字段（5 段：基础 / 评审 / 备案 / 公布 / 评估信息）。
+     * 来自 V39 fac_emergency_plan_detail 参考表，取代前端 EmergencyPlanPanel 详情弹窗硬编码段。
+     * 段内字段按 field_sort 升序，段按 section_sort 升序聚合。
+     */
+    public EmergencyPlanDetailSummary planCatalogDetail() {
+        List<FacEmergencyPlanDetail> rows = planDetailMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyPlanDetail>()
+                        .orderByAsc(FacEmergencyPlanDetail::getSectionSort)
+                        .orderByAsc(FacEmergencyPlanDetail::getFieldSort));
+        Map<String, List<FacEmergencyPlanDetail>> bySection = new LinkedHashMap<>();
+        for (FacEmergencyPlanDetail row : rows) {
+            bySection.computeIfAbsent(row.getSectionTitle(), k -> new ArrayList<>()).add(row);
+        }
+        EmergencyPlanDetailSummary summary = new EmergencyPlanDetailSummary();
+        summary.setSections(bySection.entrySet().stream().map(entry -> {
+            EmergencyPlanDetailSection section = new EmergencyPlanDetailSection();
+            section.setTitle(entry.getKey());
+            section.setFields(entry.getValue().stream().map(r -> {
+                EmergencyPlanDetailField field = new EmergencyPlanDetailField();
+                field.setLabel(r.getFieldLabel());
+                field.setValue(r.getFieldValue());
+                return field;
+            }).collect(Collectors.toList()));
+            return section;
+        }).collect(Collectors.toList()));
+        return summary;
+    }
+
+    private EmergencyPlanCatalogItem toCatalogItem(FacEmergencyPlanCatalog row) {
+        EmergencyPlanCatalogItem item = new EmergencyPlanCatalogItem();
+        item.setId(row.getPlanCode());
+        item.setLabel(row.getLabel());
+        item.setPlanName(row.getPlanName());
+        item.setCanSwitch(row.getCanSwitch() != null && row.getCanSwitch() > 0);
+        item.setIsCurrent(row.getIsCurrent() != null && row.getIsCurrent() > 0);
+        return item;
     }
 
     /** 预案矩阵：planId 为空或未命中时回退到默认（sort_no 最小）预案实例。 */

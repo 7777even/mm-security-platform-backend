@@ -16,6 +16,8 @@ import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
 import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
 import com.sinopec.mmsecurity.dto.EmergencyResource;
+import com.sinopec.mmsecurity.dto.EmergencyAssistStat;
+import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
@@ -39,7 +41,9 @@ import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
+import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyAssistStatMapper;
 import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
@@ -78,6 +82,7 @@ import java.util.stream.Collectors;
 public class EmergencyService {
 
     private final AlarmMapper alarmMapper;
+    private final FacEmergencyAssistStatMapper assistStatMapper;
     private final SysEmergencyStrengthMapper strengthMapper;
     private final SysEmergencyPhoneMapper phoneMapper;
     private final SysKnowledgeItemMapper knowledgeMapper;
@@ -106,6 +111,25 @@ public class EmergencyService {
         }
         s.setResources(resources);
         return s;
+    }
+
+    /**
+     * 应急辅助信息统计（4 项 KPI：应急预案/现场处置卡/应急联络人/可用消防水源）。
+     * 来自 V39 fac_emergency_assist_stat 参考表，取代前端 EmergencyAssistPanel 硬编码。
+     */
+    public EmergencyAssistStatSummary assistStats() {
+        List<FacEmergencyAssistStat> rows = assistStatMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyAssistStat>().orderByAsc(FacEmergencyAssistStat::getSortNo));
+        EmergencyAssistStatSummary summary = new EmergencyAssistStatSummary();
+        summary.setItems(rows.stream().map(row -> {
+            EmergencyAssistStat item = new EmergencyAssistStat();
+            item.setLabel(row.getLabel());
+            item.setValue(row.getValue());
+            item.setUnit(row.getUnit());
+            item.setTone(row.getTone());
+            return item;
+        }).collect(Collectors.toList()));
+        return summary;
     }
 
     /** 近期已结案：fac_alarm(status=3 CLOSED) 真实聚合 */

@@ -21,7 +21,10 @@ import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
+import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
+import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyAssistStatMapper;
 import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
@@ -58,6 +61,7 @@ import static org.mockito.Mockito.when;
 class EmergencyServiceTest {
 
     private final AlarmMapper alarmMapper = mock(AlarmMapper.class);
+    private final FacEmergencyAssistStatMapper assistStatMapper = mock(FacEmergencyAssistStatMapper.class);
     private final SysEmergencyStrengthMapper strengthMapper = mock(SysEmergencyStrengthMapper.class);
     private final SysEmergencyPhoneMapper phoneMapper = mock(SysEmergencyPhoneMapper.class);
     private final SysKnowledgeItemMapper knowledgeMapper = mock(SysKnowledgeItemMapper.class);
@@ -78,7 +82,7 @@ class EmergencyServiceTest {
             mock(FacEmergencyGuidanceRosterMapper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final EmergencyService service = new EmergencyService(
-            alarmMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper,
+            alarmMapper, assistStatMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper,
             dispatchPersonnelMapper, cmdMapper, nodePhaseConfigMapper, emergencyPhaseMapper,
             responseModeMapper, processStageMapper, nodeGuidanceMapper, guidanceRosterMapper,
             objectMapper);
@@ -414,5 +418,43 @@ class EmergencyServiceTest {
         assertEquals("对讲机", node.getReportingChain().get(0).getMethod());
         assertEquals(List.of("t1", "t2"), node.getRoleTasks().get(0).getTasks());
         assertEquals("注意安全", node.getGeneralNotice());
+    }
+
+    private static FacEmergencyAssistStat assistStat(String label, int value, String unit, String tone, int sortNo) {
+        FacEmergencyAssistStat s = new FacEmergencyAssistStat();
+        s.setLabel(label);
+        s.setValue(value);
+        s.setUnit(unit);
+        s.setTone(tone);
+        s.setSortNo(sortNo);
+        return s;
+    }
+
+    @Test
+    void assistStats_mapsAllFieldsAndSortsBySortNo() {
+        // Mock 不执行 ORDER BY，故按 sortNo 升序预置（与 DB 返回顺序一致）
+        when(assistStatMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
+                assistStat("应急预案", 15, "套", "blue", 1),
+                assistStat("现场处置卡", 32, "张", "cyan", 2),
+                assistStat("应急联络人", 18, "人", "green", 3),
+                assistStat("可用消防水源", 306, "处", "orange", 4)));
+
+        EmergencyAssistStatSummary summary = service.assistStats();
+
+        assertEquals(4, summary.getItems().size());
+        assertEquals("应急预案", summary.getItems().get(0).getLabel());
+        assertEquals(15, summary.getItems().get(0).getValue());
+        assertEquals("套", summary.getItems().get(0).getUnit());
+        assertEquals("blue", summary.getItems().get(0).getTone());
+        assertEquals("现场处置卡", summary.getItems().get(1).getLabel());
+        assertEquals("应急联络人", summary.getItems().get(2).getLabel());
+        assertEquals("可用消防水源", summary.getItems().get(3).getLabel());
+        assertEquals(306, summary.getItems().get(3).getValue());
+    }
+
+    @Test
+    void assistStats_handlesEmptyTable() {
+        when(assistStatMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        assertTrue(service.assistStats().getItems().isEmpty());
     }
 }

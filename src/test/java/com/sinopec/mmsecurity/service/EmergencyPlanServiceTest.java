@@ -1,17 +1,23 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogSummary;
+import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSummary;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
 import com.sinopec.mmsecurity.dto.PlanActionCard;
 import com.sinopec.mmsecurity.dto.PlanActionCardCreate;
 import com.sinopec.mmsecurity.dto.PlanActionCardUpdate;
 import com.sinopec.mmsecurity.dto.PlanInstance;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlan;
+import com.sinopec.mmsecurity.entity.FacEmergencyPlanCatalog;
+import com.sinopec.mmsecurity.entity.FacEmergencyPlanDetail;
 import com.sinopec.mmsecurity.entity.FacPlanActionCard;
 import com.sinopec.mmsecurity.entity.FacPlanInstance;
 import com.sinopec.mmsecurity.entity.FacPlanMajorPhase;
 import com.sinopec.mmsecurity.entity.FacPlanResource;
 import com.sinopec.mmsecurity.entity.FacPlanRiskEvent;
 import com.sinopec.mmsecurity.entity.FacPlanSubPhase;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPlanCatalogMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPlanDetailMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyPlanMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanActionCardMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanInstanceMapper;
@@ -54,6 +60,10 @@ class EmergencyPlanServiceTest {
     private FacPlanResourceMapper planResourceMapper;
     @Mock
     private FacPlanActionCardMapper planActionCardMapper;
+    @Mock
+    private FacEmergencyPlanCatalogMapper planCatalogMapper;
+    @Mock
+    private FacEmergencyPlanDetailMapper planDetailMapper;
 
     @InjectMocks
     private EmergencyPlanService service;
@@ -286,5 +296,77 @@ class EmergencyPlanServiceTest {
         when(planInstanceMapper.selectList(any())).thenReturn(List.of());
 
         assertFalse(service.deleteActionCard("plan-x", "c-flood-401").getOk());
+    }
+
+    private static FacEmergencyPlanCatalog catalogRow(
+            String code, String label, String planName, int canSwitch, int isCurrent, int sortNo) {
+        FacEmergencyPlanCatalog row = new FacEmergencyPlanCatalog();
+        row.setPlanCode(code);
+        row.setLabel(label);
+        row.setPlanName(planName);
+        row.setCanSwitch(canSwitch);
+        row.setIsCurrent(isCurrent);
+        row.setSortNo(sortNo);
+        return row;
+    }
+
+    private static FacEmergencyPlanDetail detailRow(
+            String section, String label, String value, int sectionSort, int fieldSort) {
+        FacEmergencyPlanDetail row = new FacEmergencyPlanDetail();
+        row.setSectionTitle(section);
+        row.setFieldLabel(label);
+        row.setFieldValue(value);
+        row.setSectionSort(sectionSort);
+        row.setFieldSort(fieldSort);
+        return row;
+    }
+
+    @Test
+    void planCatalog_mapsAllFieldsAndIsCurrent() {
+        when(planCatalogMapper.selectList(any())).thenReturn(List.of(
+                catalogRow("superior", "上级单位预案", "未启动", 0, 0, 1),
+                catalogRow("company", "公司级预案", "茂名石化应急预案", 1, 1, 2)));
+
+        EmergencyPlanCatalogSummary summary = service.planCatalog();
+
+        assertEquals(2, summary.getItems().size());
+        assertEquals("superior", summary.getItems().get(0).getId());
+        assertEquals("上级单位预案", summary.getItems().get(0).getLabel());
+        assertEquals("未启动", summary.getItems().get(0).getPlanName());
+        assertFalse(summary.getItems().get(0).getCanSwitch());
+        assertFalse(summary.getItems().get(0).getIsCurrent());
+        assertEquals("company", summary.getItems().get(1).getId());
+        assertTrue(summary.getItems().get(1).getCanSwitch());
+        assertTrue(summary.getItems().get(1).getIsCurrent());
+    }
+
+    @Test
+    void planCatalog_handlesEmptyTable() {
+        when(planCatalogMapper.selectList(any())).thenReturn(List.of());
+        assertTrue(service.planCatalog().getItems().isEmpty());
+    }
+
+    @Test
+    void planCatalogDetail_groupsBySectionInSectionOrder() {
+        when(planDetailMapper.selectList(any())).thenReturn(List.of(
+                detailRow("基础信息", "所属组织", "茂名石化应急指挥中心", 1, 1),
+                detailRow("基础信息", "预案编号", "MM-EPP-2026-001", 1, 2),
+                detailRow("评审信息", "预案评审日期", "2026-03-15", 2, 1)));
+
+        EmergencyPlanDetailSummary summary = service.planCatalogDetail();
+
+        assertEquals(2, summary.getSections().size());
+        assertEquals("基础信息", summary.getSections().get(0).getTitle());
+        assertEquals(2, summary.getSections().get(0).getFields().size());
+        assertEquals("所属组织", summary.getSections().get(0).getFields().get(0).getLabel());
+        assertEquals("茂名石化应急指挥中心", summary.getSections().get(0).getFields().get(0).getValue());
+        assertEquals("评审信息", summary.getSections().get(1).getTitle());
+        assertEquals("预案评审日期", summary.getSections().get(1).getFields().get(0).getLabel());
+    }
+
+    @Test
+    void planCatalogDetail_handlesEmptyTable() {
+        when(planDetailMapper.selectList(any())).thenReturn(List.of());
+        assertTrue(service.planCatalogDetail().getSections().isEmpty());
     }
 }
