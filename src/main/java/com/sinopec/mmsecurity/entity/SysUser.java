@@ -35,6 +35,14 @@ public class SysUser {
     @TableField("zone_codes")
     private String zoneCodes;
 
+    /**
+     * 令牌失效版本号（V45）。登出 / 改密 / 管理员强制下线时递增，
+     * 使此前签发的 access token 在 JwtFilter 校验时因版本落后被判失效。
+     * 默认 0：存量老令牌无 ver claim，按 0 处理，仍可用至自然过期（兼容升级）。
+     */
+    @TableField("token_version")
+    private Integer tokenVersion;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer deleted;

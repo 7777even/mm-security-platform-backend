@@ -1,0 +1,11 @@
+-- 令牌失效版本号（H2）
+--
+-- 背景：JWT 是无状态的，服务端不存令牌。此前 /auth/logout 只清客户端 Cookie，
+-- 已签发的 access token 在其剩余有效期（jwt.access-ttl=7200s，即 2 小时）内仍可通过校验；
+-- refresh token 有效期 7 天，一旦被窃取可持续续期。
+--
+-- 方案：在用户维度维护 token_version。签发 access token 时写入当前版本号（claim "ver"），
+-- JwtFilter 校验时与库中当前版本比对，不一致即判为已失效（登出/改密/强制下线后旧令牌立即不可用）。
+--
+-- 兼容性：老令牌无 ver claim，按 0 处理；存量用户 token_version 默认 0，故老令牌仍可用至自然过期。
+ALTER TABLE sys_user ADD COLUMN token_version INT NOT NULL DEFAULT 0;
