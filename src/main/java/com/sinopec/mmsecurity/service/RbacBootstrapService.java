@@ -120,7 +120,10 @@ public class RbacBootstrapService {
         u.setCreatedAt(now);
         u.setUpdatedAt(now);
         userMapper.insert(u);
-        log.info("已写入默认管理员账号 {} / {}（首次登录须改密）", DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PWD);
+        // 安全：初始口令绝不写入日志（明文口令落日志等同泄露，且日志常被引流到集中平台）。
+        // DEFAULT_ADMIN_PWD 保留为固定常量是 dev 联调契约（联调账号见 docs/system-facts.md），
+        // 生产由 app.password.force-change-default-admin=true 强制首登改密兜底。
+        log.info("已写入默认管理员账号 {}（首次登录须改密，初始口令不在日志中输出）", DEFAULT_ADMIN_USER);
     }
 
     /** ADMIN 兜底授权：仅当其一条授权都没有时补齐全部启用节点（防锁死）。 */
