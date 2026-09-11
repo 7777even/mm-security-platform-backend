@@ -4,10 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.GeoJsonFeature;
 import com.sinopec.mmsecurity.dto.GeoJsonFeatureCollection;
 import com.sinopec.mmsecurity.dto.GeoJsonGeometry;
+import com.sinopec.mmsecurity.dto.MapZoneSignPopup;
+import com.sinopec.mmsecurity.dto.MapZoneSignTealTag;
+import com.sinopec.mmsecurity.dto.MapZoneSigns;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacDevice;
+import com.sinopec.mmsecurity.entity.FacMapZoneSign;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
+import com.sinopec.mmsecurity.mapper.FacMapZoneSignMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +37,35 @@ public class MapService {
 
     private final AlarmMapper alarmMapper;
     private final FacDeviceMapper deviceMapper;
+    private final FacMapZoneSignMapper zoneSignMapper;
+
+    /** 3D 地图装置区信息牌（V42 fac_map_zone_sign）：红色区块信息牌 + 青色信息牌。 */
+    public MapZoneSigns zoneSigns() {
+        List<FacMapZoneSign> rows = zoneSignMapper.selectList(
+                new LambdaQueryWrapper<FacMapZoneSign>()
+                        .orderByAsc(FacMapZoneSign::getSortNo));
+        MapZoneSigns signs = new MapZoneSigns();
+        signs.setPopups(rows.stream()
+                .filter(r -> "ALERT".equals(r.getSignKind()))
+                .map(r -> {
+                    MapZoneSignPopup p = new MapZoneSignPopup();
+                    p.setTitle(r.getTitle());
+                    p.setLocation(r.getLocation());
+                    p.setStatus(r.getStatusText());
+                    p.setStatusLevel(r.getStatusLevel());
+                    return p;
+                }).collect(java.util.stream.Collectors.toList()));
+        signs.setTealTags(rows.stream()
+                .filter(r -> "TEAL".equals(r.getSignKind()))
+                .map(r -> {
+                    MapZoneSignTealTag t = new MapZoneSignTealTag();
+                    t.setTitle(r.getTitle());
+                    t.setStatus(r.getStatusText());
+                    t.setValue(r.getStatValue());
+                    return t;
+                }).collect(java.util.stream.Collectors.toList()));
+        return signs;
+    }
 
     public GeoJsonFeatureCollection alarmPoints() {
         Map<String, double[]> coords = deviceCoords();

@@ -60,4 +60,31 @@ class MapControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.features[0].properties.alarmId").value("AE-2026-001"));
     }
+
+    @Test
+    void zoneSigns_returnsPopupsAndTealTags() throws Exception {
+        com.sinopec.mmsecurity.dto.MapZoneSigns signs = new com.sinopec.mmsecurity.dto.MapZoneSigns();
+        com.sinopec.mmsecurity.dto.MapZoneSignPopup popup =
+                new com.sinopec.mmsecurity.dto.MapZoneSignPopup();
+        popup.setTitle("反应器");
+        popup.setLocation("储罐区B-3");
+        popup.setStatus("异常");
+        popup.setStatusLevel("alert");
+        com.sinopec.mmsecurity.dto.MapZoneSignTealTag teal =
+                new com.sinopec.mmsecurity.dto.MapZoneSignTealTag();
+        teal.setTitle("储罐区");
+        teal.setStatus("液位正常");
+        teal.setValue("85%");
+        signs.setPopups(List.of(popup));
+        signs.setTealTags(List.of(teal));
+        when(service.zoneSigns()).thenReturn(signs);
+
+        mockMvc.perform(get("/api/v1/map/zone-signs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.popups[0].title").value("反应器"))
+                .andExpect(jsonPath("$.data.popups[0].location").value("储罐区B-3"))
+                .andExpect(jsonPath("$.data.popups[0].statusLevel").value("alert"))
+                .andExpect(jsonPath("$.data.tealTags[0].value").value("85%"));
+    }
 }
