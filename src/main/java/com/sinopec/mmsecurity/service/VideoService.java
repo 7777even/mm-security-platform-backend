@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.VideoCameraItem;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
+import com.sinopec.mmsecurity.dto.ImportantVideoFeed;
+import com.sinopec.mmsecurity.dto.ImportantVideoGroup;
+import com.sinopec.mmsecurity.dto.ImportantVideoGroups;
 import com.sinopec.mmsecurity.dto.VideoCategoryItem;
 import com.sinopec.mmsecurity.dto.VideoGroupNode;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
@@ -18,12 +21,16 @@ import com.sinopec.mmsecurity.dto.VideoWallGroupNode;
 import com.sinopec.mmsecurity.dto.VideoWallNavigation;
 import com.sinopec.mmsecurity.entity.FacVideoCamera;
 import com.sinopec.mmsecurity.entity.FacVideoGroup;
+import com.sinopec.mmsecurity.entity.FacVideoImportantFeed;
+import com.sinopec.mmsecurity.entity.FacVideoImportantGroup;
 import com.sinopec.mmsecurity.entity.FacVideoLinkage;
 import com.sinopec.mmsecurity.entity.FacVideoLinkageOption;
 import com.sinopec.mmsecurity.entity.FacVideoLinkageRule;
 import com.sinopec.mmsecurity.entity.FacVideoWallNode;
 import com.sinopec.mmsecurity.mapper.FacVideoCameraMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoGroupMapper;
+import com.sinopec.mmsecurity.mapper.FacVideoImportantFeedMapper;
+import com.sinopec.mmsecurity.mapper.FacVideoImportantGroupMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageRuleMapper;
@@ -64,6 +71,8 @@ public class VideoService {
     private final FacVideoLinkageRuleMapper linkageRuleMapper;
     private final FacVideoLinkageOptionMapper linkageOptionMapper;
     private final FacVideoWallNodeMapper wallNodeMapper;
+    private final FacVideoImportantGroupMapper importantGroupMapper;
+    private final FacVideoImportantFeedMapper importantFeedMapper;
 
     /** 左侧导航：顶部分类（扁平）+ 分组树。 */
     public VideoNavigation navigation() {
@@ -183,6 +192,50 @@ public class VideoService {
         node.setId(id);
         node.setLabel(label);
         return node;
+    }
+
+    /**
+     * 常驻视频监控分组（高空AR + 重点关注区域）。来自 V40 fac_video_important_group / _feed，
+     * 取代前端 ImportantVideoPanel 硬编码的分组与通道（图像静态资源仍由前端按 image_key 映射）。
+     */
+    public ImportantVideoGroups importantGroups() {
+        List<FacVideoImportantGroup> groups = importantGroupMapper.selectList(
+                new LambdaQueryWrapper<FacVideoImportantGroup>().orderByAsc(FacVideoImportantGroup::getSortNo));
+        List<FacVideoImportantFeed> feeds = importantFeedMapper.selectList(
+                new LambdaQueryWrapper<FacVideoImportantFeed>().orderByAsc(FacVideoImportantFeed::getSortNo));
+        Map<String, List<FacVideoImportantFeed>> feedsByGroup = feeds.stream()
+                .collect(Collectors.groupingBy(FacVideoImportantFeed::getGroupCode));
+
+        ImportantVideoGroups result = new ImportantVideoGroups();
+        result.setHighArGroups(groups.stream()
+                .filter(g -> "highAr".equals(g.getGroupType()))
+                .map(g -> toImportantGroup(g, feedsByGroup))
+                .collect(Collectors.toList()));
+        result.setFocusGroups(groups.stream()
+                .filter(g -> "focus".equals(g.getGroupType()))
+                .map(g -> toImportantGroup(g, feedsByGroup))
+                .collect(Collectors.toList()));
+        return result;
+    }
+
+    private ImportantVideoGroup toImportantGroup(
+            FacVideoImportantGroup group, Map<String, List<FacVideoImportantFeed>> feedsByGroup) {
+        ImportantVideoGroup dto = new ImportantVideoGroup();
+        dto.setId(group.getGroupCode());
+        dto.setLabel(group.getGroupLabel());
+        List<ImportantVideoFeed> feeds = (feedsByGroup.get(group.getGroupCode()) == null
+                ? List.<FacVideoImportantFeed>of()
+                : feedsByGroup.get(group.getGroupCode())).stream().map(f -> {
+            ImportantVideoFeed feed = new ImportantVideoFeed();
+            feed.setId(f.getFeedId());
+            feed.setLabel(f.getFeedLabel());
+            feed.setImageKey(f.getImageKey());
+            feed.setPosition(f.getPosition());
+            feed.setOnline(f.getOnline());
+            return feed;
+        }).collect(Collectors.toList());
+        dto.setFeeds(feeds);
+        return dto;
     }
 
     /** 摄像头分页（前端默认每页 9 宫格）。 */

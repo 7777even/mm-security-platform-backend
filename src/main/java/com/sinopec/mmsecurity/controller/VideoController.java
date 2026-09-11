@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.DeleteResult;
+import com.sinopec.mmsecurity.dto.ImportantVideoGroups;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
 import com.sinopec.mmsecurity.dto.VideoLinkageOptions;
@@ -62,6 +63,15 @@ public class VideoController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "9") int size) {
         return Result.ok(videoService.cameras(page, size));
+    }
+
+    /**
+     * 常驻视频监控分组（高空AR + 重点关注区域）。来自 V40 fac_video_important_group / _feed，
+     * 取代前端 ImportantVideoPanel 硬编码。图像静态资源由前端按 image_key 映射（图资非业务数据）。
+     */
+    @GetMapping("/important-groups")
+    public Result<ImportantVideoGroups> importantGroups() {
+        return Result.ok(videoService.importantGroups());
     }
 
     /** 视频联动配置列表。 */
