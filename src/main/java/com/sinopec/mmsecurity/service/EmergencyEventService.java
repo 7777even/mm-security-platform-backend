@@ -91,7 +91,8 @@ public class EmergencyEventService {
         item.setTop(row.getTopPercent());
         item.setLongitude(row.getLongitude());
         item.setLatitude(row.getLatitude());
-        item.setKind(row.getKind());
+        // 契约 EmergencyEventKind 为 'event' | 'drill' 小写，后端库内习惯大写，返回前归一化
+        item.setKind(row.getKind() != null ? row.getKind().toLowerCase() : "event");
         item.setEventCategory(row.getEventCategory());
         item.setHazardSourceLevel(row.getHazardSourceLevel());
         item.setEndedAt(row.getEndedAt());

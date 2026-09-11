@@ -83,7 +83,7 @@ class EmergencyEventServiceTest {
         assertEquals("消防电话报警", groups.get(0).getLabel());
         assertEquals(2, groups.get(0).getEvents().size());
         assertEquals("drill-plan", groups.get(1).getId());
-        assertEquals("DRILL", groups.get(1).getEvents().get(0).getKind());
+        assertEquals("drill", groups.get(1).getEvents().get(0).getKind());
         assertEquals("device", groups.get(2).getId());
     }
 
@@ -102,6 +102,7 @@ class EmergencyEventServiceTest {
         assertEquals(21.684459, item.getLatitude());
         assertEquals("chemical", item.getAreaCode());
         assertEquals("二级", item.getHazardSourceLevel());
+        assertEquals("event", item.getKind());
         assertEquals("default", item.getEventCategory());
         assertNull(item.getEndedAt());
         assertNull(item.getWeatherMeta());
