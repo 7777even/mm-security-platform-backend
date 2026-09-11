@@ -11,7 +11,8 @@
   环境变量 `JAVA_HOME=D:\jdk-17_windows-x64_bin\jdk-17.0.4.1`。
   `mvn` / `mvnw` 均不可用，勿用。
 - **CI 绝不能带 `ci-settings.xml`**：该文件硬编码本机 Windows `.m2` 路径，仅本地冒烟用。
-- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **434 单测全绿**（2026-09-10 含系统管理域 RBAC +73）；jacoco 行覆盖红线 **0.80**。
+- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **468 单测全绿**（2026-09-11 实测；口径为 `src/test` 下 `@Test` 计数，测试类 80）；jacoco 行覆盖红线 **0.80**。
+  > **勿再手写此数字**：以 `mvn test` 的 surefire 汇总为准，文档里的历史数字极易过期（此处曾长期停留在 434 / 446 两个互相矛盾的值）。下文的变更日志中出现的门禁数字是**当时的快照**，不要回改。
 - 带 DB 的 `*IT` 在引入 Testcontainers 后启用；本机无 Docker 时如实报告未执行，**禁止用零 DB 通过冒充**。
 
 ## 2. 契约真源与四同步
@@ -72,10 +73,13 @@
   三方言同步：pg 与 h2 同构；达梦因 Oracle 兼容语法不支持多行 VALUES，角色种子拆为逐条 INSERT，
   且常量 SELECT 补 `FROM dual`（由一次性脚本从 h2 版本派生，见当日工作记忆）。
 - 达梦 DM8 / PG 暂缓（本机无实例、无 docker）；`application-dm.yml` 与 `db/migration/dameng` 保留作迁移资产。代码层 DB 无关（MyBatis-Plus 方言探测、不写方言函数）。
+  > **版本缺口（2026-09-11 实测）**：h2 已至 **V44**；`dameng` 16 个（V1–V3、V26、V32–V43）、`postgresql` 15 个（无 V26）——两库**均缺 V4–V25、V27–V31、V44**。V44 为 h2 单方言（引用 `fac_production_personnel`/`fac_workstation`，且含 `BOOLEAN TRUE/FALSE`，达梦不认），镜像已决策暂缓。**结论：dameng/pg 当前不可直接上生产，缺表会让 Flyway 报红**；「暂缓」指的就是这个状态，不是「已对齐」。
 - **H2 保留字陷阱**：`value` / `command` 既不能作裸列名，也不能作 MyBatis-Plus 别名（`SELECT x AS value` 同样报错）。列名加后缀（value→value_name），**Java 属性名也避开保留字**再 `@TableField` 映射。已验证非保留字：`name/code/type/status/level/time/op_type/op_level/ticket_status/value_text/status_name`。
 
 ## 6. 安全加固
 
+- **凭据不入日志**：默认管理员初始口令等凭据一律不落日志（`RbacBootstrapService` 于 2026-09-11 修正，此前会明文打印初始口令）。口令常量保留为固定值是 dev 联调契约，生产由 `app.password.force-change-default-admin=true` 强制首登改密兜底。
+- **日志可追踪**：console pattern 含 `[%X{traceId:-j-none}]`；`TraceContext` 在请求入口 `MDC.put("traceId", ...)`，使响应体 `Result.traceId` 与服务端日志可对齐检索（2026-09-11 补，此前 MDC 有值但 pattern 未输出，排障链路是断的）。
 - CORS：`CorsConfig` 必须先于所有过滤器注册；非 dev profile 含 `*` 启动即抛异常。
 - 鉴权失败直出 401/403 + `Result.fail` B3（UTF-8），**不冒泡 500**。
 - 密钥纯 `${JWT_SECRET}` / `${SIGNATURE_SECRET}` 无默认；`SecurityBeans.validateSecrets()` 校验长度与占位符。
