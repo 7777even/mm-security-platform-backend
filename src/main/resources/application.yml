@@ -82,7 +82,9 @@ logging:
     com.sinopec.mmsecurity: DEBUG
     org.springframework.web: INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    # %X{traceId} 输出 MDC 中的请求追踪号（TraceContext.KEY=traceId，无请求上下文时回落 j-none）。
+    # 响应体 Result.traceId 与服务端日志由此可对齐检索，缺此项则排障链路断裂。
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:-j-none}] - %msg%n"
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
