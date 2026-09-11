@@ -2,9 +2,14 @@ package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.TyphoonAuxItem;
+import com.sinopec.mmsecurity.dto.TyphoonAlertBanner;
+import com.sinopec.mmsecurity.dto.TyphoonCommand;
 import com.sinopec.mmsecurity.dto.TyphoonDispatchResource;
 import com.sinopec.mmsecurity.dto.TyphoonEmergencyIncident;
+import com.sinopec.mmsecurity.dto.TyphoonResponseBoard;
+import com.sinopec.mmsecurity.entity.FacTyphoonAlertBanner;
 import com.sinopec.mmsecurity.entity.FacTyphoonAuxItem;
+import com.sinopec.mmsecurity.entity.FacTyphoonCommand;
 import com.sinopec.mmsecurity.entity.FacTyphoonDispatchResource;
 import com.sinopec.mmsecurity.entity.FacTyphoonEventInfo;
 import com.sinopec.mmsecurity.entity.FacTyphoonIncident;
@@ -16,6 +21,8 @@ import com.sinopec.mmsecurity.entity.FacTyphoonSeries;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.FacTyphoonAuxItemMapper;
+import com.sinopec.mmsecurity.mapper.FacTyphoonAlertBannerMapper;
+import com.sinopec.mmsecurity.mapper.FacTyphoonCommandMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonDispatchResourceMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonEventInfoMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonIncidentMapper;
@@ -65,6 +72,10 @@ class TyphoonEmergencyServiceTest {
     private FacTyphoonAuxItemMapper auxItemMapper;
     @Mock
     private FacTyphoonDispatchResourceMapper dispatchResourceMapper;
+    @Mock
+    private FacTyphoonAlertBannerMapper alertBannerMapper;
+    @Mock
+    private FacTyphoonCommandMapper commandMapper;
     @Mock
     private SysDutyMemberMapper dutyMemberMapper;
     @Mock
@@ -314,5 +325,73 @@ class TyphoonEmergencyServiceTest {
         assertNotNull(dto);
         assertTrue(dto.getMapRiskPoints().get(0).getVideoIds().isEmpty());
         assertTrue(dto.getMonitoringObjects().isEmpty());
+    }
+
+    // ------------------------------------------------------------------ V41 响应板
+
+    private FacTyphoonAlertBanner banner(String level, String title, String detail,
+            String tone, int sortNo) {
+        FacTyphoonAlertBanner b = new FacTyphoonAlertBanner();
+        b.setWarnLevel(level);
+        b.setTitle(title);
+        b.setDetail(detail);
+        b.setTone(tone);
+        b.setSortNo(sortNo);
+        return b;
+    }
+
+    private FacTyphoonCommand command(String code, String kind, String group, String name,
+            String target, String status, String time, String detail, int sortNo) {
+        FacTyphoonCommand c = new FacTyphoonCommand();
+        c.setCmdCode(code);
+        c.setCommandKind(kind);
+        c.setGroupLabel(group);
+        c.setName(name);
+        c.setTarget(target);
+        c.setCmdStatus(status);
+        c.setCmdTime(time);
+        c.setDetail(detail);
+        c.setSortNo(sortNo);
+        return c;
+    }
+
+    @Test
+    void responseBoard_splitsCommandsByKindAndMapsBanners() {
+        // Mock 不执行 ORDER BY，按 sort_no 升序预置
+        when(alertBannerMapper.selectList(any())).thenReturn(List.of(
+                banner("橙色预警", "防台防汛Ⅱ级响应", "暴雨预警触发 · 持续监测中", "orange", 1),
+                banner("黄色预警", "雷电天气防御", "雷电预警生效 · 强对流持续关注", "yellow", 2)));
+        when(commandMapper.selectList(any())).thenReturn(List.of(
+                command("w1", "plan", "预警与启动", "发布防台防汛预警", "各生产单位、承包商",
+                        "已完成", "08:13", "发布橙色预警，要求停止露天高处及吊装作业。", 1),
+                command("t1", "temporary", "现场加派", "增派2台移动排水泵", "炼油防汛物资库",
+                        "待执行", "08:31", "支援6#路地磅北地沟，完成后反馈泵组运行电流。", 1)));
+
+        TyphoonResponseBoard board = service.responseBoard();
+
+        assertEquals(2, board.getBanners().size());
+        assertEquals("橙色预警", board.getBanners().get(0).getLevel());
+        assertEquals("orange", board.getBanners().get(0).getTone());
+        assertEquals(1, board.getPlanCommands().size());
+        TyphoonCommand plan = board.getPlanCommands().get(0);
+        assertEquals("w1", plan.getId());
+        assertEquals("预警与启动", plan.getGroup());
+        assertEquals("已完成", plan.getStatus());
+        assertEquals("08:13", plan.getTime());
+        assertEquals(1, board.getTemporaryCommands().size());
+        assertEquals("t1", board.getTemporaryCommands().get(0).getId());
+        assertEquals("炼油防汛物资库", board.getTemporaryCommands().get(0).getTarget());
+    }
+
+    @Test
+    void responseBoard_handlesEmptyTables() {
+        when(alertBannerMapper.selectList(any())).thenReturn(List.of());
+        when(commandMapper.selectList(any())).thenReturn(List.of());
+
+        TyphoonResponseBoard board = service.responseBoard();
+
+        assertTrue(board.getBanners().isEmpty());
+        assertTrue(board.getPlanCommands().isEmpty());
+        assertTrue(board.getTemporaryCommands().isEmpty());
     }
 }

@@ -81,6 +81,40 @@ class TyphoonEmergencyControllerTest {
                 .andExpect(jsonPath("$.data[0].etaMinutes").value(4));
     }
 
+    @Test
+    void responseBoard_returnsBannersAndCommands() throws Exception {
+        com.sinopec.mmsecurity.dto.TyphoonResponseBoard board =
+                new com.sinopec.mmsecurity.dto.TyphoonResponseBoard();
+        com.sinopec.mmsecurity.dto.TyphoonAlertBanner banner =
+                new com.sinopec.mmsecurity.dto.TyphoonAlertBanner();
+        banner.setLevel("橙色预警");
+        banner.setTitle("防台防汛Ⅱ级响应");
+        banner.setDetail("暴雨预警触发 · 持续监测中");
+        banner.setTone("orange");
+        com.sinopec.mmsecurity.dto.TyphoonCommand command =
+                new com.sinopec.mmsecurity.dto.TyphoonCommand();
+        command.setId("w1");
+        command.setGroup("预警与启动");
+        command.setName("发布防台防汛预警");
+        command.setTarget("各生产单位、承包商");
+        command.setStatus("已完成");
+        command.setTime("08:13");
+        command.setDetail("发布橙色预警，要求停止露天高处及吊装作业。");
+        board.setBanners(java.util.List.of(banner));
+        board.setPlanCommands(java.util.List.of(command));
+        board.setTemporaryCommands(java.util.List.of());
+        Mockito.when(service.responseBoard()).thenReturn(board);
+
+        mvc.perform(get("/api/v1/typhoon/response-board"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.banners[0].level").value("橙色预警"))
+                .andExpect(jsonPath("$.data.banners[0].tone").value("orange"))
+                .andExpect(jsonPath("$.data.planCommands[0].id").value("w1"))
+                .andExpect(jsonPath("$.data.planCommands[0].status").value("已完成"))
+                .andExpect(jsonPath("$.data.temporaryCommands").isArray());
+    }
+
     private static TyphoonEmergencyIncident sample() {
         TyphoonEmergencyIncident d = new TyphoonEmergencyIncident();
         d.setEventId(100L);

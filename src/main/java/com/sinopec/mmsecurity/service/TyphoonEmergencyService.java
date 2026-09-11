@@ -3,6 +3,8 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.sinopec.mmsecurity.dto.TyphoonAuxItem;
+import com.sinopec.mmsecurity.dto.TyphoonAlertBanner;
+import com.sinopec.mmsecurity.dto.TyphoonCommand;
 import com.sinopec.mmsecurity.dto.TyphoonDispatchResource;
 import com.sinopec.mmsecurity.dto.TyphoonDutyPerson;
 import com.sinopec.mmsecurity.dto.TyphoonEmergencyIncident;
@@ -10,8 +12,11 @@ import com.sinopec.mmsecurity.dto.TyphoonEventInfoField;
 import com.sinopec.mmsecurity.dto.TyphoonLiveVideo;
 import com.sinopec.mmsecurity.dto.TyphoonMapRiskPoint;
 import com.sinopec.mmsecurity.dto.TyphoonMonitorObject;
+import com.sinopec.mmsecurity.dto.TyphoonResponseBoard;
 import com.sinopec.mmsecurity.dto.TyphoonRiskWarning;
+import com.sinopec.mmsecurity.entity.FacTyphoonAlertBanner;
 import com.sinopec.mmsecurity.entity.FacTyphoonAuxItem;
+import com.sinopec.mmsecurity.entity.FacTyphoonCommand;
 import com.sinopec.mmsecurity.entity.FacTyphoonDispatchResource;
 import com.sinopec.mmsecurity.entity.FacTyphoonEventInfo;
 import com.sinopec.mmsecurity.entity.FacTyphoonIncident;
@@ -23,6 +28,8 @@ import com.sinopec.mmsecurity.entity.FacTyphoonSeries;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.mapper.FacTyphoonAuxItemMapper;
+import com.sinopec.mmsecurity.mapper.FacTyphoonAlertBannerMapper;
+import com.sinopec.mmsecurity.mapper.FacTyphoonCommandMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonDispatchResourceMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonEventInfoMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonIncidentMapper;
@@ -69,6 +76,8 @@ public class TyphoonEmergencyService {
     private final FacTyphoonEventInfoMapper eventInfoMapper;
     private final FacTyphoonAuxItemMapper auxItemMapper;
     private final FacTyphoonDispatchResourceMapper dispatchResourceMapper;
+    private final FacTyphoonAlertBannerMapper alertBannerMapper;
+    private final FacTyphoonCommandMapper commandMapper;
     private final SysDutyMemberMapper dutyMemberMapper;
     private final SysKnowledgeItemMapper knowledgeItemMapper;
 
@@ -125,6 +134,55 @@ public class TyphoonEmergencyService {
                                 .orderByAsc(FacTyphoonDispatchResource::getSortNo)).stream()
                 .map(this::toDispatchResource)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 台风应急响应板聚合（V41 fac_typhoon_alert_banner / fac_typhoon_command）：
+     * 预警横幅 + 预案指令（plan）+ 临时指令（temporary），取代前端 TyphoonLeftPanel 硬编码。
+     */
+    public TyphoonResponseBoard responseBoard() {
+        TyphoonResponseBoard board = new TyphoonResponseBoard();
+        board.setBanners(alertBannerMapper.selectList(
+                        new LambdaQueryWrapper<FacTyphoonAlertBanner>()
+                                .orderByAsc(FacTyphoonAlertBanner::getSortNo)).stream()
+                .map(this::toAlertBanner)
+                .collect(Collectors.toList()));
+        List<FacTyphoonCommand> commands = commandMapper.selectList(
+                new LambdaQueryWrapper<FacTyphoonCommand>()
+                        .orderByAsc(FacTyphoonCommand::getSortNo));
+        board.setPlanCommands(commands.stream()
+                .filter(c -> KIND_PLAN.equals(c.getCommandKind()))
+                .map(this::toCommand)
+                .collect(Collectors.toList()));
+        board.setTemporaryCommands(commands.stream()
+                .filter(c -> KIND_TEMPORARY.equals(c.getCommandKind()))
+                .map(this::toCommand)
+                .collect(Collectors.toList()));
+        return board;
+    }
+
+    private static final String KIND_PLAN = "plan";
+    private static final String KIND_TEMPORARY = "temporary";
+
+    private TyphoonAlertBanner toAlertBanner(FacTyphoonAlertBanner e) {
+        TyphoonAlertBanner d = new TyphoonAlertBanner();
+        d.setLevel(e.getWarnLevel());
+        d.setTitle(e.getTitle());
+        d.setDetail(e.getDetail());
+        d.setTone(e.getTone());
+        return d;
+    }
+
+    private TyphoonCommand toCommand(FacTyphoonCommand e) {
+        TyphoonCommand d = new TyphoonCommand();
+        d.setId(e.getCmdCode());
+        d.setGroup(e.getGroupLabel());
+        d.setName(e.getName());
+        d.setTarget(e.getTarget());
+        d.setStatus(e.getCmdStatus());
+        d.setTime(e.getCmdTime());
+        d.setDetail(e.getDetail());
+        return d;
     }
 
     private void fillSeries(TyphoonEmergencyIncident dto, Long incidentId) {

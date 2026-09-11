@@ -5,6 +5,7 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.TyphoonDispatchResource;
 import com.sinopec.mmsecurity.dto.TyphoonEmergencyIncident;
+import com.sinopec.mmsecurity.dto.TyphoonResponseBoard;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.TyphoonEmergencyService;
 import lombok.RequiredArgsConstructor;
@@ -37,5 +38,11 @@ public class TyphoonEmergencyController {
     @GetMapping("/dispatch-resources")
     public Result<List<TyphoonDispatchResource>> dispatchResources() {
         return Result.ok(typhoonEmergencyService.dispatchResources());
+    }
+
+    /** 台风应急响应板聚合（V41 fac_typhoon_alert_banner / fac_typhoon_command）。 */
+    @GetMapping("/response-board")
+    public Result<TyphoonResponseBoard> responseBoard() {
+        return Result.ok(typhoonEmergencyService.responseBoard());
     }
 }
