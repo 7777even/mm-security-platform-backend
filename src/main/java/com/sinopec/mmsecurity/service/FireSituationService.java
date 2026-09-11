@@ -1,9 +1,17 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.dto.FireMonitorArea;
+import com.sinopec.mmsecurity.dto.FireMonitorAreaSummary;
+import com.sinopec.mmsecurity.dto.FireMonitoredObject;
+import com.sinopec.mmsecurity.dto.FireMonitoredObjectSummary;
 import com.sinopec.mmsecurity.dto.FireSituationMarkerItem;
 import com.sinopec.mmsecurity.dto.FireSituationMarkerSummary;
+import com.sinopec.mmsecurity.entity.FacFireMonitorArea;
+import com.sinopec.mmsecurity.entity.FacFireMonitoredObject;
 import com.sinopec.mmsecurity.entity.FacFireSituationMarker;
+import com.sinopec.mmsecurity.mapper.FacFireMonitorAreaMapper;
+import com.sinopec.mmsecurity.mapper.FacFireMonitoredObjectMapper;
 import com.sinopec.mmsecurity.mapper.FacFireSituationMarkerMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +30,8 @@ import java.util.stream.Collectors;
 public class FireSituationService {
 
     private final FacFireSituationMarkerMapper fireSituationMarkerMapper;
+    private final FacFireMonitorAreaMapper fireMonitorAreaMapper;
+    private final FacFireMonitoredObjectMapper fireMonitoredObjectMapper;
 
     /** 地图聚合点位列表（按 sort_no 升序）。 */
     public FireSituationMarkerSummary markers() {
@@ -45,6 +55,46 @@ public class FireSituationService {
         item.setIconUrl(marker.getIconUrl());
         item.setLevel(marker.getLevelName());
         item.setTargetId(marker.getTargetId());
+        return item;
+    }
+
+    /** 各装置区消防保障汇总（按 sort_no 升序）。V38 fac_fire_monitor_area。 */
+    public FireMonitorAreaSummary areaSummary() {
+        List<FacFireMonitorArea> rows = fireMonitorAreaMapper.selectList(
+                new LambdaQueryWrapper<FacFireMonitorArea>().orderByAsc(FacFireMonitorArea::getSortNo));
+        FireMonitorAreaSummary summary = new FireMonitorAreaSummary();
+        summary.setItems(rows.stream().map(this::toAreaItem).collect(Collectors.toList()));
+        return summary;
+    }
+
+    private FireMonitorArea toAreaItem(FacFireMonitorArea row) {
+        FireMonitorArea item = new FireMonitorArea();
+        item.setId(row.getAreaCode());
+        item.setScope(row.getScope());
+        item.setName(row.getAreaName());
+        item.setStatus(row.getStatus());
+        item.setStatusLabel(row.getStatusLabel());
+        item.setEquipment(row.getEquipment());
+        item.setCameras(row.getCameras());
+        item.setPersonnel(row.getPersonnel());
+        return item;
+    }
+
+    /** 重点监控对象列表（按 sort_no 升序）。V38 fac_fire_monitored_object。 */
+    public FireMonitoredObjectSummary monitoredObjects() {
+        List<FacFireMonitoredObject> rows = fireMonitoredObjectMapper.selectList(
+                new LambdaQueryWrapper<FacFireMonitoredObject>().orderByAsc(FacFireMonitoredObject::getSortNo));
+        FireMonitoredObjectSummary summary = new FireMonitoredObjectSummary();
+        summary.setItems(rows.stream().map(this::toMonitoredItem).collect(Collectors.toList()));
+        return summary;
+    }
+
+    private FireMonitoredObject toMonitoredItem(FacFireMonitoredObject row) {
+        FireMonitoredObject item = new FireMonitoredObject();
+        item.setName(row.getObjName());
+        item.setStatus(row.getStatus());
+        item.setDetail(row.getDetail());
+        item.setTone(row.getTone());
         return item;
     }
 }
