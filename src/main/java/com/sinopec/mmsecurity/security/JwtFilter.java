@@ -31,10 +31,17 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    /** 令牌失效版本号服务；为 null 时跳过版本校验（仅测试构造走这条，生产由 SecurityBeans 注入）。 */
+    private final TokenVersionService tokenVersionService;
 
     public JwtFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
+        this(jwtUtil, objectMapper, null);
+    }
+
+    public JwtFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, TokenVersionService tokenVersionService) {
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
+        this.tokenVersionService = tokenVersionService;
     }
 
     public static final String AUTH_HEADER = "Authorization";
@@ -96,6 +103,18 @@ public class JwtFilter extends OncePerRequestFilter {
             if (!"access".equals(type)) {
                 reject(ResultCode.TOKEN_INVALID, "令牌类型非法", response);
                 return;
+            }
+
+            // 令牌失效版本号（V45）：登出 / 改密 / 强制下线后版本号递增，
+            // 此前签发的令牌因版本落后在此被拒，而不是继续用到自然过期。
+            // tokenVersionService 为 null（测试构造）时跳过，保持原有行为。
+            if (tokenVersionService != null) {
+                Object verObj = claims.get("ver");
+                int ver = (verObj instanceof Number n) ? n.intValue() : 0;
+                if (ver != tokenVersionService.current(claims.getSubject())) {
+                    reject(ResultCode.TOKEN_INVALID, "令牌已失效，请重新登录", response);
+                    return;
+                }
             }
 
             String role = claims.get("role", String.class);

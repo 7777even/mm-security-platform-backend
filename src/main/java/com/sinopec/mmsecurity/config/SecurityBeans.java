@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sinopec.mmsecurity.security.HmacFilter;
 import com.sinopec.mmsecurity.security.JwtFilter;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -90,9 +91,13 @@ public class SecurityBeans {
         return bean;
     }
 
+    /**
+     * 必须走三参构造注入 TokenVersionService，否则登出无法让旧令牌失效
+     * （两参构造只在测试里用，会跳过版本校验）。
+     */
     @Bean
-    public JwtFilter jwtFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
-        return new JwtFilter(jwtUtil, objectMapper);
+    public JwtFilter jwtFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, TokenVersionService tokenVersionService) {
+        return new JwtFilter(jwtUtil, objectMapper, tokenVersionService);
     }
 
     @Bean

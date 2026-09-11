@@ -37,13 +37,31 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** 签发 access token（短效 2h） */
+    /**
+     * 签发 access token（短效 2h），令牌失效版本号按 0 处理。
+     * 保留此重载以兼容既有调用与测试；生产登录/刷新请走
+     * {@link #issueAccess(String, String, int)} 传入用户当前版本。
+     */
     public String issueAccess(String username, String role) {
+        return issueAccess(username, role, 0);
+    }
+
+    /**
+     * 签发 access token（短效 2h），写入令牌失效版本号 claim {@code ver}。
+     *
+     * <p>用途：JWT 无状态，登出只清客户端 Cookie 的话，已签发令牌在其剩余有效期内仍可用。
+     * 带上版本号后，JwtFilter 校验时与库中当前版本比对，不一致即判失效（登出/改密/强制下线）。</p>
+     *
+     * <p>兼容：老令牌无 ver claim，JwtFilter 按 0 处理；存量用户 token_version 默认 0，
+     * 故升级后老令牌仍可用至自然过期，不会造成大面积掉线。</p>
+     */
+    public String issueAccess(String username, String role, int tokenVersion) {
         return Jwts.builder()
                 .issuer(issuer)
                 .subject(username)
                 .claim("role", role)
                 .claim("type", "access")
+                .claim("ver", tokenVersion)
                 .id(UUID.randomUUID().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTtl * 1000))
