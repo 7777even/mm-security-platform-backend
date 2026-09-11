@@ -8,6 +8,7 @@ import com.sinopec.mmsecurity.entity.SysMenu;
 import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import com.sinopec.mmsecurity.security.LoginUser;
 import com.sinopec.mmsecurity.security.RoleAuthorityService;
 import com.sinopec.mmsecurity.security.UserContext;
@@ -40,7 +41,8 @@ class AuthServiceTest {
     private final BCryptPasswordEncoder encoder = mock(BCryptPasswordEncoder.class);
     private final IdNameCacheService idNameCache = mock(IdNameCacheService.class);
     private final RoleAuthorityService roleAuthority = mock(RoleAuthorityService.class);
-    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache, roleAuthority);
+    private final TokenVersionService tokenVersionService = mock(TokenVersionService.class);
+    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache, roleAuthority, tokenVersionService);
 
     @AfterEach
     void tearDown() {

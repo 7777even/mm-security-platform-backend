@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.integration;
 
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,14 @@ class EndToEndFlowTest {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    /**
+     * 签发测试令牌必须带上用户当前的令牌版本号：本类含登出用例，登出会递增 admin 的版本号，
+     * 若仍用不带版本的旧方式签发，令牌会因版本落后被 JwtFilter 判为失效（401）。
+     * 按真实登录语义签发（带当前版本）即可，也与生产行为一致。
+     */
+    @Autowired
+    private TokenVersionService tokenVersionService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -109,7 +118,7 @@ class EndToEndFlowTest {
 
     @Test
     void protectedEndpoints_withAdminToken_200() throws Exception {
-        String token = jwtUtil.issueAccess("admin", "ADMIN");
+        String token = jwtUtil.issueAccess("admin", "ADMIN", tokenVersionService.current("admin"));
         String auth = "Bearer " + token;
         mockMvc.perform(get("/api/v1/auth/menus").header("Authorization", auth).header("Origin", ORIGIN))
                 .andExpect(status().isOk());
@@ -130,7 +139,7 @@ class EndToEndFlowTest {
 
     @Test
     void alarmCreate_withViewerToken_403() throws Exception {
-        String viewer = jwtUtil.issueAccess("viewer", "VIEWER");
+        String viewer = jwtUtil.issueAccess("viewer", "VIEWER", tokenVersionService.current("viewer"));
         String body = alarmPayload();
         mockMvc.perform(post("/api/v1/alarms").contentType(JSON).content(body)
                         .header("Authorization", "Bearer " + viewer).header("Origin", ORIGIN))
@@ -139,7 +148,7 @@ class EndToEndFlowTest {
 
     @Test
     void alarmCreate_withAdminToken_200() throws Exception {
-        String admin = jwtUtil.issueAccess("admin", "ADMIN");
+        String admin = jwtUtil.issueAccess("admin", "ADMIN", tokenVersionService.current("admin"));
         String body = alarmPayload();
         mockMvc.perform(post("/api/v1/alarms").contentType(JSON).content(body)
                         .header("Authorization", "Bearer " + admin).header("Origin", ORIGIN))
@@ -149,7 +158,7 @@ class EndToEndFlowTest {
     @Test
     void fieldReport_withSpoofedReporter_nonAdmin_403() throws Exception {
         // 水平越权：非管理员伪报他人 reporter → 403
-        String viewer = jwtUtil.issueAccess("viewer", "VIEWER");
+        String viewer = jwtUtil.issueAccess("viewer", "VIEWER", tokenVersionService.current("viewer"));
         String body = "{\"id\":\"u1\",\"kind\":\"field-report\",\"title\":\"t\",\"status\":\"pending\",\"reporter\":\"admin\"}";
         mockMvc.perform(post("/api/v1/field-reports").contentType(JSON).content(body)
                         .header("Authorization", "Bearer " + viewer).header("Origin", ORIGIN))
@@ -159,7 +168,7 @@ class EndToEndFlowTest {
     @Test
     void fieldReport_selfOrNull_nonAdmin_204() throws Exception {
         // 本人或空 reporter：服务端绑定为当前登录用户，204
-        String viewer = jwtUtil.issueAccess("viewer", "VIEWER");
+        String viewer = jwtUtil.issueAccess("viewer", "VIEWER", tokenVersionService.current("viewer"));
         String body = "{\"id\":\"u2\",\"kind\":\"field-report\",\"title\":\"t\",\"status\":\"pending\"}";
         mockMvc.perform(post("/api/v1/field-reports").contentType(JSON).content(body)
                         .header("Authorization", "Bearer " + viewer).header("Origin", ORIGIN))

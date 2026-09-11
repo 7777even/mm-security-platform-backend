@@ -10,8 +10,11 @@ import com.sinopec.mmsecurity.dto.PasswordChangeRequest;
 import com.sinopec.mmsecurity.dto.ProfileUpdateRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
+import io.jsonwebtoken.Claims;
 import com.sinopec.mmsecurity.service.AccountService;
 import com.sinopec.mmsecurity.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +55,7 @@ public class AuthController {
     private final AuthService authService;
     private final AccountService accountService;
     private final JwtUtil jwtUtil;
+    private final TokenVersionService tokenVersionService;
 
     /** 生产 HTTPS 下刷新 Cookie 须 Secure 才生效；dev(http) 必须为 false，否则浏览器拒存。 */
     @Value("${app.cookie.secure:false}")
@@ -79,10 +83,46 @@ public class AuthController {
         return Result.ok(t);
     }
 
+    /**
+     * 登出：清客户端刷新 Cookie + 服务端递增令牌版本号。
+     *
+     * <p><b>修复</b>：此前只清 Cookie，已签发的 access token 在其剩余有效期
+     * （jwt.access-ttl，默认 2 小时）内仍可通过校验；refresh 令牌（7 天）被窃取后可无限续期。
+     * 递增版本号后，旧令牌在 {@code JwtFilter} 校验时因版本落后被拒。</p>
+     */
     @PostMapping("/logout")
-    public Result<Void> logout(HttpServletResponse response) {
+    public Result<Void> logout(
+            HttpServletRequest request,
+            @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken,
+            HttpServletResponse response) {
+        String username = resolveLogoutUsername(request, refreshToken);
+        if (username != null && !username.isBlank()) {
+            tokenVersionService.bump(username);
+        }
         clearRefreshCookie(response);
         return Result.ok();
+    }
+
+    /**
+     * 尽力解析登出用户名：优先 access 令牌（Bearer 头），退回 refresh Cookie。
+     * 两者都解析不到（令牌已过期或未携带）时返回 null——此时无从定位用户，
+     * 清 Cookie 已是当时唯一能做的兜底，不因此让登出失败。
+     */
+    private String resolveLogoutUsername(HttpServletRequest request, String refreshToken) {
+        String header = request == null ? null : request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            Claims claims = jwtUtil.parse(header.substring(7));
+            if (claims != null && "access".equals(claims.get("type", String.class))) {
+                return claims.getSubject();
+            }
+        }
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            Claims claims = jwtUtil.parse(refreshToken);
+            if (claims != null) {
+                return claims.getSubject();
+            }
+        }
+        return null;
     }
 
     @GetMapping("/me")

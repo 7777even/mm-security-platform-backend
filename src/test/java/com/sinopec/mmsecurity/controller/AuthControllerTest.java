@@ -6,6 +6,7 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.LoginRequest;
 import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import com.sinopec.mmsecurity.service.AccountService;
 import com.sinopec.mmsecurity.service.AuthService;
 import io.jsonwebtoken.Claims;
@@ -34,7 +35,9 @@ class AuthControllerTest {
     private final AuthService authService = mock(AuthService.class);
     private final AccountService accountService = mock(AccountService.class);
     private final JwtUtil jwtUtil = mock(JwtUtil.class);
-    private final AuthController controller = new AuthController(authService, accountService, jwtUtil);
+    private final TokenVersionService tokenVersionService = mock(TokenVersionService.class);
+    private final AuthController controller =
+            new AuthController(authService, accountService, jwtUtil, tokenVersionService);
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();

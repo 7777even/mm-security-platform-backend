@@ -11,6 +11,7 @@ import com.sinopec.mmsecurity.dto.MenuVO;
 import com.sinopec.mmsecurity.entity.SysMenu;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import com.sinopec.mmsecurity.security.LoginUser;
 import com.sinopec.mmsecurity.security.RoleAuthorityService;
 import com.sinopec.mmsecurity.security.UserContext;
@@ -35,7 +36,8 @@ class AuthServiceMenuContractTest {
     private final BCryptPasswordEncoder encoder = mock(BCryptPasswordEncoder.class);
     private final IdNameCacheService idNameCache = mock(IdNameCacheService.class);
     private final RoleAuthorityService roleAuthority = mock(RoleAuthorityService.class);
-    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache, roleAuthority);
+    private final TokenVersionService tokenVersionService = mock(TokenVersionService.class);
+    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache, roleAuthority, tokenVersionService);
 
     private static final Set<String> EXPECTED_IDS = Set.of(
             "fm-emergency", "fm-fire", "fm-security", "fm-tv", "fm-production");

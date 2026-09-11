@@ -8,6 +8,7 @@ import com.sinopec.mmsecurity.dto.TokenResponse;
 import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import com.sinopec.mmsecurity.security.RoleAuthorityService;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,12 +38,13 @@ class AuthServiceRefreshTest {
     private final BCryptPasswordEncoder encoder = mock(BCryptPasswordEncoder.class);
     private final IdNameCacheService idNameCache = mock(IdNameCacheService.class);
     private final RoleAuthorityService roleAuthority = mock(RoleAuthorityService.class);
-    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache, roleAuthority);
+    private final TokenVersionService tokenVersionService = mock(TokenVersionService.class);
+    private final AuthService authService = new AuthService(userMapper, jwtUtil, encoder, idNameCache, roleAuthority, tokenVersionService);
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(authService, "accessTtl", 7200L);
-        when(jwtUtil.issueAccess(any(), any())).thenReturn("new-access");
+        when(jwtUtil.issueAccess(any(), any(), anyInt())).thenReturn("new-access");
     }
 
     @Test
@@ -52,7 +56,7 @@ class AuthServiceRefreshTest {
         TokenResponse t = authService.refresh("rt");
 
         assertEquals("new-access", t.getAccessToken());
-        verify(jwtUtil).issueAccess("zhang.san", "OUTER_OPER");
+        verify(jwtUtil).issueAccess(eq("zhang.san"), eq("OUTER_OPER"), anyInt());
     }
 
     @Test

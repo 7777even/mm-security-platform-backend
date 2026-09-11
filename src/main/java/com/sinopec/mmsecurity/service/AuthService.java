@@ -12,6 +12,7 @@ import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.security.RoleAuthorityService;
+import com.sinopec.mmsecurity.security.TokenVersionService;
 import com.sinopec.mmsecurity.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class AuthService {
     private final BCryptPasswordEncoder encoder;
     private final IdNameCacheService idNameCache;
     private final RoleAuthorityService roleAuthorityService;
+    private final TokenVersionService tokenVersionService;
 
     @Value("${jwt.access-ttl}")
     private long accessTtl;
@@ -62,7 +64,7 @@ public class AuthService {
             throw new BusinessException(401, "用户名或密码错误");
         }
         return TokenResponse.of(
-                jwtUtil.issueAccess(u.getUsername(), u.getRole()),
+                jwtUtil.issueAccess(u.getUsername(), u.getRole(), tokenVersionService.current(u.getUsername())),
                 accessTtl);
     }
 
@@ -88,7 +90,7 @@ public class AuthService {
             throw new BusinessException(ResultCode.TOKEN_INVALID, "账号已被禁用");
         }
         return TokenResponse.of(
-                jwtUtil.issueAccess(u.getUsername(), u.getRole()),
+                jwtUtil.issueAccess(u.getUsername(), u.getRole(), tokenVersionService.current(u.getUsername())),
                 accessTtl);
     }
 
