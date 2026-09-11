@@ -13,20 +13,27 @@ import com.sinopec.mmsecurity.dto.VideoLinkageRuleInput;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
 import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
+import com.sinopec.mmsecurity.dto.VideoWallCamera;
+import com.sinopec.mmsecurity.dto.VideoWallGroupNode;
+import com.sinopec.mmsecurity.dto.VideoWallNavigation;
 import com.sinopec.mmsecurity.entity.FacVideoCamera;
 import com.sinopec.mmsecurity.entity.FacVideoGroup;
 import com.sinopec.mmsecurity.entity.FacVideoLinkage;
 import com.sinopec.mmsecurity.entity.FacVideoLinkageOption;
 import com.sinopec.mmsecurity.entity.FacVideoLinkageRule;
+import com.sinopec.mmsecurity.entity.FacVideoWallNode;
 import com.sinopec.mmsecurity.mapper.FacVideoCameraMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoGroupMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageRuleMapper;
+import com.sinopec.mmsecurity.mapper.FacVideoWallNodeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,11 +52,18 @@ public class VideoService {
     private static final String KIND_CATEGORY = "CATEGORY";
     private static final String KIND_TREE = "TREE";
 
+    // fac_video_wall_node（V37）节点种类
+    private static final String WALL_KIND_CATEGORY = "CATEGORY";
+    private static final String WALL_KIND_AREA = "AREA";
+    private static final String WALL_KIND_HIGH_AR = "HIGH_AR";
+    private static final String WALL_KIND_TARGET = "TARGET";
+
     private final FacVideoGroupMapper groupMapper;
     private final FacVideoCameraMapper cameraMapper;
     private final FacVideoLinkageMapper linkageMapper;
     private final FacVideoLinkageRuleMapper linkageRuleMapper;
     private final FacVideoLinkageOptionMapper linkageOptionMapper;
+    private final FacVideoWallNodeMapper wallNodeMapper;
 
     /** 左侧导航：顶部分类（扁平）+ 分组树。 */
     public VideoNavigation navigation() {
@@ -88,6 +102,86 @@ public class VideoService {
                     .map(child -> toGroupNode(child, byParent))
                     .collect(Collectors.toList()));
         }
+        return node;
+    }
+
+    /**
+     * 视频墙导航聚合（V37 fac_video_wall_node）：监测目标树 + 厂区视频目录 +
+     * 通道→目标映射 + 默认高空AR相机。取代前端 videoWallStore.ts 内代码生成的本地数据。
+     *
+     * <p>摄像头通道（v-{i}-{j}，i=目标 sort_no，j=1..cam_count）与其到目标的映射由
+     * TARGET 行确定性派生（占位通道命名，接真实 MDM 设备后改读设备表）；
+     * 目标树/厂区分区/高空AR相机均为表内真实行。</p>
+     */
+    public VideoWallNavigation wallNavigation() {
+        List<FacVideoWallNode> nodes = wallNodeMapper.selectList(new LambdaQueryWrapper<FacVideoWallNode>()
+                .orderByAsc(FacVideoWallNode::getSortNo)
+                .orderByAsc(FacVideoWallNode::getId));
+
+        List<VideoWallGroupNode> targetTree = nodes.stream()
+                .filter(n -> WALL_KIND_CATEGORY.equals(n.getNodeKind()))
+                .map(category -> {
+                    VideoWallGroupNode node = leafNode(category.getNodeCode(), category.getLabel());
+                    node.setChildren(nodes.stream()
+                            .filter(n -> WALL_KIND_TARGET.equals(n.getNodeKind()))
+                            .filter(n -> category.getNodeCode().equals(n.getParentCode()))
+                            .map(n -> leafNode(n.getNodeCode(), n.getLabel()))
+                            .collect(Collectors.toList()));
+                    return node;
+                })
+                .collect(Collectors.toList());
+
+        // 通道按「目标序 → 通道序」派生并按厂区分桶（与前端原生成顺序一致）
+        Map<String, List<VideoWallGroupNode>> channelsByArea = new LinkedHashMap<>();
+        Map<String, List<String>> cameraTargetMap = new LinkedHashMap<>();
+        nodes.stream()
+                .filter(n -> WALL_KIND_TARGET.equals(n.getNodeKind()))
+                .forEach(target -> {
+                    int seq = target.getSortNo() == null ? 0 : target.getSortNo();
+                    int camCount = target.getCamCount() == null ? 0 : target.getCamCount();
+                    List<VideoWallGroupNode> channels =
+                            channelsByArea.computeIfAbsent(target.getAreaCode(), key -> new ArrayList<>());
+                    for (int j = 1; j <= camCount; j++) {
+                        String cameraId = "v-" + seq + "-" + j;
+                        channels.add(leafNode(cameraId, String.format("CAM-装置#%03d-通道%d", seq, j)));
+                        cameraTargetMap.put(cameraId, List.of(target.getNodeCode()));
+                    }
+                });
+
+        List<VideoWallGroupNode> videoTree = nodes.stream()
+                .filter(n -> WALL_KIND_AREA.equals(n.getNodeKind()))
+                .map(area -> {
+                    VideoWallGroupNode node = leafNode(area.getNodeCode(), area.getLabel());
+                    List<VideoWallGroupNode> children = channelsByArea.get(area.getNodeCode());
+                    if (children != null && !children.isEmpty()) {
+                        node.setChildren(children);
+                    }
+                    return node;
+                })
+                .collect(Collectors.toList());
+
+        List<VideoWallCamera> highArCameras = nodes.stream()
+                .filter(n -> WALL_KIND_HIGH_AR.equals(n.getNodeKind()))
+                .map(n -> {
+                    VideoWallCamera camera = new VideoWallCamera();
+                    camera.setId(n.getNodeCode());
+                    camera.setLabel(n.getLabel());
+                    return camera;
+                })
+                .collect(Collectors.toList());
+
+        VideoWallNavigation nav = new VideoWallNavigation();
+        nav.setTargetTree(targetTree);
+        nav.setVideoTree(videoTree);
+        nav.setCameraTargetMap(cameraTargetMap);
+        nav.setDefaultHighAltitudeCameras(highArCameras);
+        return nav;
+    }
+
+    private VideoWallGroupNode leafNode(String id, String label) {
+        VideoWallGroupNode node = new VideoWallGroupNode();
+        node.setId(id);
+        node.setLabel(label);
         return node;
     }
 

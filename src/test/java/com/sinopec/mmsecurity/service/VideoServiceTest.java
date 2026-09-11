@@ -8,14 +8,18 @@ import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
 import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
+import com.sinopec.mmsecurity.dto.VideoWallGroupNode;
+import com.sinopec.mmsecurity.dto.VideoWallNavigation;
 import com.sinopec.mmsecurity.entity.FacVideoCamera;
 import com.sinopec.mmsecurity.entity.FacVideoGroup;
 import com.sinopec.mmsecurity.entity.FacVideoLinkage;
 import com.sinopec.mmsecurity.entity.FacVideoLinkageRule;
+import com.sinopec.mmsecurity.entity.FacVideoWallNode;
 import com.sinopec.mmsecurity.mapper.FacVideoCameraMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoGroupMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageRuleMapper;
+import com.sinopec.mmsecurity.mapper.FacVideoWallNodeMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,6 +49,8 @@ class VideoServiceTest {
     private FacVideoLinkageMapper linkageMapper;
     @Mock
     private FacVideoLinkageRuleMapper linkageRuleMapper;
+    @Mock
+    private FacVideoWallNodeMapper wallNodeMapper;
 
     @InjectMocks
     private VideoService service;
@@ -226,5 +232,73 @@ class VideoServiceTest {
         input.setObjectCategory(category);
         input.setObjectName(name);
         return input;
+    }
+
+    @Test
+    void wallNavigation_buildsTreesDerivesChannelsAndMap() {
+        // 顺序模拟 DB 按 sort_no 升序返回
+        FacVideoWallNode cat = wallNode("cat-1", "CATEGORY", "重大危险源", null, null, 0, 1);
+        FacVideoWallNode area1 = wallNode("area-1", "AREA", "一号生产厂区", null, null, 0, 1);
+        FacVideoWallNode area2 = wallNode("area-2", "AREA", "二号生产厂区", null, null, 0, 2);
+        FacVideoWallNode highAr = wallNode("high-ar-1", "HIGH_AR", "1#厂区高空AR·全景", null, null, 0, 1);
+        FacVideoWallNode t1 = wallNode("t-1", "TARGET", "危化储罐区装置#001", "cat-1", "area-1", 5, 1);
+        FacVideoWallNode t2 = wallNode("t-2", "TARGET", "危化储罐区装置#002", "cat-1", "area-2", 2, 2);
+        when(wallNodeMapper.selectList(any()))
+                .thenReturn(List.of(cat, area1, area2, highAr, t1, t2));
+
+        VideoWallNavigation nav = service.wallNavigation();
+
+        // 目标树：分类 → 目标
+        assertEquals(1, nav.getTargetTree().size());
+        assertEquals("cat-1", nav.getTargetTree().get(0).getId());
+        assertEquals(2, nav.getTargetTree().get(0).getChildren().size());
+        assertEquals("危化储罐区装置#001", nav.getTargetTree().get(0).getChildren().get(0).getLabel());
+
+        // 厂区视频目录：每目标按 cam_count 派生通道，编码 v-{i}-{j}、命名 CAM-装置#{i:003}-通道{j}
+        assertEquals(2, nav.getVideoTree().size());
+        VideoWallGroupNode firstArea = nav.getVideoTree().get(0);
+        assertEquals("area-1", firstArea.getId());
+        assertEquals(5, firstArea.getChildren().size());
+        assertEquals("v-1-1", firstArea.getChildren().get(0).getId());
+        assertEquals("CAM-装置#001-通道1", firstArea.getChildren().get(0).getLabel());
+        assertEquals("v-1-5", firstArea.getChildren().get(4).getId());
+        VideoWallGroupNode secondArea = nav.getVideoTree().get(1);
+        assertEquals(2, secondArea.getChildren().size());
+        assertEquals("v-2-2", secondArea.getChildren().get(1).getId());
+
+        // 通道 → 目标映射（1:1），总数 = 各目标 cam_count 之和
+        assertEquals(List.of("t-1"), nav.getCameraTargetMap().get("v-1-3"));
+        assertEquals(List.of("t-2"), nav.getCameraTargetMap().get("v-2-1"));
+        assertEquals(7, nav.getCameraTargetMap().size());
+
+        // 默认高空AR相机
+        assertEquals(1, nav.getDefaultHighAltitudeCameras().size());
+        assertEquals("high-ar-1", nav.getDefaultHighAltitudeCameras().get(0).getId());
+        assertEquals("1#厂区高空AR·全景", nav.getDefaultHighAltitudeCameras().get(0).getLabel());
+    }
+
+    @Test
+    void wallNavigation_emptyTableReturnsEmptyStructure() {
+        when(wallNodeMapper.selectList(any())).thenReturn(List.of());
+
+        VideoWallNavigation nav = service.wallNavigation();
+
+        assertTrue(nav.getTargetTree().isEmpty());
+        assertTrue(nav.getVideoTree().isEmpty());
+        assertTrue(nav.getCameraTargetMap().isEmpty());
+        assertTrue(nav.getDefaultHighAltitudeCameras().isEmpty());
+    }
+
+    private static FacVideoWallNode wallNode(String code, String kind, String label,
+                                             String parentCode, String areaCode, int camCount, int sortNo) {
+        FacVideoWallNode node = new FacVideoWallNode();
+        node.setNodeCode(code);
+        node.setNodeKind(kind);
+        node.setLabel(label);
+        node.setParentCode(parentCode);
+        node.setAreaCode(areaCode);
+        node.setCamCount(camCount);
+        node.setSortNo(sortNo);
+        return node;
     }
 }

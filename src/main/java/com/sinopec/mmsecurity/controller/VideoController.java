@@ -8,6 +8,7 @@ import com.sinopec.mmsecurity.dto.VideoLinkageOptions;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleRow;
 import com.sinopec.mmsecurity.dto.VideoLinkageSaveRequest;
 import com.sinopec.mmsecurity.dto.VideoNavigation;
+import com.sinopec.mmsecurity.dto.VideoWallNavigation;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.VideoService;
 import jakarta.validation.Valid;
@@ -44,6 +45,15 @@ public class VideoController {
     @GetMapping("/navigation")
     public Result<VideoNavigation> navigation() {
         return Result.ok(videoService.navigation());
+    }
+
+    /**
+     * 视频墙导航聚合（V37 fac_video_wall_node）：监测目标树 + 厂区视频目录 +
+     * 通道→目标映射 + 默认高空AR相机。取代前端 videoWallStore.ts 内代码生成的本地数据。
+     */
+    @GetMapping("/wall-navigation")
+    public Result<VideoWallNavigation> wallNavigation() {
+        return Result.ok(videoService.wallNavigation());
     }
 
     /** 摄像头分页（默认每页 9 宫格）。 */
