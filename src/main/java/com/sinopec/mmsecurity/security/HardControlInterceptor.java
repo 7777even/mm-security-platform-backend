@@ -7,8 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.Set;
-
 /**
  * 硬控路径兜底拦截器（零下行控制红线）。
  *
@@ -23,18 +21,6 @@ import java.util.Set;
 @Component
 public class HardControlInterceptor implements HandlerInterceptor {
 
-    /** 硬控路径前缀（POST/PUT/DELETE 命中即拒绝） */
-    private static final Set<String> HARD_CONTROL_PATHS = Set.of(
-            "/api/v1/devices/cmd",
-            "/api/v1/devices/control",
-            "/api/v1/fire/release",
-            "/api/v1/fire/suppress",
-            "/api/v1/doors/lock",
-            "/api/v1/doors/unlock",
-            "/api/v1/broadcast/issue",
-            "/api/v1/emergency/trigger"
-    );
-
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String method = request.getMethod();
@@ -42,11 +28,10 @@ public class HardControlInterceptor implements HandlerInterceptor {
             return true;
         }
         String uri = request.getRequestURI();
-        for (String p : HARD_CONTROL_PATHS) {
-            if (uri.startsWith(p)) {
-                throw new BusinessException(ResultCode.HARD_CONTROL_BLOCKED,
-                        "硬控路径 [" + uri + "] 已被服务端兜底拒绝：前端只监不控，禁止下行控制指令");
-            }
+        // 单一真源：硬控清单集中在 HardControlPaths，前端经 /system/hard-control-paths 取同一份
+        if (HardControlPaths.matches(uri)) {
+            throw new BusinessException(ResultCode.HARD_CONTROL_BLOCKED,
+                    "硬控路径 [" + uri + "] 已被服务端兜底拒绝：前端只监不控，禁止下行控制指令");
         }
         return true;
     }
