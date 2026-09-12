@@ -97,3 +97,55 @@ D 类写侧**不是被红线拦死，而是当前未实现写**（后端 GET 只
 其中物理下行控制（devices/cmd、fire/release、doors、broadcast/issue、emergency/trigger 等）属**不可放开的红线**；
 而 4 块业务写域是业务记录，可由产品决策是否启用，但须先界定语义（尤其应急指令）、统一红线清单、补审计与权限。
 属需产品/架构拍板的专项，本文档即其实施蓝图；在拍板前不应擅自为这 4 域添加写端点。
+
+---
+
+## 6. 实施记录（D1–D5 全部拍板后落地）
+
+### 6.1 决策结论
+
+| ID | 结论 |
+|---|---|
+| D1 | **全启用** 4 类业务写 |
+| D2 | **新增独立业务表**（V47 已建 4 张写侧记录表） |
+| D3 | **强制审计 + 独立权限码** |
+| D4 | 应急指令**仅系统内部记录**，绝不触发物理设备 |
+| D5 | 后端 `HardControlPaths` 单一真源 + 前端同源镜像 + 双端测试互锁 |
+
+### 6.2 已落地清单
+
+| 步骤 | 内容 | 提交 |
+|---|---|---|
+| 步骤 1（D5） | 后端 `security/HardControlPaths` 单一真源（17 条后缀），前端 `hardControlGuard.ts` 由同一批后缀生成正则 | 后端 `fd9f949` / 前端 `341fced` |
+| 步骤 2（D2） | `V47__business_write_records.sql` 建 4 张写表 + 4 实体 + 4 Mapper | `df7f3f6` |
+| 步骤 3（D3/D4） | `BusinessWriteService` + 8 个端点 + `V48` 权限码种子 + 审计旁路 + 测试 | `c35d49c` |
+| 步骤 4 | 前端 `services/businessWrite.ts`（写一律显式抛错，不伪造成功）+ 生成类型 | 前端 `7435ece` |
+| 步骤 5 | 契约四同步（三份 openapi 先行）+ 双端回归全绿 | 前端 `6ca4ffe` |
+
+### 6.3 端点与权限码
+
+| 域 | 端点 | 权限码 | 落表 |
+|---|---|---|---|
+| 应急指令 | `POST/GET /api/v1/emergency/command-records` | `emergency:command:write` | `fac_emergency_command_record` |
+| 值班签到 | `POST/GET /api/v1/emergency/duty-sign-ins` | `emergency:duty:write` | `fac_duty_sign_in` |
+| 台风调度 | `POST/GET /api/v1/typhoon/dispatch-orders` | `typhoon:dispatch:write` | `fac_typhoon_dispatch_order` |
+| 巡更执行 | `POST/GET /api/v1/fire/patrol-executions` | `fire-alarm:patrol:write` | `fac_patrol_execution` |
+
+4 个权限码均为 **BUTTON 级**（`menu_type='BUTTON'`、`visible=0`）：`AuthService.menus()`
+已过滤 BUTTON，故不进顶部导航；也不是路由 `meta.perm`，不会影响前端路由守卫（不会出现"取不到权限码全跳 404"）。
+
+### 6.4 写侧不变量（改动时勿破）
+
+1. **绝不触发物理设备**：本服务只做业务留痕；物理下行由 `HardControlPaths` 双端拦截。
+   `HardControlPathsTest#businessWritePaths_notBlockedByRedline` 反向锁定 4 条写路径不误伤。
+2. **操作人与时间戳服务端填充**：`operator` 取 `UserContext`（缺失落 `unknown`），`signTime` 不接受客户端入参。
+3. **状态推进落 prev→curr**：指令与调度单的 `prevStatus` 由服务端取上一条记录的 `currStatus`，首次为空。
+4. **审计尽力而为**：`SystemAuditHelper.record(module, action, detail)` 落 `fac_audit_log`，失败仅 warn。
+   已由 `record(String, Map)` 重载为 `record(String module, String action, Map)`，业务域传 `emergency/typhoon/fire`。
+5. **列表走方言安全上限**：`Page(1, 200, false)`，避免全表扫。
+
+### 6.5 剩余待办
+
+- **前端交互层未接**：`services/businessWrite.ts` 已就绪，但 4 个大屏面板尚未接入「下发 / 签到 / 调度 / 上报」按钮与权限码显隐控制（`v-permission`），需产品给定交互稿后落地。
+- **非 ADMIN 角色的防区分配**：与 A1 同源风险（R1）——`zone_codes` 为空的非 ALL 用户仍零可见，属部署/数据任务。
+- **达梦 / PG 镜像**：V46–V48 目前仅 H2 单方言，待两库激活时补。
