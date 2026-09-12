@@ -1,6 +1,6 @@
 # 数据权限（data_scope 行级 ABAC）治理分步方案
 
-> 状态：**方案文档，待产品 / 架构拍板后再实施**。本文不写业务代码，只给出分步路径、事实依据与风险清单。
+> 状态：**方案文档 + 部分已落地**。设备域（DeviceService.page）已按既定约定实施（见 §5）；其余域/数据任务待拍板。
 > 关联设计：`openspec/changes/2026-09-10-rbac-data-scope-abac/design.md`；实现：`security/DataScopeHelper.java`、`security/DataScopeResolver.java`、`service/RescueResourceService.java`、`db/migration/h2/V34__data_scope_abac.sql`。
 > 日期：2026-09-12
 
@@ -15,7 +15,7 @@
 | 解析器 | `DataScopeResolver.resolveZones()`：ALL→`null`（看全部）；否则返回用户 `zone_codes` 解析集合；空集→零可见；匿名→`null` | `security/DataScopeResolver.java:57` |
 | 注入工具 | `DataScopeHelper.apply(qw, col, zones)`：`null`→不加条件；空集→`1=0`；非空→`IN(zones)` | `security/DataScopeHelper.java:26` |
 | **真实落地的域** | **仅 1 处**：`RescueResourceService.brigades()` 用 `qw.in(FacBrigadeTeam::getArea, zones)` | `service/RescueResourceService.java:171` |
-| 可正确命中的列 | `fac_brigade_team.area`（英文，与 `sys_zone.zone_code` 对齐：LIANYOU/YIXI/GUANQU/CANGCUN/MATOU/FANGTING/TEQIN） | `V34` seed + `FacBrigadeTeam.area` |
+| 可正确命中的列 | `fac_brigade_team.area`（**中文**，与 `sys_zone.zone_name` 对齐：炼油区/乙烯区/罐区/仓储区/码头区/芳烃区/特勤保障区；既定过滤按中文 `zone_name` 字符串匹配，不经英文 `zone_code` 翻译——这点与下文"编码错配"的初判不同，见 §0.1） | `V34` seed + `FacBrigadeTeam.area` |
 | 有列但**编码错配** | `fac_device.zone`（中文）、`fac_workstation.zone`（中文） | 见下 |
 | **无防区列** | `fac_alarm`、`fac_video_camera`、`fac_major_hazard`（仅有自由文本 `location`） | `V1`/`V14`/`V3` 建表 |
 | 角色默认 scope | `sys_role.data_scope` 默认 `'SELF'`（V32） | `V32__system_rbac.sql:16` |
@@ -27,8 +27,15 @@
 - `fac_device.zone`（去重 5 种）：`危化仓库` `罐区A` `罐区B` `装卸区` `装置C`
 - `fac_workstation.zone`（去重 8 种）：`乙烯区` `储运区` `全厂范围` `公用工程区` `化工区` `炼油区` `码头区` `罐区A`
 
-即便中文名与 `sys_zone.zone_name`（炼油区/乙烯区/罐区/仓储区/码头区/芳烃区/特勤保障区）语义相近，
-**`IN('LIANYOU','YIXI',...)` 套在中文列上必然 0 命中**；且存在子区（罐区A/B）、无对应英文的项（储运区/公用工程区/化工区/全厂范围/装卸区/装置C），并非干净 1:1。
+### 0.1 对"编码错配"的纠正（重要）
+
+初判以为需要"中文列 IN 英文 code"会 0 命中，这是**误判**。经核实 V34 seed 注释与 `brigades()` 实现：既定过滤是
+`qw.in(area, 用户zone_codes)`，而 `sys_user.zone_codes` 存的是**中文 `zone_name`**（炼油区/乙烯区/…），`fac_brigade_team.area` 也是中文，二者直接字符串匹配命中——**根本不翻译英文 code**。
+因此"之前的"约定 = 中文 `zone_name` 直配，**无需中英文映射树**（这也正是用户拍板"没有映射树、按照之前的"可直接推进的依据）。
+
+真正的问题**不是语言不同，而是词汇表不同**：`fac_device.zone`（危化仓库/罐区A/罐区B/装卸区/装置C）与
+`fac_workstation.zone`（另含储运区/全厂范围/公用工程区/化工区）的部分取值**不在** `sys_zone.zone_name` 现有 7 项中，且存在子区（罐区A/B ≠ 罐区）。
+A1 只扩展设备域、并把设备 5 个中文防区词补进 `sys_zone`（V46），正是"按既定约定补齐权威词汇表"，无需任何翻译层。
 
 ### 当前真实行为（重要，避免误判）
 
@@ -101,3 +108,20 @@
 数据权限**不是性能问题，是真实业务缺口**，且当前"局部生效 + 编码错配 + 缺列"的组合意味着**绝不能顺手给更多表加 `apply`**。
 正确路径是：先由产品给出权威防区树（D2a）→ 统一编码（D1）→ 补列回填（D2b）→ 再注入 → 再上线前置（D4）。
 属数据治理专项，需排期与架构拍板；在拍板前，本文档即为其实施蓝图。
+
+---
+
+## 5. 实施记录（2026-09-12 已落地部分 · A1 设备域）
+
+用户拍板"无中英文映射树、按照之前的"。经核实既定约定为**中文 `zone_name` 直配**（见 §0.1），故 A1 按 brigade 模式扩展到设备域，**不引入翻译层、不新增 `zone_code` 列**：
+
+- **代码**：`DeviceService.page()` 注入 `DataScopeResolver`，构建 qw 后调 `DataScopeHelper.apply(qw, FacDevice::getZone, zones)`（`service/DeviceService.java`），与 `brigades()` 完全同构；同步改 `DeviceServiceTest` 构造器。
+- **主数据**：新增 `V46__data_scope_device_zones.sql`，把 `fac_device.zone` 的 5 个中文防区词（危化仓库/罐区A/罐区B/装卸区/装置C）补进 `sys_zone.zone_name`，使权威词汇表覆盖设备域。
+- **门禁**：完整基线 **477 全绿**、jacoco 达标（测试上下文无 `UserContext` → `resolveZones()` 返回 `null` → 不加条件 → 零影响）。
+- **提交**：`153a152`（main，待推送）。
+
+### 5.1 仍未做（明确边界，勿当漏做）
+- **工作站域**：`FacWorkstation` 仅在 `DashboardService` 聚合中出现，**无独立列表查询**，本轮未套；待其列表 API 落地后再按同模式扩展（其 8 个中文防区词中储运区/全厂范围/公用工程区/化工区亦需补进 `sys_zone`）。
+- **无防区列的核心表**：`fac_alarm`/`fac_video_camera`/`fac_major_hazard` 仍无防区列，且其 `location` 为自由文本，按 §2 步骤 3 需先补列+归属回填才能真正隔离；**当前这些域仍全角色可见（已知缺口，非 bug）**。
+- **数据任务 R1（最高优先级线上风险）**：`data_scope` 默认 `SELF`，任一非 ALL 用户 `zone_codes` 为空 → `1=0` 零可见。**代码已就绪，但真实用户 ↔ 防区分配是部署/数据任务**，须在上线前为所有非 ALL 用户分配 `zone_codes`，并在 `SystemUserService` 改 `zone_codes` 时调 `DataScopeResolver.invalidateUser`（R4）。
+- **D2a/D3/D5** 等治理决策点仍待产品/架构拍板（尤其 `全厂范围` 跨区语义、是否做通用拦截器）。
