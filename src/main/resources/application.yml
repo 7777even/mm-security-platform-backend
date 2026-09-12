@@ -17,6 +17,14 @@ spring:
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
+      # 连接最大存活时间：必须小于数据库 / 中间件（如 pgbouncer、云 SQL 代理、防火墙）的
+      # 空闲超时，避免连接池把已被服务端静默断开的连接交给业务线程（典型症状：偶发
+      # "connection closed" / "broken pipe"）。10min 是跨网段 / 云环境的保守值。
+      # 若生产中间件空闲超时更短（如 5min），需同步调小。
+      max-lifetime: 600000
+      # 保活：对空闲连接定期发轻量探活，防止被防火墙 / 中间件静默丢弃（尤其跨网段 / 云环境）。
+      # 默认 0 = 关闭；开启后 idle 连接不会被误杀，减少获取连接时的重建开销。
+      keepalive-time: 120000
   # 数据库版本化迁移（Flyway）：接管建表职责，不再由 spring.sql.init 加载 schema.sql/data.sql。
   # 双轨策略：V1 全量快照（空库直达最新）+ V<yyyyMMddHHmmss>__<snake>.sql 增量；
   # 已进共享环境的 V 文件禁止修改 / 重命名 / 删除（AGENTS.md §数据库）。
