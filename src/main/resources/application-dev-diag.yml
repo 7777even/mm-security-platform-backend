@@ -6,3 +6,9 @@ mm:
     slow-sql:
       # 慢 SQL 阈值（毫秒）。dev 内存库(H2)下多数语句 < 5ms，上调可只看真正的热点。
       threshold-ms: 50
+
+# dev-diag 同时开启 MyBatis 的 StdOutImpl 裸 SQL 日志（含参数），与 SlowSqlInterceptor 配合：
+# 既能逐条看 SQL，又能按 [SLOW-SQL] 标记定位耗时热点。默认 dev 走结构化 Slf4j（quiet）。
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

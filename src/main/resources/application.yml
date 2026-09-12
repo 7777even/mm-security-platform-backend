@@ -107,7 +107,9 @@ mybatis-plus:
   type-aliases-package: com.sinopec.mmsecurity.entity
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # SQL 日志：默认 dev 不再用 StdOutImpl 裸打（无 traceId、噪音大），改走 MyBatis 的
+    # Slf4j 实现，由 logging.level 控制、走统一日志格式（含 %X{traceId}）。需要逐条裸看
+    # SQL 时激活 dev-diag profile（application-dev-diag.yml 覆盖回 StdOutImpl）。
   global-config:
     db-config:
       id-type: auto
