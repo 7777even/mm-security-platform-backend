@@ -19,6 +19,7 @@ import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueForceStatMapper;
 import com.sinopec.mmsecurity.mapper.FacSpecialOperationStatMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -49,6 +50,11 @@ class FireMonitoringServiceTest {
     private final FireMonitoringService service = new FireMonitoringService(
             rescueForceStatMapper, specialOperationStatMapper, fireEquipmentStatusMapper,
             firePatrolMapper, patrolItemDefMapper, patrolItemResultMapper, fireEquipmentCategoryMapper);
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     @Test
     void rescueForces_mapsStatCountToValue() {

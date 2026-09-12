@@ -15,10 +15,13 @@ import com.sinopec.mmsecurity.mapper.FacFacilityDetailMapper;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacMonitoringAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacMonitoringPointMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -38,8 +41,21 @@ public class HazardService {
     private final FacFacilityDetailMapper facilityDetailMapper;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 重大危险源 / 监测点位 / 监测报警 / 设施档案 均为低频参考数据，加大屏/管理端高频轮询入口。
+     * 这些端点每次刷新都全表 selectList，加短 TTL 缓存可大幅削减重复扫描；只读无写入口，TTL 即一致窗口。
+     */
+    private final Cache<String, List<MajorHazardItem>> majorHazardCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+    private final Cache<String, List<MonitoringPoint>> monitoringPointCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+    private final Cache<String, List<MonitoringAlarm>> monitoringAlarmCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+    private final Cache<String, FacilityDetailInfo> facilityDetailCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(64).build();
+
     public List<MajorHazardItem> listMajorHazards() {
-        return majorHazardMapper.selectList(null).stream().map(this::toItem).toList();
+        return majorHazardCache.get("MAJOR_HAZARDS", k -> majorHazardMapper.selectList(null).stream().map(this::toItem).toList());
     }
 
     public MajorHazardDetail getMajorHazardDetail(Long id) {
@@ -48,6 +64,10 @@ public class HazardService {
     }
 
     public List<MonitoringPoint> listMonitoringPoints() {
+        return monitoringPointCache.get("MONITORING_POINTS", k -> computeMonitoringPoints());
+    }
+
+    private List<MonitoringPoint> computeMonitoringPoints() {
         return monitoringPointMapper.selectList(null).stream()
                 .map(p -> {
                     MonitoringPoint d = new MonitoringPoint();
@@ -65,6 +85,10 @@ public class HazardService {
     }
 
     public List<MonitoringAlarm> listMonitoringAlarms() {
+        return monitoringAlarmCache.get("MONITORING_ALARMS", k -> computeMonitoringAlarms());
+    }
+
+    private List<MonitoringAlarm> computeMonitoringAlarms() {
         return monitoringAlarmMapper.selectList(null).stream()
                 .map(a -> {
                     MonitoringAlarm d = new MonitoringAlarm();
@@ -80,6 +104,11 @@ public class HazardService {
     }
 
     public FacilityDetailInfo getFacilityDetail(String name) {
+        String key = (name == null || name.isBlank()) ? "__ALL__" : name;
+        return facilityDetailCache.get(key, k -> computeFacilityDetail(name));
+    }
+
+    private FacilityDetailInfo computeFacilityDetail(String name) {
         List<FacFacilityDetail> all = facilityDetailMapper.selectList(null);
         FacFacilityDetail e = all.stream()
                 .filter(f -> name == null || name.isBlank() || name.equals(f.getFacilityName()))
@@ -146,5 +175,13 @@ public class HazardService {
             log.warn("解析重大危险源 JSON 列失败: {}", ex.getMessage());
             return List.of();
         }
+    }
+
+    /** 测试隔离用：清空全部缓存，避免跨用例污染。 */
+    void clearCaches() {
+        majorHazardCache.invalidateAll();
+        monitoringPointCache.invalidateAll();
+        monitoringAlarmCache.invalidateAll();
+        facilityDetailCache.invalidateAll();
     }
 }

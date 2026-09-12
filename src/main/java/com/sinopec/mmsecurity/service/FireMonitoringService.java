@@ -21,6 +21,8 @@ import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueForceStatMapper;
 import com.sinopec.mmsecurity.mapper.FacSpecialOperationStatMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 /**
@@ -57,6 +60,14 @@ public class FireMonitoringService {
     private final FacFirePatrolItemDefMapper patrolItemDefMapper;
     private final FacFirePatrolItemResultMapper patrolItemResultMapper;
     private final FacFireEquipmentCategoryMapper fireEquipmentCategoryMapper;
+
+    /**
+     * 防火巡查记录短 TTL 缓存：patrols() 读 fac_fire_patrol_item_def + fac_fire_patrol + 全量异常结果
+     * （patrolItemResultMapper.selectList(null) 为全表扫描），大屏高频轮询入口。
+     * 只读无写入口，TTL 即最终一致窗口。
+     */
+    private final Cache<String, List<FirePatrolRecord>> patrolsCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
 
     /** 消防救援力量统计：来自 fac_rescue_force_stat */
     public List<RescueForceStat> rescueForces() {
@@ -125,8 +136,12 @@ public class FireMonitoringService {
         return s;
     }
 
-    /** 防火巡查记录：标准检查项逐条补齐，异常表覆盖处使用实际结果。 */
+    /** 防火巡查记录：标准检查项逐条补齐，异常表覆盖处使用实际结果（带短 TTL 缓存）。 */
     public List<FirePatrolRecord> patrols() {
+        return patrolsCache.get("PATROLS", k -> computePatrols());
+    }
+
+    private List<FirePatrolRecord> computePatrols() {
         List<FacFirePatrolItemDef> defs = patrolItemDefMapper.selectList(
                 new LambdaQueryWrapper<FacFirePatrolItemDef>().orderByAsc(FacFirePatrolItemDef::getSortNo));
         List<FacFirePatrol> rows = firePatrolMapper.selectList(
@@ -174,6 +189,11 @@ public class FireMonitoringService {
             out.add(rec);
         }
         return out;
+    }
+
+    /** 测试隔离用：清空巡查缓存，避免跨用例污染。 */
+    void clearCaches() {
+        patrolsCache.invalidateAll();
     }
 
     /** locations 以逗号分隔存储，输出为列表；空串返回空列表而非空串元素。 */

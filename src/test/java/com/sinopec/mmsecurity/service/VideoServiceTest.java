@@ -28,6 +28,7 @@ import com.sinopec.mmsecurity.mapper.FacVideoLinkageMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageRuleMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoWallNodeMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -66,6 +67,11 @@ class VideoServiceTest {
     private final VideoService service = new VideoService(groupMapper, cameraMapper, linkageMapper,
             linkageRuleMapper, linkageOptionMapper, wallNodeMapper,
             importantGroupMapper, importantFeedMapper);
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     // ------------------------------------------------------------------ V14 导航
 

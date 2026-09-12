@@ -20,11 +20,14 @@ import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMapPointMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 /**
@@ -48,8 +51,19 @@ public class TvService {
     private final FacTvMapPointMapper tvMapPointMapper;
     private final FacTvMonitorMapper tvMonitorMapper;
 
-    /** 首屏聚合：概览卡片 + 运行统计 + 维保工单 + 事件分析。 */
+    /**
+     * 工业电视首屏聚合短 TTL 缓存：大屏高频轮询入口，聚合读 fac_tv_stat_item + fac_tv_operation_stat。
+     * 只读无写入口，TTL 即最终一致窗口。
+     */
+    private final Cache<String, TvOverview> overviewCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+
+    /** 首屏聚合：概览卡片 + 运行统计 + 维保工单 + 事件分析（带短 TTL 缓存）。 */
     public TvOverview overview() {
+        return overviewCache.get("OVERVIEW", k -> computeOverview());
+    }
+
+    private TvOverview computeOverview() {
         List<FacTvStatItem> items = statItemMapper.selectList(
                 new LambdaQueryWrapper<FacTvStatItem>().orderByAsc(FacTvStatItem::getSortNo));
 
@@ -95,6 +109,11 @@ public class TvService {
         }
         overview.setOperationStats(stats);
         return overview;
+    }
+
+    /** 测试隔离用：清空首屏聚合缓存，避免跨用例污染。 */
+    void clearCaches() {
+        overviewCache.invalidateAll();
     }
 
     /** 入厂巡检聚合：车辆列表 + 人员列表。 */

@@ -35,6 +35,8 @@ import com.sinopec.mmsecurity.mapper.FacVideoLinkageMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoLinkageRuleMapper;
 import com.sinopec.mmsecurity.mapper.FacVideoWallNodeMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +46,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +76,15 @@ public class VideoService {
     private final FacVideoWallNodeMapper wallNodeMapper;
     private final FacVideoImportantGroupMapper importantGroupMapper;
     private final FacVideoImportantFeedMapper importantFeedMapper;
+
+    /**
+     * 视频联动配置列表 / 下拉选项 缓存：联动配置为管理端低频维护数据，但联动选项被配置弹窗高频读取。
+     * TTL 即最终一致窗口；save/delete 联动时显式失效（见 clearLinkageCaches），避免脏读。
+     */
+    private final Cache<String, List<VideoLinkageItem>> linkagesCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+    private final Cache<String, VideoLinkageOptions> linkageOptionsCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
 
     /** 左侧导航：顶部分类（扁平）+ 分组树。 */
     public VideoNavigation navigation() {
@@ -275,6 +287,10 @@ public class VideoService {
      * 相机名 / 相机类型由 fac_video_camera 派生；预置点 / 业务对象读 fac_video_linkage_option（V35）。
      */
     public VideoLinkageOptions linkageOptions() {
+        return linkageOptionsCache.get("OPTIONS", k -> computeLinkageOptions());
+    }
+
+    private VideoLinkageOptions computeLinkageOptions() {
         List<FacVideoCamera> cameras = cameraMapper.selectList(new LambdaQueryWrapper<FacVideoCamera>()
                 .orderByAsc(FacVideoCamera::getSortNo)
                 .orderByAsc(FacVideoCamera::getId));
@@ -304,9 +320,24 @@ public class VideoService {
     }
 
     public List<VideoLinkageItem> linkages() {
+        return linkagesCache.get("LINKAGES", k -> computeLinkages());
+    }
+
+    private List<VideoLinkageItem> computeLinkages() {
         return linkageMapper.selectList(new LambdaQueryWrapper<FacVideoLinkage>()
                         .orderByAsc(FacVideoLinkage::getSortNo)).stream()
                 .map(this::toLinkageItem).collect(Collectors.toList());
+    }
+
+    /** 写操作（save/delete 联动）后失效联动缓存，避免脏读。 */
+    private void clearLinkageCaches() {
+        linkagesCache.invalidateAll();
+        linkageOptionsCache.invalidateAll();
+    }
+
+    /** 测试隔离用：清空全部缓存，避免跨用例污染。 */
+    void clearCaches() {
+        clearLinkageCaches();
     }
 
     /**
@@ -344,6 +375,7 @@ public class VideoService {
             entity.setSortNo(sortNo++);
             linkageRuleMapper.insert(entity);
         }
+        clearLinkageCaches();
         return toLinkageItem(linkage);
     }
 
@@ -358,6 +390,7 @@ public class VideoService {
         linkageRuleMapper.delete(new LambdaQueryWrapper<FacVideoLinkageRule>()
                 .eq(FacVideoLinkageRule::getConfigCode, configCode));
         result.setOk(linkageMapper.deleteById(linkage.getId()) > 0);
+        clearLinkageCaches();
         return result;
     }
 

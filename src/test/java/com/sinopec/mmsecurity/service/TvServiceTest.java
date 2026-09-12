@@ -8,6 +8,7 @@ import com.sinopec.mmsecurity.entity.FacTvStatItem;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,11 @@ class TvServiceTest {
 
     @InjectMocks
     private TvService service;
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     private static FacTvStatItem statItem(String category, String label, int count, String color, String tone, int sortNo) {
         FacTvStatItem item = new FacTvStatItem();

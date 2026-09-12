@@ -11,9 +11,12 @@ import com.sinopec.mmsecurity.entity.FacWeatherHourly;
 import com.sinopec.mmsecurity.mapper.FacWeatherCurrentMapper;
 import com.sinopec.mmsecurity.mapper.FacWeatherDailyMapper;
 import com.sinopec.mmsecurity.mapper.FacWeatherHourlyMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 /**
@@ -30,8 +33,19 @@ public class WeatherService {
     private final FacWeatherHourlyMapper hourlyMapper;
     private final FacWeatherDailyMapper dailyMapper;
 
-    /** 首屏聚合：实况 + 逐小时序列 + 七日预报。 */
+    /**
+     * 天气首屏聚合短 TTL 缓存：大屏高频轮询场景下避免每次刷新读 3 张表。
+     * 观测数据可容忍 30s 滞后；TTL 即最终一致窗口（只读 fac_weather_*，无写入口）。
+     */
+    private final Cache<String, WeatherOverview> overviewCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(30)).maximumSize(1).build();
+
+    /** 首屏聚合：实况 + 逐小时序列 + 七日预报（带短 TTL 缓存）。 */
     public WeatherOverview overview() {
+        return overviewCache.get("OVERVIEW", k -> computeOverview());
+    }
+
+    private WeatherOverview computeOverview() {
         WeatherOverview overview = new WeatherOverview();
         overview.setCurrent(currentMapper.selectList(null).stream()
                 .findFirst().map(this::toCurrent).orElse(null));
@@ -42,6 +56,11 @@ public class WeatherService {
                         new LambdaQueryWrapper<FacWeatherDaily>().orderByAsc(FacWeatherDaily::getSortNo))
                 .stream().map(this::toDaily).collect(Collectors.toList()));
         return overview;
+    }
+
+    /** 测试隔离用：清空聚合缓存，避免跨用例污染。 */
+    void clearCaches() {
+        overviewCache.invalidateAll();
     }
 
     private CurrentWeather toCurrent(FacWeatherCurrent entity) {

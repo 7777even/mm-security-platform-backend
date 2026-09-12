@@ -14,6 +14,7 @@ import com.sinopec.mmsecurity.mapper.FacFacilityDetailMapper;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacMonitoringAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacMonitoringPointMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -38,6 +39,11 @@ class HazardServiceTest {
     private final FacFacilityDetailMapper facilityDetailMapper = mock(FacFacilityDetailMapper.class);
     private final HazardService service = new HazardService(
             majorHazardMapper, monitoringPointMapper, monitoringAlarmMapper, facilityDetailMapper, new ObjectMapper());
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     private FacMajorHazard sampleHazard() {
         FacMajorHazard e = new FacMajorHazard();

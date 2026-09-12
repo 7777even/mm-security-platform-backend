@@ -7,6 +7,7 @@ import com.sinopec.mmsecurity.entity.FacWeatherHourly;
 import com.sinopec.mmsecurity.mapper.FacWeatherCurrentMapper;
 import com.sinopec.mmsecurity.mapper.FacWeatherDailyMapper;
 import com.sinopec.mmsecurity.mapper.FacWeatherHourlyMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +34,11 @@ class WeatherServiceTest {
 
     @InjectMocks
     private WeatherService service;
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     @Test
     void overview_mapsCurrentHourlyAndDaily() {
