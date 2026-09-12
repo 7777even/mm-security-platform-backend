@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
@@ -74,7 +75,8 @@ public class SecurityService {
     public List<VehicleSearchResult> searchVehicles(String keyword) {
         Predicate<FacVehicleSearch> p = containsAny(keyword,
                 v -> v.getPlate(), v -> v.getGate(), v -> v.getStatus());
-        return vehicleSearchMapper.selectList(null).stream()
+        Page<FacVehicleSearch> page = new Page<>(1, 1000, false);
+        return vehicleSearchMapper.selectPage(page, new LambdaQueryWrapper<>()).getRecords().stream()
                 .filter(p)
                 .map(this::toVehicle)
                 .toList();
@@ -83,7 +85,8 @@ public class SecurityService {
     public List<PersonSearchResult> searchPersons(String keyword) {
         Predicate<FacPersonSearch> p = containsAny(keyword,
                 v -> v.getName(), v -> v.getGate(), v -> v.getStatus());
-        return personSearchMapper.selectList(null).stream()
+        Page<FacPersonSearch> page = new Page<>(1, 1000, false);
+        return personSearchMapper.selectPage(page, new LambdaQueryWrapper<>()).getRecords().stream()
                 .filter(p)
                 .map(this::toPerson)
                 .toList();

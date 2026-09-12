@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
@@ -118,7 +119,7 @@ class SecurityServiceTest {
         b.setId(2L);
         b.setPlate("未识别");
         b.setStatus("出厂");
-        when(vehicleSearchMapper.selectList(null)).thenReturn(List.of(a, b));
+        when(vehicleSearchMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(pageOf(List.of(a, b)));
 
         List<VehicleSearchResult> r = service.searchVehicles(null);
         assertEquals(2, r.size());
@@ -136,7 +137,7 @@ class SecurityServiceTest {
         b.setPlate("未识别");
         b.setStatus("出厂");
         b.setGate("南门-出");
-        when(vehicleSearchMapper.selectList(null)).thenReturn(List.of(a, b));
+        when(vehicleSearchMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(pageOf(List.of(a, b)));
 
         List<VehicleSearchResult> byPlate = service.searchVehicles("粤K");
         assertEquals(1, byPlate.size());
@@ -154,11 +155,17 @@ class SecurityServiceTest {
         a.setName("张三");
         a.setGate("东门-入");
         a.setStatus("入厂");
-        when(personSearchMapper.selectList(null)).thenReturn(List.of(a));
+        when(personSearchMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(pageOf(List.of(a)));
 
         List<PersonSearchResult> r = service.searchPersons("张三");
         assertEquals(1, r.size());
         assertEquals("东门-入", r.get(0).getGate());
+    }
+
+    private static <T> Page<T> pageOf(List<T> rows) {
+        Page<T> p = new Page<>(1, rows.size(), false);
+        p.setRecords(rows);
+        return p;
     }
 
     @Test

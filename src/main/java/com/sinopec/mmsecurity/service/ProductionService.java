@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.OverviewGridItem;
 import com.sinopec.mmsecurity.dto.PersonnelMarker;
 import com.sinopec.mmsecurity.dto.PersonnelSlice;
@@ -87,9 +88,10 @@ public class ProductionService {
         return dto;
     }
 
-    /** 生产报警列表：facilityId 为空返回全部，否则只返回该设施（装置区）的报警。 */
+    /** 生产报警列表：facilityId 为空返回全部，否则只返回该设施（装置区）的报警。上限 500 行（方言安全的 Page 限流，返回型不变）。 */
     public List<ProductionAlarmItem> alarms(Long facilityId) {
-        return alarmMapper.selectList(alarmQuery(facilityId)).stream()
+        Page<FacProductionAlarm> page = new Page<>(1, 500, false);
+        return alarmMapper.selectPage(page, alarmQuery(facilityId)).getRecords().stream()
                 .map(this::toAlarm).collect(Collectors.toList());
     }
 

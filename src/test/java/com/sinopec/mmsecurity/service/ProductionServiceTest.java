@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.PersonnelMarker;
 import com.sinopec.mmsecurity.dto.ProductionAlarmItem;
 import com.sinopec.mmsecurity.dto.ProductionAreaDetail;
@@ -74,6 +75,12 @@ class ProductionServiceTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static <T> ArgumentCaptor<LambdaQueryWrapper<T>> queryCaptor() {
         return ArgumentCaptor.forClass((Class) LambdaQueryWrapper.class);
+    }
+
+    private static <T> Page<T> pageOf(List<T> rows) {
+        Page<T> p = new Page<>(1, rows.size(), false);
+        p.setRecords(rows);
+        return p;
     }
 
     private static FacProductionFacility facility(long id, String name) {
@@ -176,7 +183,7 @@ class ProductionServiceTest {
 
     @Test
     void alarms_mapsEntityToContract() {
-        when(alarmMapper.selectList(any())).thenReturn(List.of(alarm(1L)));
+        when(alarmMapper.selectPage(any(Page.class), any())).thenReturn(pageOf(List.of(alarm(1L))));
 
         List<ProductionAlarmItem> out = service.alarms(null);
         assertEquals(1, out.size());
@@ -189,16 +196,16 @@ class ProductionServiceTest {
 
     @Test
     void alarms_facilityIdDrivesFilter() {
-        when(alarmMapper.selectList(any())).thenReturn(List.of(alarm(1L)));
+        when(alarmMapper.selectPage(any(Page.class), any())).thenReturn(pageOf(List.of(alarm(1L))));
 
         service.alarms(2L);
         ArgumentCaptor<LambdaQueryWrapper<FacProductionAlarm>> captor = queryCaptor();
-        verify(alarmMapper).selectList(captor.capture());
+        verify(alarmMapper).selectPage(any(Page.class), captor.capture());
         assertTrue(captor.getValue().getTargetSql().contains("facility_id"),
                 "facilityId 非空时应在 SQL 下推 facility_id 过滤");
 
         service.alarms(null);
-        verify(alarmMapper, times(2)).selectList(captor.capture());
+        verify(alarmMapper, times(2)).selectPage(any(Page.class), captor.capture());
         assertFalse(captor.getValue().getTargetSql().contains("facility_id"),
                 "facilityId 为空时不应下推过滤条件");
     }
@@ -259,7 +266,7 @@ class ProductionServiceTest {
         metric.setLabel("重大危险源");
         metric.setValueText("554");
         when(areaMetricMapper.selectList(any())).thenReturn(List.of(metric));
-        when(alarmMapper.selectList(any())).thenReturn(List.of(alarm(1L)));
+        when(alarmMapper.selectPage(any(Page.class), any())).thenReturn(pageOf(List.of(alarm(1L))));
 
         ProductionAreaDetail out = service.areaDetail(2L);
         assertEquals(2L, out.getFacilityId());

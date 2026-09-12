@@ -14,6 +14,7 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -39,6 +40,11 @@ class DashboardServiceTest {
     private final FacSystemMessageMapper systemMessageMapper = mock(FacSystemMessageMapper.class);
     private final DashboardService service =
             new DashboardService(deviceMapper, alarmMapper, workstationMapper, systemMessageMapper);
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     @Test
     void overview_aggregatesRealCounts() {

@@ -56,7 +56,7 @@ class AlarmServiceTest {
 
     @Test
     void create_generatesAlarmIdAndDefaultsActive() {
-        when(mapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(java.util.List.of());
+        when(mapper.selectMaxAlarmIdForYear(2026)).thenReturn(null);
         when(mapper.insert(any(FacAlarm.class))).thenReturn(1);
 
         EmergencyEventPayload p = new EmergencyEventPayload();
@@ -71,6 +71,22 @@ class AlarmServiceTest {
         assertEquals("ACTIVE", item.getStatus());
         assertEquals("A装置温度越限", item.getTitle());
         assertEquals("OTHER", item.getCategory());
+    }
+
+    @Test
+    void create_continuesSequenceFromExistingMax() {
+        when(mapper.selectMaxAlarmIdForYear(2026)).thenReturn("AE-2026-007");
+        when(mapper.insert(any(FacAlarm.class))).thenReturn(1);
+
+        EmergencyEventPayload p = new EmergencyEventPayload();
+        p.setLevel(2);
+        p.setType("FIRE");
+        p.setDeviceCode("FAC2026FIREA00000001");
+        p.setLocation("罐区A");
+        p.setDescription("A装置温度越限");
+
+        AlarmItem item = service.create(p);
+        assertEquals("AE-2026-008", item.getAlarmId());
     }
 
     @Test

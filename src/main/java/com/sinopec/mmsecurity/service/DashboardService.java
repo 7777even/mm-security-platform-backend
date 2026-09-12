@@ -14,6 +14,8 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
 import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -44,11 +46,27 @@ public class DashboardService {
     private final FacWorkstationMapper workstationMapper;
     private final FacSystemMessageMapper systemMessageMapper;
 
+    /**
+     * 大屏聚合短 TTL 缓存：轮询场景下避免每次刷新全表物化 + Java 侧聚合。
+     * 仪表盘数据可容忍 10s 滞后；TTL 即最终一致窗口，无需写时失效（聚合只读 fac_device/fac_alarm，无写入口）。
+     * 库无关（不引入方言 SQL），复用项目已有的 Caffeine 基础设施。
+     */
+    private final Cache<String, DashboardOverview> overviewCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(10)).maximumSize(1).build();
+    private final Cache<String, List<RiskHeatItem>> riskHeatmapCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(10)).maximumSize(1).build();
+    private final Cache<LocalDateTime, List<AlarmTrendPoint>> trendCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(10)).maximumSize(48).build();
+
     /** 综合风险指数权重（活动报警权重更高，离线设备次之），结果四舍五入到 2 位小数 */
     private static final double WEIGHT_ACTIVE_ALARM = 0.7;
     private static final double WEIGHT_OFFLINE_DEVICE = 0.3;
 
     public DashboardOverview overview() {
+        return overviewCache.get("OVERVIEW", k -> computeOverview());
+    }
+
+    private DashboardOverview computeOverview() {
         long deviceTotal = deviceMapper.selectCount(new LambdaQueryWrapper<FacDevice>().eq(FacDevice::getDeleted, 0));
         long deviceOnline = deviceMapper.selectCount(new LambdaQueryWrapper<FacDevice>()
                 .eq(FacDevice::getDeleted, 0).eq(FacDevice::getStatus, 1));
@@ -101,6 +119,10 @@ public class DashboardService {
      * @param now 当前时间（由调用方传入，便于单测注入固定时钟）
      */
     public List<AlarmTrendPoint> trend24h(LocalDateTime now) {
+        return trendCache.get(now.truncatedTo(ChronoUnit.HOURS), k -> computeTrend24h(now));
+    }
+
+    private List<AlarmTrendPoint> computeTrend24h(LocalDateTime now) {
         LocalDateTime endHour = now.truncatedTo(ChronoUnit.HOURS);
         LocalDateTime startHour = endHour.minusHours(23);
         LocalDateTime windowEnd = endHour.plusHours(1);
@@ -151,6 +173,10 @@ public class DashboardService {
      * @return 各分区风险评分列表
      */
     public List<RiskHeatItem> riskHeatmap() {
+        return riskHeatmapCache.get("RISK", k -> computeRiskHeatmap());
+    }
+
+    private List<RiskHeatItem> computeRiskHeatmap() {
         List<FacDevice> devices = deviceMapper.selectList(
                 new LambdaQueryWrapper<FacDevice>().eq(FacDevice::getDeleted, 0));
 
@@ -196,5 +222,12 @@ public class DashboardService {
         int total;
         int offline;
         int alarm;
+    }
+
+    /** 测试隔离用：清空聚合缓存，避免 DashboardService 单实例跨测试方法串味。 */
+    void clearCaches() {
+        overviewCache.invalidateAll();
+        riskHeatmapCache.invalidateAll();
+        trendCache.invalidateAll();
     }
 }

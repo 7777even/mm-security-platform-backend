@@ -13,8 +13,6 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class AlarmService {
@@ -110,16 +108,23 @@ public class AlarmService {
     }
 
     /**
-     * 生成 {@code AE-{yyyy}-{seq}}：seq = 当年最大后缀 + 1；Java 侧解析存量 ID，避免 SQL 方言，DB 无关。
+     * 生成 {@code AE-{yyyy}-{seq}}：seq = 当年最大后缀 + 1。
+     * 改为 {@code SELECT MAX(alarm_id) ... LIKE 'AE-' || #{year} || '-%'}（单条聚合，方言安全），
+     * 消除原 for 循环全表物化（告警表只增，量大会线性变慢）。
      */
     private String nextAlarmId() {
         int year = LocalDateTime.now().getYear();
         int max = 0;
-        Pattern p = Pattern.compile("^AE-" + year + "-(\\d+)$");
-        for (FacAlarm a : alarmMapper.selectList(new LambdaQueryWrapper<FacAlarm>().eq(FacAlarm::getDeleted, 0))) {
-            if (a.getAlarmId() == null) continue;
-            Matcher m = p.matcher(a.getAlarmId());
-            if (m.matches()) max = Math.max(max, Integer.parseInt(m.group(1)));
+        String maxId = alarmMapper.selectMaxAlarmIdForYear(year);
+        if (maxId != null) {
+            int idx = maxId.lastIndexOf('-');
+            if (idx >= 0) {
+                try {
+                    max = Integer.parseInt(maxId.substring(idx + 1));
+                } catch (NumberFormatException ignore) {
+                    max = 0;
+                }
+            }
         }
         return String.format("AE-%d-%03d", year, max + 1);
     }
