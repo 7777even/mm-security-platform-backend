@@ -4,7 +4,11 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.DispatchPersonnel;
 import com.sinopec.mmsecurity.dto.DutyRoster;
+import com.sinopec.mmsecurity.dto.DutySignInView;
+import com.sinopec.mmsecurity.dto.DutySignInWriteRequest;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
+import com.sinopec.mmsecurity.dto.EmergencyCommandRecordView;
+import com.sinopec.mmsecurity.dto.EmergencyCommandRecordWriteRequest;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
 import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
@@ -14,10 +18,12 @@ import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.security.RequireAuth;
+import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.EmergencyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,6 +39,7 @@ import java.util.List;
 public class EmergencyController {
 
     private final EmergencyService emergencyService;
+    private final BusinessWriteService businessWriteService;
 
     @GetMapping("/strength")
     public Result<EmergencyStrength> strength() {
@@ -106,5 +113,40 @@ public class EmergencyController {
     public Result<List<NodePhaseConfig>> saveNodePhaseConfigs(
             @RequestBody List<NodePhaseConfig> payload) {
         return Result.ok(emergencyService.saveNodePhaseConfigs(payload));
+    }
+
+    /* ==================== A2 业务写侧：应急指令 / 值班签到 ==================== */
+
+    /** 应急指令下发与状态推进记录列表（系统内部留痕，不代表任何物理动作）。 */
+    @GetMapping("/command-records")
+    public Result<List<EmergencyCommandRecordView>> commandRecords() {
+        return Result.ok(businessWriteService.listCommandRecords());
+    }
+
+    /**
+     * 应急指令下发 / 状态推进（业务留痕）。
+     *
+     * <p>D4 语义边界：仅系统内部指令记录与状态推进，<b>绝不触发物理设备</b>；物理下行仍由
+     * {@link com.sinopec.mmsecurity.security.HardControlPaths} 红线在前后端双重拦截。
+     * 需权限码 {@code emergency:command:write}。</p>
+     */
+    @PostMapping("/command-records")
+    @RequireAuth(perm = "emergency:command:write")
+    public Result<EmergencyCommandRecordView> createCommandRecord(
+            @RequestBody EmergencyCommandRecordWriteRequest payload) {
+        return Result.ok(businessWriteService.createCommandRecord(payload));
+    }
+
+    /** 值班签到 / 签退记录列表。 */
+    @GetMapping("/duty-sign-ins")
+    public Result<List<DutySignInView>> dutySignIns() {
+        return Result.ok(businessWriteService.listDutySignIns());
+    }
+
+    /** 值班签到 / 签退（需权限码 {@code emergency:duty:write}）。 */
+    @PostMapping("/duty-sign-ins")
+    @RequireAuth(perm = "emergency:duty:write")
+    public Result<DutySignInView> createDutySignIn(@RequestBody DutySignInWriteRequest payload) {
+        return Result.ok(businessWriteService.createDutySignIn(payload));
     }
 }

@@ -5,9 +5,13 @@ import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.DutyRoster;
+import com.sinopec.mmsecurity.dto.DutySignInView;
+import com.sinopec.mmsecurity.dto.DutySignInWriteRequest;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStat;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
+import com.sinopec.mmsecurity.dto.EmergencyCommandRecordView;
+import com.sinopec.mmsecurity.dto.EmergencyCommandRecordWriteRequest;
 import com.sinopec.mmsecurity.dto.EmergencyCommandInstruction;
 import com.sinopec.mmsecurity.dto.EmergencyPhase;
 import com.sinopec.mmsecurity.dto.EmergencyPhone;
@@ -25,6 +29,7 @@ import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
 import com.sinopec.mmsecurity.dto.ProcessStage;
 import com.sinopec.mmsecurity.dto.ResponseModeOption;
+import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.EmergencyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -38,6 +43,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,7 +54,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EmergencyControllerTest {
 
     private final EmergencyService service = mock(EmergencyService.class);
-    private final EmergencyController controller = new EmergencyController(service);
+    private final BusinessWriteService businessWriteService = mock(BusinessWriteService.class);
+    private final EmergencyController controller = new EmergencyController(service, businessWriteService);
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
@@ -281,5 +288,69 @@ class EmergencyControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.dutyRoster.shiftGroup").value("乙班（白班）"))
                 .andExpect(jsonPath("$.data.guidances[0].nodeId").value("1"));
+    }
+
+    /* ==================== A2 业务写侧：应急指令 / 值班签到 ==================== */
+
+    @Test
+    void commandRecords_getReturnsB3Envelope() throws Exception {
+        EmergencyCommandRecordView v = new EmergencyCommandRecordView();
+        v.setId(1L);
+        v.setCommandCode("w1");
+        v.setCurrStatus("执行中");
+        when(businessWriteService.listCommandRecords()).thenReturn(List.of(v));
+
+        mockMvc.perform(get("/api/v1/emergency/command-records"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].commandCode").value("w1"))
+                .andExpect(jsonPath("$.data[0].currStatus").value("执行中"));
+    }
+
+    @Test
+    void commandRecords_postDelegatesToWriteService() throws Exception {
+        EmergencyCommandRecordView v = new EmergencyCommandRecordView();
+        v.setCommandCode("w1");
+        v.setPrevStatus("待执行");
+        v.setCurrStatus("执行中");
+        when(businessWriteService.createCommandRecord(any(EmergencyCommandRecordWriteRequest.class))).thenReturn(v);
+
+        mockMvc.perform(post("/api/v1/emergency/command-records")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"commandCode\":\"w1\",\"currStatus\":\"执行中\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.prevStatus").value("待执行"))
+                .andExpect(jsonPath("$.data.currStatus").value("执行中"));
+    }
+
+    @Test
+    void dutySignIns_getReturnsB3Envelope() throws Exception {
+        DutySignInView v = new DutySignInView();
+        v.setId(1L);
+        v.setPersonName("tester");
+        v.setSignAction("SIGN_IN");
+        when(businessWriteService.listDutySignIns()).thenReturn(List.of(v));
+
+        mockMvc.perform(get("/api/v1/emergency/duty-sign-ins"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].signAction").value("SIGN_IN"));
+    }
+
+    @Test
+    void dutySignIns_postDelegatesToWriteService() throws Exception {
+        DutySignInView v = new DutySignInView();
+        v.setPersonName("tester");
+        v.setSignAction("SIGN_IN");
+        v.setSignTime("2026-09-13 08:00:00");
+        when(businessWriteService.createDutySignIn(any(DutySignInWriteRequest.class))).thenReturn(v);
+
+        mockMvc.perform(post("/api/v1/emergency/duty-sign-ins")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dutyDate\":\"2026-09-13\",\"personName\":\"tester\",\"signAction\":\"SIGN_IN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.signTime").value("2026-09-13 08:00:00"));
     }
 }

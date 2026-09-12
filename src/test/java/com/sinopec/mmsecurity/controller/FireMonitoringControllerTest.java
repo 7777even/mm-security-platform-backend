@@ -3,11 +3,14 @@ package com.sinopec.mmsecurity.controller;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
+import com.sinopec.mmsecurity.dto.PatrolExecutionView;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
+import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.FireMonitoringService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -15,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,9 +26,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class FireMonitoringControllerTest {
 
     private final FireMonitoringService service = Mockito.mock(FireMonitoringService.class);
+    private final BusinessWriteService businessWriteService = Mockito.mock(BusinessWriteService.class);
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new FireMonitoringController(service))
+            .standaloneSetup(new FireMonitoringController(service, businessWriteService))
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
 
@@ -119,5 +124,36 @@ class FireMonitoringControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    /* ==================== A2 业务写侧：巡更执行上报 ==================== */
+
+    @Test
+    void patrolExecutions_getReturnsB3Envelope() throws Exception {
+        PatrolExecutionView v = new PatrolExecutionView();
+        v.setId(1L);
+        v.setPatrolDate("2026-09-13");
+        v.setExecResult("NORMAL");
+        Mockito.when(businessWriteService.listPatrolExecutions()).thenReturn(List.of(v));
+
+        mvc.perform(get("/api/v1/fire/patrol-executions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].patrolDate").value("2026-09-13"))
+                .andExpect(jsonPath("$.data[0].execResult").value("NORMAL"));
+    }
+
+    @Test
+    void patrolExecutions_postDelegatesToWriteService() throws Exception {
+        PatrolExecutionView v = new PatrolExecutionView();
+        v.setExecResult("NORMAL");
+        Mockito.when(businessWriteService.createPatrolExecution(Mockito.any())).thenReturn(v);
+
+        mvc.perform(post("/api/v1/fire/patrol-executions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patrolDate\":\"2026-09-13\",\"dutyPerson\":\"tester\",\"execResult\":\"NORMAL\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.execResult").value("NORMAL"));
     }
 }

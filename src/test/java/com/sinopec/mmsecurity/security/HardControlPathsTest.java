@@ -81,6 +81,23 @@ class HardControlPathsTest {
         assertFalse(HardControlPaths.matches("/api/v1/emergency/commands"));
     }
 
+    /**
+     * A2 业务写侧 4 域端点<b>不得</b>被硬控红线误伤（它们是业务留痕，不是物理下行）。
+     *
+     * <p>反向锁定：若后续有人在 {@link HardControlPaths#SUFFIXES} 加了 {@code fire/*} 之类
+     * 过宽的后缀，这批断言会立刻红——避免把已上线的业务写端点整片打死。</p>
+     */
+    @Test
+    void businessWritePaths_notBlockedByRedline() {
+        for (String p : List.of(
+                "/api/v1/emergency/command-records",
+                "/api/v1/emergency/duty-sign-ins",
+                "/api/v1/typhoon/dispatch-orders",
+                "/api/v1/fire/patrol-executions")) {
+            assertFalse(HardControlPaths.matches(p), "业务写侧端点被硬控红线误伤：" + p);
+        }
+    }
+
     @Test
     void nullOrEmpty_notBlocked() {
         assertFalse(HardControlPaths.matches(null));

@@ -1,15 +1,21 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.dto.TyphoonDispatchOrderView;
 import com.sinopec.mmsecurity.dto.TyphoonDispatchResource;
 import com.sinopec.mmsecurity.dto.TyphoonEmergencyIncident;
+import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.TyphoonEmergencyService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.http.MediaType;
+import java.util.List;
+
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,9 +23,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TyphoonEmergencyControllerTest {
 
     private final TyphoonEmergencyService service = Mockito.mock(TyphoonEmergencyService.class);
+    private final BusinessWriteService businessWriteService = Mockito.mock(BusinessWriteService.class);
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new TyphoonEmergencyController(service))
+            .standaloneSetup(new TyphoonEmergencyController(service, businessWriteService))
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
 
@@ -154,5 +161,36 @@ class TyphoonEmergencyControllerTest {
 
         d.setPrecipitationSeries(java.util.List.of(2.0, 4.0));
         return d;
+    }
+
+    /* ==================== A2 业务写侧：台风资源调度 ==================== */
+
+    @Test
+    void dispatchOrders_getReturnsB3Envelope() throws Exception {
+        TyphoonDispatchOrderView v = new TyphoonDispatchOrderView();
+        v.setOrderNo("TD-20260913-0001");
+        v.setDispatchAction("ASSIGN");
+        Mockito.when(businessWriteService.listDispatchOrders()).thenReturn(List.of(v));
+
+        mvc.perform(get("/api/v1/typhoon/dispatch-orders"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[0].orderNo").value("TD-20260913-0001"))
+                .andExpect(jsonPath("$.data[0].dispatchAction").value("ASSIGN"));
+    }
+
+    @Test
+    void dispatchOrders_postDelegatesToWriteService() throws Exception {
+        TyphoonDispatchOrderView v = new TyphoonDispatchOrderView();
+        v.setOrderNo("TD-20260913-0001");
+        v.setCurrStatus("已指派");
+        Mockito.when(businessWriteService.createDispatchOrder(Mockito.any())).thenReturn(v);
+
+        mvc.perform(post("/api/v1/typhoon/dispatch-orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resourceCode\":\"TEAM-FX-01\",\"dispatchAction\":\"ASSIGN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.currStatus").value("已指派"));
     }
 }
