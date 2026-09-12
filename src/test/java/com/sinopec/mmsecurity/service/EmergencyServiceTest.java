@@ -38,6 +38,7 @@ import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -119,6 +120,11 @@ class EmergencyServiceTest {
         m.setDepartment(dept);
         m.setShift(shift);
         return m;
+    }
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
     }
 
     @Test

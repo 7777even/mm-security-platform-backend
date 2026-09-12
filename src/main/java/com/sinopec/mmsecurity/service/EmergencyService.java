@@ -2,6 +2,8 @@ package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
@@ -59,6 +61,7 @@ import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -96,6 +99,18 @@ public class EmergencyService {
     private final FacEmergencyNodeGuidanceMapper nodeGuidanceMapper;
     private final FacEmergencyGuidanceRosterMapper guidanceRosterMapper;
     private final ObjectMapper objectMapper;
+
+    /**
+     * 应急流程参考配置读穿缓存（TTL 5min 兜底）。
+     * {@link #processPanorama()}/{@link #processGuidances()} 每次调用要物化 3~5 张静态参考表
+     * （fac_emergency_phase / response_mode / process_stage / guidance_roster / node_guidance），
+     * 这些表属「运营可维护但极少变更」的参考配置——缓存后命中即返回，避免重复全表物化。
+     * 一致性窗口为 TTL；管理员变更应急流程配置后最多 5min 生效（与字典/菜单缓存同策略）。
+     */
+    private final Cache<String, Object> refConfigCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .maximumSize(16)
+            .build();
 
     /** 应急力量统计：来自 sys_emergency_strength 参考表 */
     public EmergencyStrength strength() {
@@ -429,6 +444,10 @@ public class EmergencyService {
 
     /** 流程全景聚合：5 阶段 + 4 响应模式 + 15 流程节点（节点嵌套结构由 detail_json 反序列化）。 */
     public EmergencyProcessPanorama processPanorama() {
+        return (EmergencyProcessPanorama) refConfigCache.get("panorama", k -> computePanorama());
+    }
+
+    private EmergencyProcessPanorama computePanorama() {
         EmergencyProcessPanorama panorama = new EmergencyProcessPanorama();
         panorama.setPhases(emergencyPhaseMapper.selectList(
                         new LambdaQueryWrapper<FacEmergencyPhase>()
@@ -448,6 +467,10 @@ public class EmergencyService {
 
     /** 节点处置指引聚合：实时值班表 + 9 条节点指引（嵌套结构由 detail_json 反序列化）。 */
     public EmergencyProcessGuidance processGuidances() {
+        return (EmergencyProcessGuidance) refConfigCache.get("guidance", k -> computeGuidances());
+    }
+
+    private EmergencyProcessGuidance computeGuidances() {
         EmergencyProcessGuidance guidance = new EmergencyProcessGuidance();
         FacEmergencyGuidanceRoster roster = guidanceRosterMapper.selectList(
                         new LambdaQueryWrapper<FacEmergencyGuidanceRoster>()
@@ -460,6 +483,11 @@ public class EmergencyService {
                 .map(row -> readJson(row.getDetailJson(), NodeGuidance.class))
                 .collect(Collectors.toList()));
         return guidance;
+    }
+
+    /** 失效参考配置缓存（供测试在用例间隔离，避免命中他例的桩数据）。 */
+    void clearCaches() {
+        refConfigCache.invalidateAll();
     }
 
     /**
