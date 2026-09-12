@@ -121,7 +121,43 @@ A1 只扩展设备域、并把设备 5 个中文防区词补进 `sys_zone`（V46
 - **提交**：`153a152`（main，待推送）。
 
 ### 5.1 仍未做（明确边界，勿当漏做）
-- **工作站域**：`FacWorkstation` 仅在 `DashboardService` 聚合中出现，**无独立列表查询**，本轮未套；待其列表 API 落地后再按同模式扩展（其 8 个中文防区词中储运区/全厂范围/公用工程区/化工区亦需补进 `sys_zone`）。
-- **无防区列的核心表**：`fac_alarm`/`fac_video_camera`/`fac_major_hazard` 仍无防区列，且其 `location` 为自由文本，按 §2 步骤 3 需先补列+归属回填才能真正隔离；**当前这些域仍全角色可见（已知缺口，非 bug）**。
-- **数据任务 R1（最高优先级线上风险）**：`data_scope` 默认 `SELF`，任一非 ALL 用户 `zone_codes` 为空 → `1=0` 零可见。**代码已就绪，但真实用户 ↔ 防区分配是部署/数据任务**，须在上线前为所有非 ALL 用户分配 `zone_codes`，并在 `SystemUserService` 改 `zone_codes` 时调 `DataScopeResolver.invalidateUser`（R4）。
+- **工作站域（防区词已于 2026-09-13 补齐，过滤仍未套）**：`FacWorkstation` 仅在 `DashboardService` 聚合中出现，**无独立列表查询**，故不套过滤；`V49__data_scope_workstation_zones.sql` 已把其 8 个中文取值中缺失的 4 个（全厂范围/化工区/储运区/公用工程区）补进 `sys_zone`，使权威词汇表覆盖工作站域。待其列表 API 落地后再按 `DeviceService.page()` 同模式注入。
+- **无防区列的核心表**：`fac_alarm` 与 `fac_video_camera` 只有自由文本 `location VARCHAR(128)`，无防区列；需先补列 + 归属回填才能隔离，**当前这些域仍全角色可见（已知缺口，非 bug）**。
+  ⚠️ **事实纠正（2026-09-13 核表）**：`fac_major_hazard` **连 `location` 列都没有**（只有 `longitude`/`latitude`/`enterprise`/`category`），此前"三张表均含自由文本 location"的表述有误——它连按文本回填的入口都不存在，只能按**坐标落入防区多边形**或按**所属企业**归属，工作量与不确定性都更高。
+- **数据任务 R1（最高优先级线上风险）**：`data_scope` 默认 `SELF`，任一非 ALL 用户 `zone_codes` 为空 → `1=0` 零可见。分配通道**已具备**（`SystemUserCreate`/`SystemUserUpdate` 均带 `zoneCodes`，管理端 `src/views/system/users.vue` 有多选表单），`SystemUserService` 改 `zone_codes` 时也已调 `DataScopeResolver.invalidateUser`（R4 已闭环）。**剩下的是纯数据任务**，见 §6。
 - **D2a/D3/D5** 等治理决策点仍待产品/架构拍板（尤其 `全厂范围` 跨区语义、是否做通用拦截器）。
+
+---
+
+## 6. 上线前防区分配清单（R1，必须做完才能上线）
+
+### 6.1 为什么它是"静默故障"
+
+`DataScopeHelper.apply` 在 `zones` 为空集合时拼 `1=0`。这意味着非 ALL 角色且未分配防区的用户：
+
+- **不报错、不告警**，接口照常返回 `code=0`；
+- 只是**所有受控列表恒为空数组**（设备、救援队伍，以及后续接入的任何域）。
+
+用户侧的观感是"系统没数据/坏了"，但后端日志一片干净——这是本项目数据权限最容易被漏掉的失败模式。
+
+### 6.2 分配步骤
+
+1. **导出待分配名单**：登录管理端 → 系统管理 / 用户管理，表格「数据范围」列会直接标红 `未分配防区 · 零可见`；页面顶部也会给出计数横幅（2026-09-13 加，见 `src/views/system/users.vue`）。
+   - 判据：用户所属角色的 `data_scope != ALL` 且 `zone_codes` 为空。
+   - `ADMIN` 角色 `data_scope=ALL`，无需分配。
+2. **逐个补配**：编辑用户 → 「可访问防区」多选（下拉来自 `GET /system/zones`，即 `sys_zone.zone_name` 的中文词）→ 保存。保存即时生效（`invalidateUser` 已接，无需等令牌过期）。
+3. **回归验证**：用该账号登录，确认设备/队伍列表有数据；再确认换防区后可见范围随之变化。
+
+### 6.3 防区词现状（`sys_zone.zone_name` 全量 16 个）
+
+| 来源 | 防区词 |
+|---|---|
+| V34（救援队伍 `fac_brigade_team.area`） | 炼油区、乙烯区、罐区、仓储区、码头区、芳烃区、特勤保障区 |
+| V46（设备 `fac_device.zone`） | 危化仓库、罐区A、罐区B、装卸区、装置C |
+| V49（工作站 `fac_workstation.zone`） | 全厂范围、化工区、储运区、公用工程区 |
+
+⚠️ 分配时必须**逐字匹配**上表的中文词（数据权限按 `qw.in(zone, zones)` 字符串命中，不做模糊/层级推导）。业务表里若出现了不在上表的中文 zone 值，该行对所有非 ALL 用户都不可见——新增业务区域时记得同步补 `sys_zone`。
+
+### 6.4 顺带修掉的一个缺陷（2026-09-13）
+
+管理端编辑用户时，清空「可访问防区」后保存**存不下去**：前端在空选时传 `undefined`（字段缺失），而 `SystemUserService.update` 只在 `req.getZoneCodes() != null` 时写入，于是"清空"被当成"不更新"。现已改为编辑态显式传空串。
