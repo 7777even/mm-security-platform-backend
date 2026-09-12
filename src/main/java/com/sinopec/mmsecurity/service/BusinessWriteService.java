@@ -85,11 +85,19 @@ public class BusinessWriteService {
             throw new BusinessException(ResultCode.PARAM_INVALID, "推进后状态 currStatus 不能为空");
         }
         String operator = currentOperator();
-        String prevStatus = lastCommandStatus(req.getCommandCode().trim());
+        String code = req.getCommandCode().trim();
+        FacEmergencyCommandRecord last = lastCommand(code);
+        String prevStatus = last == null ? null : last.getCurrStatus();
+        // command_name 在 V47 中定为 NOT NULL，而契约里它是可选字段：
+        // 「仅推进状态」的调用只传 commandCode + currStatus，此处必须兜底——
+        // 优先继承同指令上一条记录的名称，无历史则落空串（否则直接撞数据库非空约束 500）。
+        String commandName = StringUtils.hasText(req.getCommandName())
+                ? req.getCommandName().trim()
+                : (last != null && StringUtils.hasText(last.getCommandName()) ? last.getCommandName() : "");
 
         FacEmergencyCommandRecord entity = new FacEmergencyCommandRecord();
-        entity.setCommandCode(req.getCommandCode().trim());
-        entity.setCommandName(req.getCommandName());
+        entity.setCommandCode(code);
+        entity.setCommandName(commandName);
         entity.setCommandKind(req.getCommandKind());
         entity.setPrevStatus(prevStatus);
         entity.setCurrStatus(req.getCurrStatus().trim());
@@ -290,15 +298,19 @@ public class BusinessWriteService {
         return (u == null || u.isBlank()) ? "unknown" : u;
     }
 
-    /** 取某指令上一条记录的 currStatus（作为本次 prevStatus），无历史返回 null。 */
-    private String lastCommandStatus(String commandCode) {
+    /**
+     * 取某指令上一条记录（作为本次 prevStatus 与 commandName 的来源），无历史返回 null。
+     *
+     * <p>只取 1 条且不做 count：{@code Page(1, 1, false)} 走 PaginationInnerInterceptor 落成方言安全的 LIMIT。</p>
+     */
+    private FacEmergencyCommandRecord lastCommand(String commandCode) {
         IPage<FacEmergencyCommandRecord> page = commandRecordMapper.selectPage(
                 new Page<>(1, 1, false),
                 new LambdaQueryWrapper<FacEmergencyCommandRecord>()
                         .eq(FacEmergencyCommandRecord::getCommandCode, commandCode)
                         .orderByDesc(FacEmergencyCommandRecord::getId));
         List<FacEmergencyCommandRecord> rows = page.getRecords();
-        return rows.isEmpty() ? null : rows.get(0).getCurrStatus();
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     /** 取某资源上一条调度单的 currStatus（作为本次 prevStatus），无历史返回 null。 */

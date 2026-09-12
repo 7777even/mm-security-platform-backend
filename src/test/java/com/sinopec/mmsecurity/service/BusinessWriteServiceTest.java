@@ -100,6 +100,42 @@ class BusinessWriteServiceTest {
         assertNull(service.createCommandRecord(req).getPrevStatus());
     }
 
+    /**
+     * V47 里 {@code command_name} 是 NOT NULL，而契约中它是可选字段。
+     * 「仅推进状态」的调用不传 commandName，服务端必须继承上一条记录的指令名，
+     * 否则直接撞数据库非空约束（线上表现为 500）。
+     */
+    @Test
+    void createCommandRecord_inheritsCommandNameWhenOmitted() {
+        FacEmergencyCommandRecord prev = new FacEmergencyCommandRecord();
+        prev.setId(9L);
+        prev.setCommandCode("w1");
+        prev.setCommandName("发布防台防汛预警");
+        prev.setCurrStatus("待执行");
+        stubCommandPage(List.of(prev));
+        stubInsert(commandRecordMapper);
+
+        EmergencyCommandRecordWriteRequest req = new EmergencyCommandRecordWriteRequest();
+        req.setCommandCode("w1");
+        req.setCurrStatus("执行中"); // 刻意不传 commandName
+
+        EmergencyCommandRecordView v = service.createCommandRecord(req);
+        assertEquals("发布防台防汛预警", v.getCommandName());
+        assertEquals("待执行", v.getPrevStatus());
+    }
+
+    /** 无历史记录且未传 commandName 时落空串，保证 command_name 非空约束成立。 */
+    @Test
+    void createCommandRecord_fallsBackToEmptyNameWithoutHistory() {
+        stubCommandPage(List.of());
+        stubInsert(commandRecordMapper);
+
+        EmergencyCommandRecordWriteRequest req = new EmergencyCommandRecordWriteRequest();
+        req.setCommandCode("w1");
+        req.setCurrStatus("执行中");
+        assertEquals("", service.createCommandRecord(req).getCommandName());
+    }
+
     @Test
     void createCommandRecord_rejectsBlankCommandCodeOrStatus() {
         EmergencyCommandRecordWriteRequest noCode = new EmergencyCommandRecordWriteRequest();
