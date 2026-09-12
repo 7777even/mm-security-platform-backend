@@ -6,6 +6,7 @@ import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.entity.FacDevice;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -22,7 +23,7 @@ import static org.mockito.Mockito.when;
 class DeviceServiceTest {
 
     private final FacDeviceMapper mapper = mock(FacDeviceMapper.class);
-    private final DeviceService service = new DeviceService(mapper);
+    private final DeviceService service = new DeviceService(mapper, mock(DataScopeResolver.class));
 
     @Test
     void page_delegatesToMapper() {
