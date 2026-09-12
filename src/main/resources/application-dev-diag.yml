@@ -1,0 +1,8 @@
+# 慢 SQL 诊断 profile（需与 dev 同时激活：spring.profiles.active=dev,dev-diag）
+# 仅当 dev-diag 激活时，SlowSqlInterceptor 才会被注册；超过阈值的 SQL 以 WARN([SLOW-SQL]) 输出，
+# 用于本地排查 N+1 / 全表扫描 / 重聚合。dev/test/prod/dm 默认不激活，零影响。
+mm:
+  diagnostics:
+    slow-sql:
+      # 慢 SQL 阈值（毫秒）。dev 内存库(H2)下多数语句 < 5ms，上调可只看真正的热点。
+      threshold-ms: 50

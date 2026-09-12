@@ -75,6 +75,14 @@ app:
     # dev 置 false，避免内存库每次重启都强制改密而阻断联调（见 application-dev.yml）。
     force-change-default-admin: ${PASSWORD_FORCE_CHANGE_DEFAULT_ADMIN:true}
 
+# 慢 SQL 诊断（仅 dev-diag profile 挂载 SlowSqlInterceptor 时生效）。
+# 默认阈值极高 = 实际关闭；dev-diag profile 在 application-dev-diag.yml 中覆盖为 50ms。
+# 安全网：即使将来误去掉 @Profile 门控，默认也几乎不输出，避免污染日志。
+mm:
+  diagnostics:
+    slow-sql:
+      threshold-ms: 100000
+
 # 日志
 logging:
   level:
