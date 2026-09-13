@@ -14,6 +14,7 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,8 +39,9 @@ class DashboardServiceTest {
     private final AlarmMapper alarmMapper = mock(AlarmMapper.class);
     private final FacWorkstationMapper workstationMapper = mock(FacWorkstationMapper.class);
     private final FacSystemMessageMapper systemMessageMapper = mock(FacSystemMessageMapper.class);
+    private final DataScopeResolver dataScopeResolver = mock(DataScopeResolver.class);
     private final DashboardService service =
-            new DashboardService(deviceMapper, alarmMapper, workstationMapper, systemMessageMapper);
+            new DashboardService(deviceMapper, alarmMapper, workstationMapper, systemMessageMapper, dataScopeResolver);
 
     @BeforeEach
     void resetCaches() {
