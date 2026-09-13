@@ -40,6 +40,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
+
 /**
  * 安全防恐业务服务：巡逻摄像机 / 道闸 / 防恐柱 / 车辆·人员识别检索 / 门禁事件。
  * 全部来自真实表，不再返回前端本地占位数据。检索端点支持 keyword 在服务端按车牌/卡口/状态(车辆)、
@@ -60,16 +64,34 @@ public class SecurityService {
     private final FacSecurityTrackMetaMapper trackMetaMapper;
     private final FacPerimeterAlarmMapper perimeterAlarmMapper;
 
+    /**
+     * 安全防恐设备配置表（巡逻摄像机 / 道闸 / 防恐柱）读穿缓存：大屏轮询入口，TTL 60s 兜底。
+     * 只读设备配置、无运行时写入，TTL 即一致窗口。
+     */
+    private final Cache<String, List<PatrolCameraItem>> patrolCameraCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+    private final Cache<String, List<GateControlItem>> gateControlCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+    private final Cache<String, List<BollardItem>> bollardCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
+
     public List<PatrolCameraItem> listPatrolCameras() {
-        return patrolCameraMapper.selectList(null).stream().map(this::toCamera).toList();
+        return patrolCameraCache.get("PATROL_CAMERAS", ignored -> patrolCameraMapper.selectList(null).stream().map(this::toCamera).toList());
     }
 
     public List<GateControlItem> listGateControls() {
-        return gateControlMapper.selectList(null).stream().map(this::toGate).toList();
+        return gateControlCache.get("GATE_CONTROLS", ignored -> gateControlMapper.selectList(null).stream().map(this::toGate).toList());
     }
 
     public List<BollardItem> listBollards() {
-        return bollardMapper.selectList(null).stream().map(this::toBollard).toList();
+        return bollardCache.get("BOLLARDS", ignored -> bollardMapper.selectList(null).stream().map(this::toBollard).toList());
+    }
+
+    /** 失效设备配置缓存（供测试在用例间隔离）。 */
+    void clearCaches() {
+        patrolCameraCache.invalidateAll();
+        gateControlCache.invalidateAll();
+        bollardCache.invalidateAll();
     }
 
     public List<VehicleSearchResult> searchVehicles(String keyword) {

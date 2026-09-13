@@ -33,6 +33,7 @@ import com.sinopec.mmsecurity.mapper.FacTyphoonRiskWarningMapper;
 import com.sinopec.mmsecurity.mapper.FacTyphoonSeriesMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -83,6 +84,11 @@ class TyphoonEmergencyServiceTest {
 
     @InjectMocks
     private TyphoonEmergencyService service;
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     private FacTyphoonIncident defaultIncident() {
         FacTyphoonIncident i = new FacTyphoonIncident();

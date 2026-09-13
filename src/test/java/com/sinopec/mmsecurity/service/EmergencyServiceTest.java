@@ -463,4 +463,27 @@ class EmergencyServiceTest {
         when(assistStatMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
         assertTrue(service.assistStats().getItems().isEmpty());
     }
+
+    @Test
+    void referenceTables_cacheCollapsesRepeatedCalls() {
+        when(strengthMapper.selectList(null)).thenReturn(List.of(strength("应急专家", 47, "UserFilled")));
+        when(dutyMapper.selectList(null)).thenReturn(List.of(duty("杨恒明", "137", "值班领导", "全部", "白班")));
+        when(phoneMapper.selectList(null)).thenReturn(List.of(phone("消防", "119", "消防")));
+        when(knowledgeMapper.selectList(null)).thenReturn(List.of(knowledge("卡", 1, "Doc")));
+
+        // 每个参考表方法连续调用两次，缓存应将 DB 查询合并为 1 次
+        service.strength();
+        service.strength();
+        service.duty();
+        service.duty();
+        service.phones();
+        service.phones();
+        service.knowledge();
+        service.knowledge();
+
+        verify(strengthMapper).selectList(null);
+        verify(dutyMapper).selectList(null);
+        verify(phoneMapper).selectList(null);
+        verify(knowledgeMapper).selectList(null);
+    }
 }

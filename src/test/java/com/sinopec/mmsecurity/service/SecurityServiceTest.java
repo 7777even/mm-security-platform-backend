@@ -31,6 +31,7 @@ import com.sinopec.mmsecurity.mapper.FacSecurityEventMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityTrackMapper;
 import com.sinopec.mmsecurity.mapper.FacSecurityTrackMetaMapper;
 import com.sinopec.mmsecurity.mapper.FacVehicleSearchMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -60,6 +61,11 @@ class SecurityServiceTest {
             patrolCameraMapper, gateControlMapper, bollardMapper,
             vehicleSearchMapper, personSearchMapper, securityEventMapper,
             trackMapper, trackMetaMapper, perimeterAlarmMapper);
+
+    @BeforeEach
+    void resetCaches() {
+        service.clearCaches();
+    }
 
     @Test
     void listPatrolCameras_mapsFields() {

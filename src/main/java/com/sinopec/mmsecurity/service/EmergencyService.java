@@ -112,8 +112,23 @@ public class EmergencyService {
             .maximumSize(16)
             .build();
 
-    /** 应急力量统计：来自 sys_emergency_strength 参考表 */
+    /**
+     * 应急参考配置小表（sys_emergency_strength / sys_duty_member / sys_emergency_phone / sys_knowledge_item）
+     * 读穿缓存：大屏高频轮询入口，每次刷新都全表 selectList；TTL 5min 兜底（与 refConfigCache 同策略）。
+     * 这些表属运营可维护但极少变更的参考数据，一致性窗口为 TTL。
+     */
+    private final Cache<String, EmergencyStrength> strengthCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).maximumSize(1).build();
+    private final Cache<String, DutyRoster> dutyCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).maximumSize(1).build();
+    private final Cache<String, EmergencyPhoneBook> phoneCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).maximumSize(1).build();
+    private final Cache<String, KnowledgeList> knowledgeCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).maximumSize(1).build();
+
+    /** 应急力量统计：来自 sys_emergency_strength 参考表（带读穿缓存） */
     public EmergencyStrength strength() {
+        return strengthCache.get("STRENGTH", ignored -> {
         EmergencyStrength s = new EmergencyStrength();
         List<SysEmergencyStrength> rows = strengthMapper.selectList(null);
         List<EmergencyResource> resources = new ArrayList<>();
@@ -126,6 +141,7 @@ public class EmergencyService {
         }
         s.setResources(resources);
         return s;
+        });
     }
 
     /**
@@ -191,8 +207,9 @@ public class EmergencyService {
         return list;
     }
 
-    /** 应急值班值守表：来自 sys_duty_member 参考表（department / shift 随数据驱动） */
+    /** 应急值班值守表：来自 sys_duty_member 参考表（department / shift 随数据驱动，带读穿缓存） */
     public DutyRoster duty() {
+        return dutyCache.get("DUTY", ignored -> {
         List<SysDutyMember> rows = dutyMapper.selectList(null);
         List<DutyMember> members = new ArrayList<>();
         for (SysDutyMember r : rows) {
@@ -217,10 +234,12 @@ public class EmergencyService {
         r.setShift(shift);
         r.setMembers(members);
         return r;
+        });
     }
 
-    /** 应急电话通讯录：来自 sys_emergency_phone 参考表 */
+    /** 应急电话通讯录：来自 sys_emergency_phone 参考表（带读穿缓存） */
     public EmergencyPhoneBook phones() {
+        return phoneCache.get("PHONES", ignored -> {
         EmergencyPhoneBook b = new EmergencyPhoneBook();
         List<SysEmergencyPhone> rows = phoneMapper.selectList(null);
         List<EmergencyPhone> entries = new ArrayList<>();
@@ -234,10 +253,12 @@ public class EmergencyService {
         }
         b.setEntries(entries);
         return b;
+        });
     }
 
-    /** 应急生产安全知识：来自 sys_knowledge_item 参考表 */
+    /** 应急生产安全知识：来自 sys_knowledge_item 参考表（带读穿缓存） */
     public KnowledgeList knowledge() {
+        return knowledgeCache.get("KNOWLEDGE", ignored -> {
         KnowledgeList k = new KnowledgeList();
         List<SysKnowledgeItem> rows = knowledgeMapper.selectList(null);
         List<KnowledgeItem> items = new ArrayList<>();
@@ -251,6 +272,7 @@ public class EmergencyService {
         }
         k.setItems(items);
         return k;
+        });
     }
 
     /** 应急指挥指令分组（固定/临时），按 tab 过滤。来自 fac_emergency_cmd 参考表。 */
@@ -488,6 +510,10 @@ public class EmergencyService {
     /** 失效参考配置缓存（供测试在用例间隔离，避免命中他例的桩数据）。 */
     void clearCaches() {
         refConfigCache.invalidateAll();
+        strengthCache.invalidateAll();
+        dutyCache.invalidateAll();
+        phoneCache.invalidateAll();
+        knowledgeCache.invalidateAll();
     }
 
     /**

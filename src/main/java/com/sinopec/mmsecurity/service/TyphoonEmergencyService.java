@@ -43,6 +43,10 @@ import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -80,6 +84,15 @@ public class TyphoonEmergencyService {
     private final FacTyphoonCommandMapper commandMapper;
     private final SysDutyMemberMapper dutyMemberMapper;
     private final SysKnowledgeItemMapper knowledgeItemMapper;
+
+    /**
+     * 台风大屏参考配置小表（sys_duty_member / sys_knowledge_item）读穿缓存：大屏轮询入口，TTL 5min 兜底。
+     * 复用应急值班/知识库参考数据，运营极少变更，TTL 即一致窗口。
+     */
+    private final Cache<String, List<TyphoonDutyPerson>> dutyCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).maximumSize(1).build();
+    private final Cache<String, List<TyphoonAuxItem>> knowledgeCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).maximumSize(1).build();
 
     /**
      * 台风应急事件聚合。eventId 为空或未命中时回退到默认防台防汛事件（is_default=TRUE），
@@ -212,8 +225,9 @@ public class TyphoonEmergencyService {
                 .collect(Collectors.toList());
     }
 
-    /** 值班人员：复用 V8 应急值班表 sys_duty_member */
+    /** 值班人员：复用 V8 应急值班表 sys_duty_member（带读穿缓存） */
     private List<TyphoonDutyPerson> dutyPersons() {
+        return dutyCache.get("DUTY", ignored -> {
         List<TyphoonDutyPerson> out = new ArrayList<>();
         List<SysDutyMember> members = dutyMemberMapper.selectList(null);
         for (int i = 0; i < members.size(); i++) {
@@ -227,10 +241,12 @@ public class TyphoonEmergencyService {
             out.add(p);
         }
         return out;
+        });
     }
 
-    /** 知识库条目：复用 V8 sys_knowledge_item（供大屏辅助面板使用） */
+    /** 知识库条目：复用 V8 sys_knowledge_item（供大屏辅助面板使用，带读穿缓存） */
     public List<TyphoonAuxItem> knowledgeAuxItems() {
+        return knowledgeCache.get("KNOWLEDGE", ignored -> {
         List<SysKnowledgeItem> items = knowledgeItemMapper.selectList(null);
         List<TyphoonAuxItem> out = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
@@ -245,6 +261,13 @@ public class TyphoonEmergencyService {
             out.add(a);
         }
         return out;
+        });
+    }
+
+    /** 失效参考配置缓存（供测试在用例间隔离）。 */
+    void clearCaches() {
+        dutyCache.invalidateAll();
+        knowledgeCache.invalidateAll();
     }
 
     private FacTyphoonIncident firstByEventId(Long eventId) {
