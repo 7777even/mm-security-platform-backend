@@ -32,3 +32,12 @@
 
 - **WHEN** 统计范围内无业务数据
 - **THEN** 返回空集合或 0 值序列，不得返回虚构数据
+
+### Requirement: 工作站防区过滤分页列表
+
+系统须提供 `GET /api/v1/workstations`（登录可读，零下行控制），返回按 data_scope 行级 ABAC 过滤的工作站/工位分页列表；复用既有 `fac_workstation` 表与 `Workstation` DTO，与 `GET /api/v1/dashboard/workstations` 口径一致。
+
+#### Scenario: 防区过滤分页查询
+
+- **WHEN** `GET /api/v1/workstations?page=1&size=20&zone=&online=`
+- **THEN** B3 包络返回 `Result<WorkstationPageResult>`（list=`Workstation[]`、`total`/`page`/`size`）；非 ALL 角色仅见其 `zone_codes` 内工作站（`resolveZones()` 空集合→`1=0` 零可见）
