@@ -14,6 +14,8 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
 import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
+import com.sinopec.mmsecurity.security.DataScopeHelper;
+import com.sinopec.mmsecurity.security.DataScopeResolver;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,7 @@ public class DashboardService {
     private final AlarmMapper alarmMapper;
     private final FacWorkstationMapper workstationMapper;
     private final FacSystemMessageMapper systemMessageMapper;
+    private final DataScopeResolver dataScopeResolver;
 
     /**
      * 大屏聚合短 TTL 缓存：轮询场景下避免每次刷新全表物化 + Java 侧聚合。
@@ -91,8 +94,11 @@ public class DashboardService {
     }
 
     public List<Workstation> workstations() {
-        List<FacWorkstation> rows = workstationMapper.selectList(
-                new LambdaQueryWrapper<FacWorkstation>().eq(FacWorkstation::getDeleted, 0));
+        LambdaQueryWrapper<FacWorkstation> qw = new LambdaQueryWrapper<>();
+        qw.eq(FacWorkstation::getDeleted, 0);
+        // 套 data_scope 行级 ABAC，与新建 /api/v1/workstations 列表端点口径一致（消除非 ALL 用户越权可见）
+        DataScopeHelper.apply(qw, FacWorkstation::getZone, dataScopeResolver.resolveZones());
+        List<FacWorkstation> rows = workstationMapper.selectList(qw);
         return rows.stream().map(this::toWorkstation).toList();
     }
 
