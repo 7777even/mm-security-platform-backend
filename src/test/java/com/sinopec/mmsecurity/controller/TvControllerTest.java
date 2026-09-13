@@ -6,6 +6,8 @@ import com.sinopec.mmsecurity.dto.TvInspectionItem;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
 import com.sinopec.mmsecurity.dto.TvOperationStats;
 import com.sinopec.mmsecurity.dto.TvOverview;
+import com.sinopec.mmsecurity.dto.TvMapPoint;
+import com.sinopec.mmsecurity.dto.TvMonitorDetail;
 import com.sinopec.mmsecurity.dto.TvOverviewItem;
 import com.sinopec.mmsecurity.service.TvService;
 import org.junit.jupiter.api.Test;
@@ -100,5 +102,31 @@ class TvControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.vehicles[0].plate").value("粤KAA543"))
                 .andExpect(jsonPath("$.data.persons[0].name").value("陈志强"));
+    }
+
+    @Test
+    void mapPoints_returnsList() throws Exception {
+        when(service.tvMapPoints()).thenReturn(List.of(new TvMapPoint()));
+        mvc().perform(get("/api/v1/tv/map-points"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    void monitor_byCode_returnsDetail() throws Exception {
+        TvMonitorDetail detail = new TvMonitorDetail();
+        detail.setId("C1");
+        when(service.tvMonitorByCode("C1")).thenReturn(detail);
+        mvc().perform(get("/api/v1/tv/monitors/C1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value("C1"));
+    }
+
+    @Test
+    void monitor_notFound_returns404() throws Exception {
+        when(service.tvMonitorByCode("X")).thenReturn(null);
+        mvc().perform(get("/api/v1/tv/monitors/X"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404));
     }
 }
