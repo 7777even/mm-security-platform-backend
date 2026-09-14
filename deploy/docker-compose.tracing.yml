@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.102.1
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"     # OTLP gRPC（应用导出目标）
+    depends_on:
+      - zipkin
+
+  zipkin:
+    image: openzipkin/zipkin:3.4.1
+    ports:
+      - "9411:9411"     # Zipkin UI: http://localhost:9411

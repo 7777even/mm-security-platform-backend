@@ -127,6 +127,16 @@ mybatis-plus:
 #   - 注意：探针统一走 /actuator/health；自定义 /api/v1/health 已废弃删除（2026-09-08）
 # =============================================================================
 management:
+  # 分布式链路追踪（OpenTelemetry，经 Micrometer Tracing 桥接）。
+  # enabled=true 时 Spring Boot 自动装配 Tracer bean；采样起步总是采，量大切 0.1。
+  # 应用只认 OTLP gRPC(:4317) → OTel Collector；切换后端存储(Zipkin/Tempo)零改应用。
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0          # 起步总是采样；量大改 0.1（错误全采需 Collector tail_sampling，后续增强）
+  otlp:
+    tracing:
+      endpoint: http://localhost:4317   # A：应用 → OTel Collector(OTLP gRPC)；生产改内网地址
   endpoints:
     web:
       exposure:

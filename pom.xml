@@ -70,6 +70,17 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- 分布式链路追踪：Micrometer Tracing 桥接 OpenTelemetry，由 Spring Boot 3 自动配置托管。
+             Tracer bean 由此提供；应用只认 OTLP gRPC(:4317) 导出，存储端(Collector/Zipkin/Tempo)由运维部署。
+             版本由 Spring Boot 父 POM 托管（micrometer-tracing / opentelemetry BOM），无漂移风险。 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
         <!-- Flyway 数据库版本化迁移（生产在线迁移；dev 用 H2 方言可本地验证） -->
         <dependency>
             <groupId>org.flywaydb</groupId>

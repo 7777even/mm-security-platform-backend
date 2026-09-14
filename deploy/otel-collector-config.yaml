@@ -1,0 +1,20 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+processors:
+  batch: {}
+exporters:
+  # 本地/无栈起步：Zipkin 自带 UI + 内存存储
+  zipkin:
+    endpoint: http://zipkin:9411/api/v2/spans
+  # 有 Grafana 栈时切换为 Tempo（注释掉 zipkin 即可）：
+  # tempo:
+  #   endpoint: http://tempo:4317
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [zipkin]   # 或 [tempo]
