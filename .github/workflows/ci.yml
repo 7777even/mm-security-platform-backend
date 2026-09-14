@@ -19,6 +19,8 @@ jobs:
   test:
     name: 单元测试（Maven / JDK 17）
     runs-on: ubuntu-latest
+    # repository_dispatch 触发（前端契约变更重跑契约守门）时跳过单测，只重跑 contract-guard，节省 CI 时长
+    if: github.event_name != 'repository_dispatch'
     steps:
       - name: 检出后端源码
         uses: actions/checkout@v4
