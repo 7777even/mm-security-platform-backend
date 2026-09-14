@@ -73,8 +73,9 @@
   三方言同步：pg 与 h2 同构；达梦因 Oracle 兼容语法不支持多行 VALUES，角色种子拆为逐条 INSERT，
   且常量 SELECT 补 `FROM dual`（由一次性脚本从 h2 版本派生，见当日工作记忆）。
 - 达梦 DM8 / PG 暂缓（本机无实例、无 docker）；`application-dm.yml` 与 `db/migration/dameng` 保留作迁移资产。代码层 DB 无关（MyBatis-Plus 方言探测、不写方言函数）。
-  > **版本缺口（2026-09-11 实测）**：h2 已至 **V44**；`dameng` 16 个（V1–V3、V26、V32–V43）、`postgresql` 15 个（无 V26）——两库**均缺 V4–V25、V27–V31、V44**。V44 为 h2 单方言（引用 `fac_production_personnel`/`fac_workstation`，且含 `BOOLEAN TRUE/FALSE`，达梦不认），镜像已决策暂缓。**结论：dameng/pg 当前不可直接上生产，缺表会让 Flyway 报红**；「暂缓」指的就是这个状态，不是「已对齐」。
+  > **版本缺口（2026-09-11 实测，h2 已续推至 2026-09-14）**：h2 已至 **V50**（V46–V49 为 h2 单方言、dameng/PG 镜像待补 R5；V50 三核心表 `zone` 列同属 h2 单方言）；`dameng` 16 个（V1–V3、V26、V32–V43）、`postgresql` 15 个（无 V26）——两库**均缺 V4–V25、V27–V31、V44–V50**。V44 为 h2 单方言（引用 `fac_production_personnel`/`fac_workstation`，且含 `BOOLEAN TRUE/FALSE`，达梦不认），镜像已决策暂缓。**结论：dameng/pg 当前不可直接上生产，缺表会让 Flyway 报红**；「暂缓」指的就是这个状态，不是「已对齐」。
 - **H2 保留字陷阱**：`value` / `command` 既不能作裸列名，也不能作 MyBatis-Plus 别名（`SELECT x AS value` 同样报错）。列名加后缀（value→value_name），**Java 属性名也避开保留字**再 `@TableField` 映射。已验证非保留字：`name/code/type/status/level/time/op_type/op_level/ticket_status/value_text/status_name`。
+- **数据权限落地进度（2026-09-14 · V50）**：`fac_alarm` / `fac_video_camera` / `fac_major_hazard` 三核心表补可空 `zone` 列（V50，h2 单方言），值与 `sys_zone.zone_name` 直匹配；**V50 仅加列、未注入 ABAC 过滤**（避免无 zone 数据触发 R1「1=0 零可见」回归）。回填映射框架见 `docs/sql/data-scope-three-tables-backfill.draft.sql` + `docs/data-scope-three-tables-backfill.md`，`location`/经纬度→防区 归属规则**待产品定**（回填属部署/数据任务，不进 Flyway）。后续 `FacAlarmService`/`FacVideoCameraService`/`FacMajorHazardService` 须参照 `DeviceService.page()` 注入 `DataScopeHelper.apply(qw, 'zone', zones)` 方真正生效（R5 待办）。达梦/PG 的 V50 镜像与 V46–V49 一并补齐（R5）。
 
 ## 6. 安全加固
 
