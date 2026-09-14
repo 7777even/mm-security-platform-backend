@@ -31,7 +31,8 @@
 
 - 前端仓 `contract-guard` job 稀疏检出后端 `main` 的 `scripts + src/main/java`，用后端守门脚本对本仓 `docs/api` 对拍。
 - 后端仓 `contract-guard` 显式 `--contracts frontend-scaffold/docs/api`。
-- 两 job 双向验证：任一侧先推、另一侧必红，直至两端契约一致。**「先推契约、再推后端实现」不再靠人记**。私有仓需 Settings → Secrets 配 `CONTRACT_REPO_TOKEN`（PAT），公开仓回退 `github.token`。
+- 两 job 双向验证：任一侧先推、另一侧必红，直至两端契约一致。**「先推契约、再推后端实现」不再靠人记**。私有仓需 Settings → Secrets 配 `CONTRACT_REPO_TOKEN`（PAT），公开仓回退 `github.token`；该 PAT 必须是**对后端仓授权 `Contents: Read and write`** 的 Fine-grained PAT（`Actions:write` 不足以调 `repository_dispatch`，会 403）。
+- 前端契约变更且 `contract-guard` 绿后，前端仓 `notify-backend-contract` job 向后端发 `repository_dispatch(contract-updated)`；后端只重跑 `contract-guard`（`test` job 有 `if: github.event_name != 'repository_dispatch'` 守卫）。
 
 ## 4. 提交与远端
 

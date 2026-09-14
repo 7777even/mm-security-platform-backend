@@ -293,7 +293,7 @@ L3 / L4 任务完成后**即刻**写 `engineering/qa/` 与 `engineering/retro/`�
 后端 `ci.yml` 的 `contract-guard` 拉取的是前端仓 **`feature/scaffold-rebuild` 分支最新** `docs/api` 去对拍实现。因此**必须保证「前端契约先推且自测绿 → 再推后端」**，否则后端 CI 会拉到尚未含新接口的契约而误报漂移（曾于 #36 因后端 `57f70a9` 比前端契约 `fe5a551` 早推 47 秒而整片红）。
 
 根治机制（两端 ci.yml 已接好，无需人工干预）：
-- 前端仓 `ci.yml` 新增 `notify-backend-contract` job：`contract-guard` 绿且本次 `docs/api` 有变更时，用 `CONTRACT_REPO_TOKEN`（具备后端仓写权限的 PAT，须在前端仓 Secrets 配置）向后端仓发 `repository_dispatch(event_type=contract-updated)`。
+- 前端仓 `ci.yml` 新增 `notify-backend-contract` job：`contract-guard` 绿且本次 `docs/api` 有变更时，用 `CONTRACT_REPO_TOKEN`（须在前端仓 Secrets 配置，且是**对后端仓 `7777even/mm-security-platform-backend` 授权 `Contents: Read and write`** 的 Fine-grained PAT——`repository_dispatch` 端点官方要求 `Contents:write`，只给 `Actions:write` 会 403）向后端仓发 `repository_dispatch(event_type=contract-updated)`。
 - 后端仓 `ci.yml` 已接入 `repository_dispatch: types: [contract-updated]` 触发器，收到后即重跑（含 `contract-guard`），此时前端契约已落地，对拍自然通过。
 - 未配置 `CONTRACT_REPO_TOKEN` 时前端该 job 自动跳过，不破坏前端 CI；此时需改为**手动**在后端 Actions 页 Re-run（workflow_dispatch 已接入）兜底。
 
