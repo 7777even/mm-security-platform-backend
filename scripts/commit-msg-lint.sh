@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# commit-msg 守门：type(scope): 中文描述 + scope 固定枚举 + 正文单句（禁列表/禁分号问叹/限逗号/限长）
+# commit-msg 守门：type(scope): 中文描述 + scope 固定枚举 + 提交信息单行（禁正文）
 # 用法：commit-msg-lint.sh <commit-msg-file>
 # 返回 0 通过；非 0 拒绝提交。
 # 规则出处：AGENTS.md §6.5（提交格式与 scope 枚举）、§3.4（提交信息单行成句、禁止分点列表）。
@@ -8,9 +8,6 @@ set -eu
 # scope 固定枚举（AGENTS.md §6.5）。改枚举须同步改 AGENTS.md，禁止在代码里单方面放宽。
 # 域 scope 之外，openspec（变更流程与归档）与 ci（CI 流水线）为 2026-09-14 收编的正式枚举。
 ALLOWED_SCOPES="auth device alarm dashboard security common db config docs chore openspec ci"
-
-# 正文长度上限（字节）。中文 UTF-8 三字节/字，180 字节约合 60 个中文字，足以容纳一句总结。
-BODY_MAX_BYTES=180
 
 msg_file="${1:-}"
 if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
@@ -52,42 +49,14 @@ if [ -n "$scope" ]; then
   done
 fi
 
-# 4) body 纪律：正文须单句、禁列表、禁长段落（与 AGENTS.md『正文单句禁列表（hook 拒）』一致）
-#    仅校验首行(header)之后的 body，避免误伤 header。
+# 4) 提交信息只允许「一行标题」：body 非空即拒（AGENTS.md『提交信息单行成句』）
+#    正文会把一条提交写成描述段落，细节应写进 docs/、openspec/ 或代码注释。
 body=$(tail -n +2 "$msg_file" | tr -d '\r' | sed '/^[[:space:]]*$/d')
 if [ -n "$body" ]; then
-  # 4a) 禁止 '- ' / '* ' 分点列表
-  if printf '%s\n' "$body" | grep -qE '^[[:space:]]*[-*] '; then
-    echo "❌ 提交 body 禁止用 '- ' / '* ' 分点列表，只写一句总结性语句" >&2
-    exit 1
-  fi
-  # 4b) 禁枚举/列表符号『、』（顿号即列表）
-  if printf '%s\n' "$body" | grep -qF '、'; then
-    echo "❌ 提交 body 禁止出现顿号'、'枚举（正文禁列表），改为单句描述" >&2
-    exit 1
-  fi
-  # 4c) 单句：禁止分号『；』及感叹/疑问符『！？』
-  if printf '%s\n' "$body" | grep -qE '；|[！？]'; then
-    echo "❌ 提交 body 须为单句，禁止分号'；'/感叹/疑问符（正文单句）" >&2
-    exit 1
-  fi
-  # 4d) 句号『。』不得超过一个
-  if printf '%s\n' "$body" | grep -q '。.*。'; then
-    echo "❌ 提交 body 须为单句，句号'。'不得超过一个" >&2
-    exit 1
-  fi
-  # 4e) 逗号分句不得超过一处（两处即三句以上，属长段落）
-  commas=$(printf '%s' "$body" | grep -o '[，,]' | wc -l | tr -d ' ')
-  if [ "$commas" -gt 1 ]; then
-    echo "❌ 提交 body 逗号分句过多（$commas 处）：正文须一句总结，禁止长段落，细节写进代码注释或 openspec" >&2
-    exit 1
-  fi
-  # 4f) 长度上限，兜住无标点堆砌的长句
-  bytes=$(printf '%s' "$body" | wc -c | tr -d ' ')
-  if [ "$bytes" -gt "$BODY_MAX_BYTES" ]; then
-    echo "❌ 提交 body 过长（$bytes 字节 > $BODY_MAX_BYTES）：正文只写一句总结性语句" >&2
-    exit 1
-  fi
+  echo "❌ 提交信息只能有一行标题（'type(scope): 描述'），禁止正文/body：" >&2
+  printf '%s\n' "$body" | sed 's/^/   /' >&2
+  echo "   细节请写进 docs/、openspec/ 或代码注释，确需说明的内容并进标题那一句。" >&2
+  exit 1
 fi
 
 exit 0

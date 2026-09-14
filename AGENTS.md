@@ -182,8 +182,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
   `auth`（认证域）、`device`（设备域）、`alarm`（告警域 + WebSocket 推送）、`dashboard`（态势总览）、`security`（JWT / HMAC / 硬控 / 鉴权横切）、`common`（Result / 异常 / DeviceCode / 工具）、`db`（schema 与迁移脚本）、`config`（配置类、`application*.yml`、构建）、`docs`、`chore`、`openspec`（openspec 变更流程与归档）、`ci`（CI 流水线与门禁配置）。
   仓库名（`backend`）、架构层（`service` / `controller` / `mapper`）与自造复合词（`system-facts` / `data-scope`）**不是 scope**：按改动所属域取名，跨域则写 `type: 描述` 不带括号。
 - 跨域改动**按影响面拆成多个提交**：横切层（`common` / `security`）先行，业务域跟随；确属原子改动才允许双 scope（如 `feat(alarm,security):`），不得常态化。
-- 提交信息**只写一句总结性语句**，禁止长段落或 `- ` 分点列表；禁止提交构建产物与临时输出（`target/` 已被 `.gitignore` 覆盖）。
-- 以上三条已**机控**（`scripts/commit-msg-lint.sh`，由 `scripts/git-hooks/commit-msg` 调用）：header 格式 + 描述含中文 + scope ∈ 上列枚举 + 正文单句（禁 `- ` 分点、禁 `、`、禁 `；`/`！`/`？`，句号与逗号各不超过 1 个，正文不超过 180 字节）。违者提交被拒，**不得用 `--no-verify` 绕过**；确需新 scope 先改本节枚举再写提交。
+- 提交信息**只写一行标题**（`type(scope): 描述` 本身就是那句总结），**禁止正文/body**、禁止长段落与 `- ` 分点列表；说明性内容写进代码注释、`docs/` 或 openspec，不塞进提交信息。禁止提交构建产物与临时输出（`target/` 已被 `.gitignore` 覆盖）。
+- 以上三条已**机控**（`scripts/commit-msg-lint.sh`，由 `scripts/git-hooks/commit-msg` 调用）：header 格式 + 描述含中文 + scope ∈ 上列枚举 + **body 非空即拒（提交信息必须单行）**。违者提交被拒，**不得用 `--no-verify` 绕过**；确需新 scope 先改本节枚举再写提交。
 - 「禁止提交构建产物与临时输出」同样机控（`scripts/pre-commit-guard.sh`，由 `scripts/git-hooks/pre-commit` 调用）：暂存区命中 `target/`、`dist/`、`coverage/`、`node_modules/`、`nohup.out`、`*-out.txt`、`*.log`、`*.tmp` 等即拒绝，`openspec/` 下的 QA 证据附件为例外。
 - Java 代码统一 **4 空格缩进**、UTF-8、必要处写中文注释；新增对外接口必须同步契约（§11）。
 
