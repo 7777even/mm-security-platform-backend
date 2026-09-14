@@ -1,8 +1,13 @@
 package com.sinopec.mmsecurity.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.AuditEvent;
 import com.sinopec.mmsecurity.dto.AuditEventBatch;
+import com.sinopec.mmsecurity.dto.AuditLogItem;
+import com.sinopec.mmsecurity.dto.AuditLogPageResult;
 import com.sinopec.mmsecurity.dto.FieldReportItem;
 import com.sinopec.mmsecurity.dto.FieldReportMedia;
 import com.sinopec.mmsecurity.entity.FacAuditLog;
@@ -16,7 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 上行数据服务（只监不控）：
@@ -54,6 +61,40 @@ public class UplinkService {
                 log.warn("[uplink] 审计事件落库失败，已尽力跳过 action={}", e.getAction(), ex);
             }
         }
+    }
+
+    /**
+     * 查询操作审计日志（fac_audit_log，只读）。
+     * 支持按模块 / 动作过滤，按事件时间倒序返回分页结果，供后台管理端审计日志页消费。
+     */
+    public AuditLogPageResult queryAudit(long page, long size, String module, String action) {
+        LambdaQueryWrapper<FacAuditLog> qw = new LambdaQueryWrapper<>();
+        if (module != null && !module.isBlank()) {
+            qw.eq(FacAuditLog::getModule, module);
+        }
+        if (action != null && !action.isBlank()) {
+            qw.eq(FacAuditLog::getAction, action);
+        }
+        qw.orderByDesc(FacAuditLog::getEventAt).orderByDesc(FacAuditLog::getId);
+        IPage<FacAuditLog> p = auditLogMapper.selectPage(new Page<>(page, size), qw);
+        AuditLogPageResult result = new AuditLogPageResult();
+        result.setList(p.getRecords().stream().map(this::toAuditItem).collect(Collectors.toList()));
+        result.setTotal(p.getTotal());
+        result.setPage(page);
+        result.setSize(size);
+        return result;
+    }
+
+    private AuditLogItem toAuditItem(FacAuditLog e) {
+        AuditLogItem item = new AuditLogItem();
+        item.setId(e.getId());
+        item.setAction(e.getAction());
+        item.setModule(e.getModule());
+        item.setDetailJson(e.getDetailJson());
+        item.setEventAt(e.getEventAt());
+        item.setCreatedAt(
+                e.getCreatedAt() == null ? null : e.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        return item;
     }
 
     public void submitFieldReport(FieldReportItem item) {
