@@ -29,10 +29,30 @@ else
   exit 1
 fi
 
-# 3) 禁止用 '- ' / '* ' 分点列表写 body（只写一句总结）
-if grep -qE '^[[:space:]]*[-*] ' "$msg_file"; then
-  echo "❌ 禁止用 '- ' / '* ' 分点列表写提交 body，只写一句总结性语句" >&2
-  exit 1
+# 3) body 纪律：正文须单句、禁列表（与 AGENTS.md『正文单句禁列表（hook 拒）』一致）
+#    仅校验首行(header)之后的 body，避免误伤 header。
+body=$(tail -n +2 "$msg_file" | sed '/^[[:space:]]*$/d')
+if [ -n "$body" ]; then
+  # 3a) 禁止 '- ' / '* ' 分点列表
+  if printf '%s\n' "$body" | grep -qE '^[[:space:]]*[-*] '; then
+    echo "❌ 提交 body 禁止用 '- ' / '* ' 分点列表，只写一句总结性语句" >&2
+    exit 1
+  fi
+  # 3b) 禁枚举/列表符号『、』（顿号即列表）
+  if printf '%s\n' "$body" | grep -qF '、'; then
+    echo "❌ 提交 body 禁止出现顿号'、'枚举（正文禁列表），改为单句描述" >&2
+    exit 1
+  fi
+  # 3c) 单句：禁止分号『；』及感叹/疑问符『！？』
+  if printf '%s\n' "$body" | grep -qE '；|[！？]'; then
+    echo "❌ 提交 body 须为单句，禁止分号'；'/感叹/疑问符（正文单句）" >&2
+    exit 1
+  fi
+  # 3d) 句号『。』不得超过一个
+  if printf '%s\n' "$body" | grep -q '。.*。'; then
+    echo "❌ 提交 body 须为单句，句号'。'不得超过一个" >&2
+    exit 1
+  fi
 fi
 
 exit 0
