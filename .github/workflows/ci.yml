@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  # 根治跨仓契约竞态：前端仓 docs/api 变更且自测绿后，会向本仓发 repository_dispatch(contract-updated)，
+  # 触发本工作流重跑 contract-guard，消除「后端先推、前端契约后到」的时序红（详见前端仓 ci.yml 的 notify-backend-contract）。
+  repository_dispatch:
+    types: [contract-updated]
 
 concurrency:
   group: backend-ci-${{ github.ref }}
@@ -84,7 +88,9 @@ jobs:
           echo "  · 若确认要改契约：必须在前端仓改 docs/api/<domain>.openapi.json 并**先推送**，"
           echo "    再重跑本 job（本 job 拉取的是前端仓分支最新，不认本地改动）。"
           echo "  · 前端仓已新增同名 contract-guard job，可直接在那里先验证契约侧是否自洽。"
-          echo "  详见根 AGENTS.md §4「跨库推送顺序」。"
+          echo "  · 若属时序红（前端契约晚到）：前端仓 contract-guard 绿后会自动发 repository_dispatch 重跑本 job；"
+          echo "    也可在 Actions 页手动 Re-run（workflow_dispatch / repository_dispatch 均已接入）。"
+          echo "  详见根 AGENTS.md §4「跨库推送顺序」与 §11.2 四同步纪律。"
 
       # openspec 闭环纪律守门：changes/ 下不允许存在 tasks 全勾未归档的 Change、
       # 四件套缺失、archive/ 目录缺日期前缀（规则见根 AGENTS.md §7.1）。
