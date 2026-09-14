@@ -77,7 +77,6 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        TraceContext.init();
         String uri = request.getRequestURI();
 
         try {
@@ -122,7 +121,6 @@ public class JwtFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } finally {
             UserContext.clear();
-            TraceContext.clear();
         }
     }
 

@@ -1,10 +1,12 @@
 package com.sinopec.mmsecurity.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sinopec.mmsecurity.common.TracingFilter;
 import com.sinopec.mmsecurity.security.HmacFilter;
 import com.sinopec.mmsecurity.security.JwtFilter;
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.security.TokenVersionService;
+import io.micrometer.tracing.Tracer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -21,10 +23,14 @@ import java.util.Set;
  *
  * 过滤器顺序约定（与 AGENTS.md §6.1 对齐）：
  *   CorsFilter(HIGHEST_PRECEDENCE, 见 CorsConfig)
- *     → HmacFilter(HIGHEST_PRECEDENCE+1) → JwtFilter(HIGHEST_PRECEDENCE+10) → 拦截器链
+ *     → TracingFilter(HIGHEST_PRECEDENCE, 见下) → HmacFilter(HIGHEST_PRECEDENCE+1)
+ *     → JwtFilter(HIGHEST_PRECEDENCE+10) → 拦截器链
  *
  * CorsFilter 必须最先执行：保证被 HmacFilter/JwtFilter 短路的鉴权响应也带 CORS 头，
  * 否则浏览器会报「No 'Access-Control-Allow-Origin' header」。
+ *
+ * TracingFilter 紧随 CorsFilter（同 HIGHEST_PRECEDENCE），确定性早于 HmacFilter/JwtFilter，
+ * 使所有下游过滤器与业务日志、Result.traceId 在请求进入业务前即拿到统一 traceId（详见 TracingFilter）。
  *
  * 不再依赖 Spring Boot 对 @Component Filter 的自动注册（其相对顺序由 bean 名哈希决定，不可控），
  * 改为在此用 FilterRegistrationBean 显式 setOrder，保证：先校验签名，再解析身份。
@@ -104,6 +110,24 @@ public class SecurityBeans {
     public FilterRegistrationBean<JwtFilter> jwtFilterRegistration(JwtFilter jwtFilter) {
         FilterRegistrationBean<JwtFilter> bean = new FilterRegistrationBean<>(jwtFilter);
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
+        return bean;
+    }
+
+    /**
+     * 分布式链路追踪根 span 过滤器（OpenTelemetry / Micrometer Tracing 桥接）。
+     * 依赖 Micrometer Tracing 自动配置的 Tracer bean（引入 tracing 依赖后由 Spring Boot 托管）。
+     * 顺序 HIGHEST_PRECEDENCE：与 CorsFilter 同优先级、确定性早于 HmacFilter(+1)/JwtFilter(+10)，
+     * 保证下游过滤器与业务日志、Result.traceId 拿到统一 traceId。
+     */
+    @Bean
+    public TracingFilter tracingFilter(Tracer tracer) {
+        return new TracingFilter(tracer);
+    }
+
+    @Bean
+    public FilterRegistrationBean<TracingFilter> tracingFilterRegistration(TracingFilter tracingFilter) {
+        FilterRegistrationBean<TracingFilter> bean = new FilterRegistrationBean<>(tracingFilter);
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return bean;
     }
 }
