@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# 后端仓库 pre-commit 钩子（无 node/husky 依赖）：委托给 scripts/pre-commit-guard.sh
+d=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+sh "$d/../pre-commit-guard.sh"

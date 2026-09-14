@@ -6,7 +6,8 @@
 set -eu
 
 # scope 固定枚举（AGENTS.md §6.5）。改枚举须同步改 AGENTS.md，禁止在代码里单方面放宽。
-ALLOWED_SCOPES="auth device alarm dashboard security common db config docs chore"
+# 域 scope 之外，openspec（变更流程与归档）与 ci（CI 流水线）为 2026-09-14 收编的正式枚举。
+ALLOWED_SCOPES="auth device alarm dashboard security common db config docs chore openspec ci"
 
 # 正文长度上限（字节）。中文 UTF-8 三字节/字，180 字节约合 60 个中文字，足以容纳一句总结。
 BODY_MAX_BYTES=180
