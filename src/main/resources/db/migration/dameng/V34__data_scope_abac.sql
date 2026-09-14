@@ -20,7 +20,7 @@ CREATE TABLE sys_zone (
     CONSTRAINT uk_sys_zone_code UNIQUE (zone_code)
 );
 
-ALTER TABLE sys_user ADD COLUMN zone_codes VARCHAR2(512);
+ALTER TABLE sys_user ADD zone_codes VARCHAR2(512);
 
 INSERT INTO sys_zone (zone_code, zone_name, sort_order, status) VALUES ('LIANYOU', '炼油区', 1, 1);
 INSERT INTO sys_zone (zone_code, zone_name, sort_order, status) VALUES ('YIXI', '乙烯区', 2, 1);

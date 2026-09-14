@@ -63,11 +63,11 @@ CREATE TABLE sys_dict_item (
 );
 CREATE INDEX idx_sys_dict_item_code ON sys_dict_item(dict_code);
 
-ALTER TABLE sys_menu ADD COLUMN menu_type VARCHAR2(16) DEFAULT 'MENU' NOT NULL;
-ALTER TABLE sys_menu ADD COLUMN perm_code VARCHAR2(128);
-ALTER TABLE sys_menu ADD COLUMN visible   NUMBER(3) DEFAULT 1 NOT NULL;
+ALTER TABLE sys_menu ADD menu_type VARCHAR2(16) DEFAULT 'MENU' NOT NULL;
+ALTER TABLE sys_menu ADD perm_code VARCHAR2(128);
+ALTER TABLE sys_menu ADD visible   NUMBER(3) DEFAULT 1 NOT NULL;
 
-ALTER TABLE sys_user ADD COLUMN pwd_updated_at  TIMESTAMP;
-ALTER TABLE sys_user ADD COLUMN must_change_pwd NUMBER(3) DEFAULT 0 NOT NULL;
+ALTER TABLE sys_user ADD pwd_updated_at  TIMESTAMP;
+ALTER TABLE sys_user ADD must_change_pwd NUMBER(3) DEFAULT 0 NOT NULL;
 
 UPDATE sys_menu SET menu_type = 'DIR' WHERE code LIKE 'fm-%';
