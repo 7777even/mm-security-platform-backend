@@ -81,7 +81,7 @@
 ## 6. 安全加固
 
 - **凭据不入日志**：默认管理员初始口令等凭据一律不落日志（`RbacBootstrapService` 于 2026-09-11 修正，此前会明文打印初始口令）。口令常量保留为固定值是 dev 联调契约，生产由 `app.password.force-change-default-admin=true` 强制首登改密兜底。
-- **日志可追踪**：console pattern 含 `[%X{traceId:-j-none}]`；`TraceContext` 在请求入口 `MDC.put("traceId", ...)`，使响应体 `Result.traceId` 与服务端日志可对齐检索（2026-09-11 补，此前 MDC 有值但 pattern 未输出，排障链路是断的）。
+- **日志/链路可追踪**：console pattern 含 `[%X{traceId:-j-none}]`；`TracingFilter`（OpenTelemetry / Micrometer Tracing 桥接，order=HIGHEST_PRECEDENCE 早于 JwtFilter）在请求入口起 root span 并 `MDC.put("traceId", <标准 32 位 hex>)`，使响应体 `Result.traceId` 与服务端日志、Zipkin/Tempo 中的 traceId 三者一致（对齐 OTel，弃用旧 `j-xxxx`）；无请求上下文回落 `j-none`。导出走 OTLP gRPC `:4317` → OTel Collector，后端存储(Zipkin/Tempo)由运维按环境部署（见 openspec change `2026-09-14-feat-observability-tracing`）。采样起步 `probability=1.0`（量大切 0.1）。
 - CORS：`CorsConfig` 必须先于所有过滤器注册；非 dev profile 含 `*` 启动即抛异常。
 - 鉴权失败直出 401/403 + `Result.fail` B3（UTF-8），**不冒泡 500**。
 - 密钥纯 `${JWT_SECRET}` / `${SIGNATURE_SECRET}` 无默认；`SecurityBeans.validateSecrets()` 校验长度与占位符。
