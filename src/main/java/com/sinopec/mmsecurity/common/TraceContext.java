@@ -2,10 +2,14 @@ package com.sinopec.mmsecurity.common;
 
 import org.slf4j.MDC;
 
-import java.util.UUID;
-
 /**
- * 请求 traceId 容器，用于 Result.traceId 与日志链路追踪。
+ * 请求 traceId 读取封装。
+ *
+ * <p>traceId 由 {@code TracingFilter}（OpenTelemetry / Micrometer Tracing 桥接）注入
+ * MDC(key=traceId，标准 32 位 hex)，此处仅读取，保证日志 pattern [%X{traceId}]
+ * 与 {@code Result.traceId} 使用同一值（对齐 OTel，弃用旧 j-xxxx 格式）。
+ *
+ * <p>无请求上下文（启动期、单元测试、非 Web 线程）回落 {@code "j-none"}，保持兼容。
  */
 public final class TraceContext {
 
@@ -13,17 +17,8 @@ public final class TraceContext {
 
     private TraceContext() {}
 
-    public static void init() {
-        String trace = UUID.randomUUID().toString().replace("-", "").substring(0, 14);
-        MDC.put(KEY, "j" + trace);
-    }
-
     public static String get() {
         String v = MDC.get(KEY);
         return v == null ? "j-none" : v;
-    }
-
-    public static void clear() {
-        MDC.remove(KEY);
     }
 }
