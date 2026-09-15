@@ -1,0 +1,69 @@
+name: trivy-security-scan
+
+on:
+  push:
+    branches: [ main, feature/scaffold-rebuild ]
+  pull_request:
+  schedule:
+    # 每周一 04:23 UTC 例行扫描，捕捉新披露漏洞
+    - cron: '23 4 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependency-scan:
+    name: Trivy 依赖与文件系统漏洞扫描 (SCA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 构建后端 jar（供镜像/产物扫描，跳过测试加速）
+        working-directory: backend-scaffold
+        run: mvn -B -q package -DskipTests
+
+      - name: Trivy 文件系统 + 依赖扫描（生成 SARIF）
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: 'fs'
+          scan-ref: 'backend-scaffold'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '0'   # 不阻断流水线，仅上报；如需门禁改为 '1'
+
+      - name: 上传 SARIF 到 GitHub Security (code scanning)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-fs'
+
+  image-scan:
+    name: Trivy 镜像漏洞扫描
+    runs-on: ubuntu-latest
+    needs: dependency-scan
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 构建并载入镜像到本地（不推送）
+        working-directory: backend-scaffold
+        run: |
+          mvn -B -q package -DskipTests
+          docker build -t mm-security-backend:ci .
+
+      - name: Trivy 镜像扫描
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'mm-security-backend:ci'
+          format: 'sarif'
+          output: 'trivy-image.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: 上传镜像 SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image.sarif'
+          category: 'trivy-image'
