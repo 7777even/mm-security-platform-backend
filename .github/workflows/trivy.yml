@@ -19,15 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 构建后端 jar（供镜像/产物扫描，跳过测试加速）
-        working-directory: backend-scaffold
-        run: mvn -B -q package -DskipTests
+      - name: 配置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 构建 jar（产物含完整依赖树，供 Trivy 扫描，跳过测试加速）
+        run: mvn -B -ntp package -DskipTests
 
       - name: Trivy 文件系统 + 依赖扫描（生成 SARIF）
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
-          scan-ref: 'backend-scaffold'
+          scan-ref: '.'
           severity: 'CRITICAL,HIGH'
           format: 'sarif'
           output: 'trivy-results.sarif'
@@ -47,14 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 构建并载入镜像到本地（不推送）
-        working-directory: backend-scaffold
-        run: |
-          mvn -B -q package -DskipTests
-          docker build -t mm-security-backend:ci .
+      - name: 构建镜像（Dockerfile 为多阶段，镜像内自建 jar；不推送）
+        run: docker build -t mm-security-backend:ci .
 
       - name: Trivy 镜像扫描
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'mm-security-backend:ci'
           format: 'sarif'
