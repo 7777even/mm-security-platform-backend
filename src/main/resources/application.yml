@@ -158,3 +158,25 @@ info:
     name: mm-security-backend
     description: 石化园区安全风险管控平台后端服务
 
+# =============================================================================
+# 接口级限流防刷（进程内令牌桶，零外部依赖；多实例需前置 LB/CDN 叠加全局限流）
+#   - 装配顺序在 HmacFilter 之后、JwtFilter 之前（仅对通过 HMAC 签名的合法流量限速）
+#   - 被限流返回 429 + Retry-After；白名单 IP（本机探针/内网运维台）放行
+#   - dev 联调若受限可 RATELIMIT_ENABLED=false 临时关闭
+# =============================================================================
+ratelimit:
+  enabled: ${RATELIMIT_ENABLED:true}
+  global-qps: ${RATELIMIT_GLOBAL_QPS:200}
+  global-burst: ${RATELIMIT_GLOBAL_BURST:400}
+  trust-forwarded: ${RATELIMIT_TRUST_FORWARDED:true}
+  ip-whitelist:
+    - 127.0.0.1
+    - ::1
+  rules:
+    - path: /api/v1/auth/login
+      qps: ${RATELIMIT_LOGIN_QPS:5}
+      burst: ${RATELIMIT_LOGIN_BURST:10}
+    - path: /api/v1/auth/refresh
+      qps: ${RATELIMIT_REFRESH_QPS:10}
+      burst: ${RATELIMIT_REFRESH_BURST:20}
+

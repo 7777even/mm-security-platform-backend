@@ -2,7 +2,9 @@ package com.sinopec.mmsecurity.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sinopec.mmsecurity.common.TracingFilter;
+import com.sinopec.mmsecurity.config.RateLimitProperties;
 import com.sinopec.mmsecurity.security.HmacFilter;
+import com.sinopec.mmsecurity.security.RateLimitFilter;
 import com.sinopec.mmsecurity.security.JwtFilter;
 import com.sinopec.mmsecurity.security.JwtUtil;
 import com.sinopec.mmsecurity.security.TokenVersionService;
@@ -128,6 +130,25 @@ public class SecurityBeans {
     public FilterRegistrationBean<TracingFilter> tracingFilterRegistration(TracingFilter tracingFilter) {
         FilterRegistrationBean<TracingFilter> bean = new FilterRegistrationBean<>(tracingFilter);
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
+    }
+
+    /**
+     * 接口级限流防刷过滤器（进程内令牌桶，零外部依赖）。
+     * 顺序 HIGHEST_PRECEDENCE + 2：位于 HmacFilter(+1) 之后、JwtFilter(+10) 之前。
+     * 仅对通过 HMAC 签名的合法流量限速——无有效签名的裸请求已在 Hmac 层被 401 挡掉，不消耗限流配额。
+     * 放行规则与 HmacFilter 对齐（/actuator、/h2-console、OPTIONS）。
+     */
+    @Bean
+    public RateLimitFilter rateLimitFilter(RateLimitProperties rateLimitProperties, ObjectMapper objectMapper,
+                                          io.micrometer.core.instrument.MeterRegistry meterRegistry) {
+        return new RateLimitFilter(rateLimitProperties, objectMapper, meterRegistry);
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter rateLimitFilter) {
+        FilterRegistrationBean<RateLimitFilter> bean = new FilterRegistrationBean<>(rateLimitFilter);
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
         return bean;
     }
 }
