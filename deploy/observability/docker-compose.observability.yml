@@ -1,0 +1,54 @@
+version: "3.8"
+
+# 可观测性栈：Prometheus(抓取指标) + Alertmanager(告警) + Loki(日志) + Promtail(采集) + Grafana(呈现)
+# 与 backend-scaffold/deploy/docker-compose.yml 的业务网络隔离，仅通过 scrape 后端 /actuator/prometheus。
+# 启动：docker compose -f docker-compose.observability.yml up -d
+# 访问：Grafana http://localhost:3000 （admin / ${GRAFANA_ADMIN_PASSWORD:-admin}）
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./loki:/etc/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./promtail:/etc/promtail
+      # 共享后端日志目录（与 backend 容器挂载同一宿主机路径）
+      - /app/logs:/app/logs:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped

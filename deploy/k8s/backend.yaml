@@ -1,0 +1,116 @@
+# =============================================================================
+# mm-security-backend K8s 编排（ConfigMap + Deployment + Service + Ingress）
+#
+# 敏感项（JWT_SECRET / SIGNATURE_SECRET / DB_PASSWORD / DB_USERNAME）走 Secret，
+# 见同目录 backend-secrets.yaml（部署前用 kubectl create secret 注入，勿提交明文）。
+#
+# 探针：/actuator/health/liveness 与 /actuator/health/readiness
+#       （application.yml: management.endpoint.health.probes.enabled=true）
+# 应用端口：8787（Dockerfile ENV SERVER_PORT=8787 覆盖 base yml 的 8080）
+# 上下文路径：/  →  探针完整路径 http://:8787/actuator/health/liveness
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mm-security-backend
+  labels:
+    app: mm-security-backend
+data:
+  # dev=H2 / prod=PostgreSQL / dm=达梦（需构建机预装 DmJdbcDriver18）
+  SPRING_PROFILES_ACTIVE: "prod"
+  # 生产务必显式注入前端域名，勿用 *
+  CORS_ALLOWED_ORIGINS: "https://console.example.com"
+  # 生产 HTTPS：刷新 Cookie 须 Secure 才生效
+  COOKIE_SECURE: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mm-security-backend
+  labels:
+    app: mm-security-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mm-security-backend
+  template:
+    metadata:
+      labels:
+        app: mm-security-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/7777even/mm-security-backend:latest
+          ports:
+            - containerPort: 8787
+          envFrom:
+            - configMapRef:
+                name: mm-security-backend
+            - secretRef:
+                name: mm-security-backend
+          # 启动探针：给 Flyway 大型迁移充足时间，避免被 liveness 误杀
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8787
+            failureThreshold: 30
+            periodSeconds: 10
+          # 存活探针：进程存活但 DB 未就绪时不算死
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8787
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 3
+          # 就绪探针：Flyway 迁移 + DB 连通后才接流量
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8787
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mm-security-backend
+  labels:
+    app: mm-security-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: mm-security-backend
+  ports:
+    - name: http
+      port: 8787
+      targetPort: 8787
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mm-security-backend
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mm-security-backend
+                port:
+                  number: 8787

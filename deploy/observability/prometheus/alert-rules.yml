@@ -1,0 +1,46 @@
+groups:
+  - name: mm-security-backend
+    rules:
+      # 后端 5xx 错误率 > 5% 持续 5 分钟
+      - alert: HighHttpRequestErrorRate
+        expr: >
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "后端 5xx 错误率过高"
+          description: "近 5 分钟 5xx 错误率 {{ $value | humanizePercentage }}，持续超阈值"
+
+      # 实例不可达（scrape 失败）
+      - alert: InstanceDown
+        expr: up{job="mm-security-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "后端实例不可用"
+          description: "scrape 失败，实例可能宕机或未就绪"
+
+      # 接口限流频繁触发（可能存在刷接口或阈值过低）
+      - alert: RateLimitTriggeredFrequently
+        expr: sum(rate(rate_limit_exceeded_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "接口限流频繁触发"
+          description: "近 5 分钟平均每秒被限流 {{ $value }} 次"
+
+      # JVM 堆使用率 > 85%
+      - alert: JvmHeapHigh
+        expr: >
+          sum(jvm_memory_used_bytes{area="heap"})
+          / sum(jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆内存使用率偏高"
+          description: "堆使用率 {{ $value | humanizePercentage }}"

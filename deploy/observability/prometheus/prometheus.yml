@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alert-rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # 后端 Actuator Prometheus 端点（已在 JwtFilter/HmacFilter 放行 /actuator/**，
+  # 但生产须限制在内网/监控网段访问，勿直接暴露公网）
+  - job_name: mm-security-backend
+    metrics_path: /actuator/prometheus
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['backend:8787']
