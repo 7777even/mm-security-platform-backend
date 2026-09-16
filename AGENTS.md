@@ -4,6 +4,43 @@
 
 本库是**安全管控指挥系统后端服务**（`backend-scaffold`），与前端库 `frontend-scaffold` **平级双库、非 monorepo**。两端共用同一套 AI 规范骨架（分级 / 契约 / 记录闭环），但各有独立 `AGENTS.md`、独立 `openspec/`、独立 Git 提交 scope。跨库协作规则见 §11。
 
+## 0. 跨库入口（umbrella · 复述自仓库根，clone 本库即可读到）
+
+⚠️ 仓库根目录 `mm-security-platform/` **不是 git 仓库**，其伞文件 `AGENTS.md` 不随任何仓库提交。为避免「clone 任一库都拿不到跨库入口」，本节把伞的要点复述在此；**两端 §0 内容保持一致，改动须两端同步**（后端本文件 / 前端 `frontend-scaffold/AGENTS.md`）。
+
+### 0.1 仓库结构
+
+| 路径 | 内容 |
+| --- | --- |
+| `backend-scaffold/` | 安全管控指挥系统后端（Spring Boot + MyBatis-Plus）；**本文件为后端权威** |
+| `frontend-scaffold/` | 前端脚手架（Vue3 + Vite + wujie 微前端）；其 `AGENTS.md` 为前端权威 |
+
+- **契约机器可读真源（唯一）**：`frontend-scaffold/docs/api/*.openapi.json`——前端由此生成 TS 类型；后端**禁止复制第二份**主契约（禁止平行体系），本库 `docs/api/` 只放实现映射与同步纪律。
+- **系统事实基线**：各库 `docs/system-facts.md`（人维护、随库提交的事实真源；与代码冲突以它为准，改动须回写）。
+
+### 0.2 规则优先级仲裁
+
+高 → 低，低阶规则不得覆盖高阶：
+
+1. 平台安全策略与人工当场指令
+2. **本库 `AGENTS.md`**（含 §3 API 契约、§6 红线）
+3. 已确认的 `openspec/changes/<name>/` 与 `openspec/specs/`
+4. 当前 Change 的 `tasks.md` 中正在执行的 Task
+5. 各库 `docs/system-facts.md`（系统事实：约束「现状认知」，不直接约束代码写法）
+6. 任何 skill / 插件自带的工作方法（含 superpowers）
+
+子库规则只能**加严**不可放宽；跨库契约冲突**先改契约 + 人工确认，再改代码**。
+
+### 0.3 跨库协作铁律（四同步，不可跳步）
+
+对外接口变更必须在**同一次交付**内完成：① openspec（两端各自 Change / spec）→ ② 前端契约 `docs/api/<domain>.openapi.json`（四条铁律）→ ③ 后端实现（跑 `node scripts/check-api-contract.mjs --strict`）→ ④ 通知前端 `npm run gen:api-types` 重生成类型。细则见 §11。
+
+### 0.4 完成底线
+
+- 后端单测基线（standalone MockMvc + 纯 Mockito）须**全绿**；带 DB 的 `*IT` 未执行须**如实报告**，禁止用「零 DB 通过」冒充。
+- 前端 `vitest run` + `vue-tsc` 须全绿；改 `src/` 后须重建子应用产物。
+- 提交按 scope 拆分、不 amend；两库**独立提交、独立推送**。
+
 ## 1. 分级工作流（L0–L4 决策树）
 
 动手前先判定等级，并在回复中用一句话说明判定与理由。**分级只决定流程重量，不豁免 §3 API 契约、§6 红线与 §2 验证矩阵。**
@@ -236,9 +273,12 @@ L3 / L4 任务完成后**即刻**写 `engineering/qa/` 与 `engineering/retro/`�
 | `templates/_qa_template.md`                  | engineering/qa 记录    |
 | `templates/_retro_template.md`               | engineering/retro 记录 |
 | `templates/_ship_template.md`                | engineering/ship 发布检查与回滚 |
+| `templates/_stage_report_template.md`        | engineering/reports 阶段简报（干系人） |
 | `templates/api-contract-writing-guide.md`    | §3 契约编写与同步手册  |
 
 `templates/README.md` 为索引与用法说明。
+
+**落点区分**：`engineering/qa/`+`retro/` 面向工程内部；`engineering/ship/` 管上线检查与回滚；`engineering/reports/` 面向干系人（对照 `docs/architecture/roadmap.md §2` 判据的阶段简报）。三者不可互相顶替，各自 `README.md` 说明用法。
 
 ## 8. L4 硬门禁清单
 

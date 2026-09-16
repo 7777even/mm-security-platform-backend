@@ -7,6 +7,8 @@
 > **分析轴**：AI 编程规范（AGENTS/CLAUDE/.cursor）、过程文档（docs/engineering）、流程说明（OpenSpec/路线图/QA·Retro）
 > **定位**：在仓库既有《脚手架与安全教育培训平台对标分析.docx》(2026-09-02) 的「平台能力」对标之外，补一层「AI 协作治理」专项对标。sts 是本次的**标杆参照**，但 mm 在多个维度已经反超。
 
+> 🔁 **2026-09-16 复核**：本文的落地清单已按「提交后的仓库」口径逐项重新取证，结论见根目录 `AI过程规范评审与STS差距-2026-09-16.md`。**其中 P1-1（Testcontainers / DB-IT 层）经复核由 ✅ 改判为 🟡**（详见 §4）；其余结论基本成立。本文保留为过程记录，**冲突以复核报告为准**。
+
 ---
 
 ## 0. 一句话结论
@@ -124,7 +126,8 @@ sts 单根 monorepo 的优势是「一个根 AGENTS 统领」。mm 双库带来�
 - [x] **P0-1** 后端 `backend-scaffold/docs/architecture/` 新增 6 篇：auth-design / password-security / audit-log / data-masking / optimistic-lock / id-name-cache（+ module-boundary）✅ 已落地（2026-09-08）
 - [x] **P0-2** 根目录新增 `AGENTS.md`（或给「长期共识文档」加「AI 协作入口」节），链接两端 AGENTS + roadmap + 契约真源 ✅ 已落地（根 `AGENTS.md` umbrella）
 - [x] **P0-3** `backend-scaffold/docs/deployment/` 新增 customer-environment-questionnaire / dameng-migration-runbook / penetration-checklist ✅ 已落地
-- [x] **P1-1** 引入 Testcontainers，落地 `*IT` 层，复用 `backend-scaffold/db/migration/**` V 文件，禁第二份 DDL ✅ 已落地（`DbLayerIntegrationIT`，H2+Flyway 复用 V1–V8；Testcontainers 因本机无 Docker 改为 H2 集成 DB，生产方言待真实实例复核）
+- [x] **P1-1** 引入 Testcontainers，落地 `*IT` 层，复用 `backend-scaffold/db/migration/**` V 文件，禁第二份 DDL
+  > ⚠️ **2026-09-16 复核改判 🟡（部分落地，未对齐 sts）**：实测本库 `src/test` 下 `*IT.java` 仅 **1 个**（`integration/DbLayerIntegrationIT`），`testcontainers` 引用数 **0**；sts 对应为 `src/integrationTest` 下 **81 个** `*IT` + Testcontainers 真实容器切片。本项落的是「H2 复用 Flyway V 文件」的**代偿方案**，不等于已具备真实容器 DB-IT 层；对三方言（h2/pg/dm）项目，H2 通过不能代表达梦/PG 通过。**该项应视为未完成**，仍是 mm 相对 sts 的最大工程缺口。详见根目录 `AI过程规范评审与STS差距-2026-09-16.md` §7-1。
 - [x] **P1-2** 后端 `backend-scaffold/.cursor/rules/` 新增 `end-to-end-roadmap.mdc`，固化 L3/L4 开工前读路线图 ✅ 已落地
 - [x] **P2-2** `backend-scaffold/templates/` 新增 `_ship_template.md`，`backend-scaffold/engineering/ship/` 建目录 ✅ 已落地
 - [ ] **待甲方** 收到《功能项清单》后回填 `scope-inventory.md` 的需求追溯列（roadmap §4 已挂账）

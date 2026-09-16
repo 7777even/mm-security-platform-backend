@@ -8,6 +8,8 @@
 ├── rules/
 │   ├── backend-scaffold-core.mdc      # 入口/分级/唯一规格源/跨库契约/验证矩阵/提交/权限边界
 │   ├── api-contract.mdc               # 零下行控制/B3 Result 包络/20位MDM/HMAC/无状态JWT/错误码分段/四同步
+│   ├── openapi-contract-writing.mdc   # 契约真源唯一/四条铁律/四同步顺序纪律/禁止平行契约体系
+│   ├── end-to-end-roadmap.mdc         # L3/L4 开工前先读路线图→进度台账→当前 Change，禁止占位实现
 │   └── backend-engineering.mdc        # 分层职责/过滤器链/密钥与日志脱敏/DB 变更/环境差异/Windows 工程注记
 ├── commands/                    # 显式触发：用户在 Cursor 里敲 /opsx:<name> 才跑
 │   ├── opsx-propose.md           # 创建 change 并生成 proposal/design/tasks/specs-delta 四件套
@@ -122,4 +124,5 @@ openspec list --specs       # 列出稳定规格
 - `opsx-*` 命令体跟随 OpenSpec CLI 官方子命令；CLI 升级改名时同步改这里。
 - `skills/openspec-*/SKILL.md` 与 `commands/opsx-*.md` 是同一流程的两种触发形态，改其一须同步其二。
 - 前后端两库的 `.cursor/` 结构同构，规则**内容不互相覆盖**：契约真源在前端库，后端库只做实现映射与同步纪律。
+- **`AGENTS.md` §0「跨库入口」两端必须同构**：该节是从仓库根伞文件复述而来（根 `mm-security-platform/` 不是 git 仓库，伞文件不随库提交），改动须两库同步，否则 clone 单库时会读到不一致的跨库约束。
 - 不要把业务规则写进 `.cursor/` 而绕过 `AGENTS.md`——单一真源永远在根 `AGENTS.md`。

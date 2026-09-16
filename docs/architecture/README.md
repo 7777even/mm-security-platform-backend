@@ -112,6 +112,7 @@ python scripts/smoke-test.py
 - [optimistic-lock.md](./optimistic-lock.md) — 乐观锁与并发护栏（已落地）
 - [id-name-cache.md](./id-name-cache.md) — ID↔名称缓存一致性（已落地）
 - [module-boundary.md](./module-boundary.md) — 分层与模块边界红线
+- [alarm-three-surfaces.md](./alarm-three-surfaces.md) — 报警三端口径设计真源（`fac_alarm` / `fac_fire_alarm` / `fac_production_alarm` 为何并存）
 - [../database/README.md](../database/README.md) — Flyway 规约与逻辑删除
 - [../test-strategy.md](../test-strategy.md) — 测试基线与覆盖率门禁
 - [../glossary.md](../glossary.md) — 跨库术语表（与前端对齐）

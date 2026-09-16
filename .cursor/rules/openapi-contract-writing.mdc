@@ -1,0 +1,41 @@
+---
+description: OpenAPI 契约编写与跨库同步写法（后端视角）——契约真源在前端库、四条铁律、四同步不可跳步、禁止平行契约体系。任何新增/修改对外接口、字段、错误码、权限前必读。
+alwaysApply: true
+---
+
+# API 契约编写与同步（后端视角）
+
+（提炼自 `templates/api-contract-writing-guide.md` + 本库 `AGENTS.md` §3 / §11；完整口径以 `templates/api-contract-writing-guide.md` 为准。）
+
+## 1. 契约真源唯一
+
+- 机器可读契约**唯一真源在前端库** `frontend-scaffold/docs/api/*.openapi.json`；前端由它 `npm run gen:api-types` 生成 TS 类型。
+- 本库**禁止复制第二份**主契约（禁止平行体系）；`backend-scaffold/docs/api/` 只放实现映射与同步纪律。
+- **禁止**用 Markdown 接口清单替代 OpenAPI。
+
+## 2. 四条铁律（改契约时逐条自检）
+
+1. **按域 / Controller 分组**（`tags`）：一域一文件，`docs/api/<domain>.openapi.json`。
+2. **接口有注释**：每个 operation 有 `summary` + `description`，description 须含权限要求、业务规则与主要错误码。
+3. **字段有中文 `description`**：每个 property / parameter 均需中文说明。
+4. **有 example**：参数 example、有 body 时请求体 example、成功响应 `code`/`message`/`data` example。
+   另有：URL、Method、错误码、`x-permission` 齐备。校验入口 `node scripts/validate-api-contracts.mjs`（前端库）。
+
+## 3. 四同步（不可跳步，同一次交付内完成）
+
+1. **OpenSpec**：建 `openspec/changes/<name>/`，proposal 写明触及的契约文件与端点。
+2. **前端契约**：更新 `frontend-scaffold/docs/api/<domain>.openapi.json`（守 §2 四铁律）。
+3. **后端实现**：Controller / DTO 与契约对齐，跑 `node scripts/check-api-contract.mjs --strict` 确认零漂移。
+4. **前端类型**：通知前端重跑 `npm run gen:api-types`，并在本库 `engineering/qa/` 注明「已通知前端重生成类型」。
+
+**顺序纪律**：契约侧必须先改、先绿、先推送，本库实现后推——否则前端仓 `contract-guard` 必红。
+
+## 4. 后端实现侧红线（摘要）
+
+- 零下行控制、B3 `Result<T>` 包络、20 位 MDM 设备编码、防重放 HMAC、无状态令牌、错误码四段（`1xx/2xx/3xx/5xx`），详见 `.cursor/rules/api-contract.mdc` 与本库 `AGENTS.md` §3。
+- 漂移判定：先看输出来源（左契约右实现）。批量 `object≠string` / `number≠integer` 先怀疑**脚本或契约标注**，不要直接改已跑通的实现；数值型漂移按**后端种子数据**裁决。
+- 冲突处置：契约与实现冲突时**先改契约 + 人工确认，再改代码**；禁止「先改代码、契约后补」。
+
+## 5. 禁止清单
+
+- 只改后端不改契约；只改契约不通知前端；在本库复制契约文件；用 Markdown 清单替代 OpenAPI；契约未推送就推实现。

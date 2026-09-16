@@ -6,7 +6,7 @@
 - 受众：甲方 / 内部团队 / 双端
 
 > 用途：按阶段向甲方或团队汇报进展，严格对照 `roadmap.md §2` 阶段完成判据，用**证据**而非形容词说话。
-> 复制本模板到 `engineering/plans/YYYY-MM-DD-stage-<n>-report.md` 填充。
+> 复制本模板到 `engineering/reports/YYYY-MM-DD-stage-<n>-report.md` 填充。
 
 ## 1. 阶段目标（摘抄路线图硬判据）
 
