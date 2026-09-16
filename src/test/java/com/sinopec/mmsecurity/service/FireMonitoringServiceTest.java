@@ -5,20 +5,22 @@ import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
-import com.sinopec.mmsecurity.entity.FacFireEquipmentCategory;
-import com.sinopec.mmsecurity.entity.FacFireEquipmentStatus;
+import com.sinopec.mmsecurity.entity.FacFireFacilityMonitor;
 import com.sinopec.mmsecurity.entity.FacFirePatrol;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemDef;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemResult;
-import com.sinopec.mmsecurity.entity.FacRescueForceStat;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationStat;
-import com.sinopec.mmsecurity.mapper.FacFireEquipmentCategoryMapper;
-import com.sinopec.mmsecurity.mapper.FacFireEquipmentStatusMapper;
+import com.sinopec.mmsecurity.entity.FacSpecialOperationTicket;
+import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
+import com.sinopec.mmsecurity.mapper.FacFireFacilityMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemDefMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolMapper;
-import com.sinopec.mmsecurity.mapper.FacRescueForceStatMapper;
 import com.sinopec.mmsecurity.mapper.FacSpecialOperationStatMapper;
+import com.sinopec.mmsecurity.mapper.FacSpecialOperationTicketMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -35,21 +37,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** 消防监控服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
 class FireMonitoringServiceTest {
 
-    private final FacRescueForceStatMapper rescueForceStatMapper = Mockito.mock(FacRescueForceStatMapper.class);
     private final FacSpecialOperationStatMapper specialOperationStatMapper =
             Mockito.mock(FacSpecialOperationStatMapper.class);
-    private final FacFireEquipmentStatusMapper fireEquipmentStatusMapper =
-            Mockito.mock(FacFireEquipmentStatusMapper.class);
+    private final FacSpecialOperationTicketMapper specialOperationTicketMapper =
+            Mockito.mock(FacSpecialOperationTicketMapper.class);
+    private final FacFireFacilityMonitorMapper fireFacilityMonitorMapper =
+            Mockito.mock(FacFireFacilityMonitorMapper.class);
+    private final FacBrigadeTeamMapper brigadeTeamMapper = Mockito.mock(FacBrigadeTeamMapper.class);
+    private final FacBrigadePersonMapper brigadePersonMapper = Mockito.mock(FacBrigadePersonMapper.class);
+    private final FacBrigadeEquipmentMapper brigadeEquipmentMapper = Mockito.mock(FacBrigadeEquipmentMapper.class);
+    private final FacBrigadeVehicleMapper brigadeVehicleMapper = Mockito.mock(FacBrigadeVehicleMapper.class);
     private final FacFirePatrolMapper firePatrolMapper = Mockito.mock(FacFirePatrolMapper.class);
     private final FacFirePatrolItemDefMapper patrolItemDefMapper = Mockito.mock(FacFirePatrolItemDefMapper.class);
     private final FacFirePatrolItemResultMapper patrolItemResultMapper =
             Mockito.mock(FacFirePatrolItemResultMapper.class);
-    private final FacFireEquipmentCategoryMapper fireEquipmentCategoryMapper =
-            Mockito.mock(FacFireEquipmentCategoryMapper.class);
 
     private final FireMonitoringService service = new FireMonitoringService(
-            rescueForceStatMapper, specialOperationStatMapper, fireEquipmentStatusMapper,
-            firePatrolMapper, patrolItemDefMapper, patrolItemResultMapper, fireEquipmentCategoryMapper);
+            specialOperationStatMapper, specialOperationTicketMapper, fireFacilityMonitorMapper,
+            brigadeTeamMapper, brigadePersonMapper, brigadeEquipmentMapper, brigadeVehicleMapper,
+            firePatrolMapper, patrolItemDefMapper, patrolItemResultMapper);
 
     @BeforeEach
     void resetCaches() {
@@ -57,37 +63,67 @@ class FireMonitoringServiceTest {
     }
 
     @Test
-    void rescueForces_mapsStatCountToValue() {
-        FacRescueForceStat row = new FacRescueForceStat();
-        row.setLabel("救援人员");
-        row.setStatCount(398);
-        row.setUnit("人");
-        row.setIconType("person");
-        Mockito.when(rescueForceStatMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(row));
+    void rescueForces_countsFromBrigadeTables() {
+        Mockito.when(brigadeTeamMapper.selectCount(ArgumentMatchers.any())).thenReturn(8L);
+        Mockito.when(brigadePersonMapper.selectCount(ArgumentMatchers.any())).thenReturn(110L);
+        Mockito.when(brigadeEquipmentMapper.selectCount(ArgumentMatchers.any())).thenReturn(71L);
+        Mockito.when(brigadeVehicleMapper.selectCount(ArgumentMatchers.any())).thenReturn(39L);
 
         List<RescueForceStat> out = service.rescueForces();
-        assertEquals(1, out.size());
-        assertEquals("救援人员", out.get(0).getLabel());
-        assertEquals(398, out.get(0).getValue());
-        assertEquals("人", out.get(0).getUnit());
-        assertEquals("person", out.get(0).getIconType());
+        assertEquals(4, out.size());
+        assertEquals("消防队伍", out.get(0).getLabel());
+        assertEquals(8, out.get(0).getValue());
+        assertEquals("支", out.get(0).getUnit());
+        assertEquals("squad", out.get(0).getIconType());
+        assertEquals("救援人员", out.get(1).getLabel());
+        assertEquals(110, out.get(1).getValue(), "数量改为队伍体系明细计数（与 /rescue-resources/brigades 同源）");
+        assertEquals("救援装备", out.get(2).getLabel());
+        assertEquals(71, out.get(2).getValue());
+        assertEquals("救援车辆", out.get(3).getLabel());
+        assertEquals(39, out.get(3).getValue());
+        assertEquals("台", out.get(3).getUnit());
     }
 
     @Test
-    void specialOperations_keepsZeroCount() {
-        FacSpecialOperationStat row = new FacSpecialOperationStat();
-        row.setId(4L);
-        row.setLabel("动土作业");
-        row.setStatCount(0);
-        Mockito.when(specialOperationStatMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(row));
+    void specialOperations_countsFromTicketDetail_keepsZeroForNoTicket() {
+        FacSpecialOperationStat dict1 = new FacSpecialOperationStat();
+        dict1.setId(1L);
+        dict1.setLabel("动火作业");
+        FacSpecialOperationStat dict2 = new FacSpecialOperationStat();
+        dict2.setId(4L);
+        dict2.setLabel("动土作业");
+        Mockito.when(specialOperationStatMapper.selectList(ArgumentMatchers.any()))
+                .thenReturn(List.of(dict1, dict2));
+        Mockito.when(specialOperationTicketMapper.selectList(ArgumentMatchers.any()))
+                .thenReturn(List.of(ticket("动火作业"), ticket("动火作业"), ticket("吊装作业")));
 
         List<SpecialOperationStat> out = service.specialOperations();
-        assertEquals(0, out.get(0).getCount(), "零值作业需保留 0，前端据此渲染灰色零值态");
+        assertEquals(2, out.size(), "类别与顺序沿用字典表");
+        assertEquals("动火作业", out.get(0).getLabel());
+        assertEquals(2, out.get(0).getCount(), "数量改为按明细票表 op_type 实时计数，不再取手填 stat_count");
+        assertEquals(0, out.get(1).getCount(), "无票的类别保留 0，前端据此渲染灰色零值态");
+    }
+
+    private static FacSpecialOperationTicket ticket(String opType) {
+        FacSpecialOperationTicket t = new FacSpecialOperationTicket();
+        t.setOpType(opType);
+        return t;
+    }
+
+    private static FacFireFacilityMonitor monitor(String type, int total, int online, int offline, int fault) {
+        FacFireFacilityMonitor m = new FacFireFacilityMonitor();
+        m.setFacilityType(type);
+        m.setTotalCount(total);
+        m.setOnlineCount(online);
+        m.setOfflineCount(offline);
+        m.setFaultCount(fault);
+        return m;
     }
 
     @Test
-    void equipmentStatus_returnsZerosWhenTableEmpty() {
-        Mockito.when(fireEquipmentStatusMapper.selectOne(ArgumentMatchers.any())).thenReturn(null);
+    void equipmentStatus_returnsZerosWhenNoMonitorRows() {
+        Mockito.when(fireFacilityMonitorMapper.selectList(ArgumentMatchers.any()))
+                .thenReturn(Collections.emptyList());
 
         FireEquipmentStatus out = service.equipmentStatus();
         assertNotNull(out);
@@ -96,20 +132,17 @@ class FireMonitoringServiceTest {
     }
 
     @Test
-    void equipmentStatus_mapsSnakeCaseColumns() {
-        FacFireEquipmentStatus row = new FacFireEquipmentStatus();
-        row.setTotalCnt(1233);
-        row.setOfflineCnt(23);
-        row.setFaultCnt(23);
-        row.setIntegrityRate(98);
-        row.setOnlineRate(98);
-        Mockito.when(fireEquipmentStatusMapper.selectOne(ArgumentMatchers.any())).thenReturn(row);
+    void equipmentStatus_sumsMonitorRowsAndComputesRates() {
+        Mockito.when(fireFacilityMonitorMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(
+                monitor("火灾自动报警系统", 128, 124, 4, 2),
+                monitor("消防水源", 100, 90, 10, 5)));
 
         FireEquipmentStatus out = service.equipmentStatus();
-        assertEquals(1233, out.getTotal());
-        assertEquals(23, out.getOffline());
-        assertEquals(23, out.getFault());
-        assertEquals(98, out.getIntegrityRate());
+        assertEquals(228, out.getTotal(), "total 为各类型 total_count 之和（与 /fire-facility/monitors 同源）");
+        assertEquals(14, out.getOffline());
+        assertEquals(7, out.getFault());
+        assertEquals(94, out.getOnlineRate(), "(228-14)/228 = 93.9% → 94");
+        assertEquals(97, out.getIntegrityRate(), "(228-7)/228 = 96.9% → 97");
     }
 
     @Test
@@ -194,22 +227,15 @@ class FireMonitoringServiceTest {
     }
 
     @Test
-    void equipment_mapsCategoryTable() {
-        FacFireEquipmentCategory c1 = new FacFireEquipmentCategory();
-        c1.setId(1L);
-        c1.setCategoryName("火灾自动报警系统");
-        c1.setEquipCount(665);
-        FacFireEquipmentCategory c2 = new FacFireEquipmentCategory();
-        c2.setId(2L);
-        c2.setCategoryName("消防水源");
-        c2.setEquipCount(665);
-        Mockito.when(fireEquipmentCategoryMapper.selectList(ArgumentMatchers.any()))
-                .thenReturn(List.of(c1, c2));
+    void equipment_mapsMonitorRowsAsCategoryCounts() {
+        Mockito.when(fireFacilityMonitorMapper.selectList(ArgumentMatchers.any())).thenReturn(List.of(
+                monitor("火灾自动报警系统", 128, 124, 4, 2),
+                monitor("消防水源", 100, 90, 10, 5)));
 
         List<FireEquipmentItem> out = service.equipment();
         assertEquals(2, out.size());
         assertEquals("火灾自动报警系统", out.get(0).getName());
-        assertEquals(665, out.get(0).getCount());
-        assertEquals(2L, out.get(1).getId());
+        assertEquals(128, out.get(0).getCount(), "数量取自监测表 total_count（与 /fire-facility/monitors 同源）");
+        assertEquals(100, out.get(1).getCount());
     }
 }

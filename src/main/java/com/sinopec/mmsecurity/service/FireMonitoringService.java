@@ -7,20 +7,23 @@ import com.sinopec.mmsecurity.dto.FirePatrolCheckItem;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
-import com.sinopec.mmsecurity.entity.FacFireEquipmentCategory;
-import com.sinopec.mmsecurity.entity.FacFireEquipmentStatus;
+import com.sinopec.mmsecurity.entity.FacFireFacilityMonitor;
 import com.sinopec.mmsecurity.entity.FacFirePatrol;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemDef;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemResult;
-import com.sinopec.mmsecurity.entity.FacRescueForceStat;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationStat;
-import com.sinopec.mmsecurity.mapper.FacFireEquipmentCategoryMapper;
-import com.sinopec.mmsecurity.mapper.FacFireEquipmentStatusMapper;
+import com.sinopec.mmsecurity.entity.FacSpecialOperationTicket;
+import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
+import com.sinopec.mmsecurity.mapper.FacFireFacilityMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemDefMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueForceStatMapper;
 import com.sinopec.mmsecurity.mapper.FacSpecialOperationStatMapper;
+import com.sinopec.mmsecurity.mapper.FacSpecialOperationTicketMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
@@ -53,13 +56,19 @@ public class FireMonitoringService {
     /** 检查项默认结果：标准表中未被异常表覆盖的项一律为「正常」 */
     private static final String RESULT_NORMAL = "正常";
 
-    private final FacRescueForceStatMapper rescueForceStatMapper;
+    /** 特殊作业类别字典（仅提供类别与排序，数量改由明细票表 fac_special_operation_ticket 实时计数）。 */
     private final FacSpecialOperationStatMapper specialOperationStatMapper;
-    private final FacFireEquipmentStatusMapper fireEquipmentStatusMapper;
+    private final FacSpecialOperationTicketMapper specialOperationTicketMapper;
+    /** 消防设施监测（与 GET /fire-facility/monitors 同源）——消防设备分类与状态的唯一数据源。 */
+    private final FacFireFacilityMonitorMapper fireFacilityMonitorMapper;
+    /** 消防救援力量（与 GET /rescue-resources/brigades 同源的队伍体系）：队伍 + 各队人员/装备/车辆明细。 */
+    private final FacBrigadeTeamMapper brigadeTeamMapper;
+    private final FacBrigadePersonMapper brigadePersonMapper;
+    private final FacBrigadeEquipmentMapper brigadeEquipmentMapper;
+    private final FacBrigadeVehicleMapper brigadeVehicleMapper;
     private final FacFirePatrolMapper firePatrolMapper;
     private final FacFirePatrolItemDefMapper patrolItemDefMapper;
     private final FacFirePatrolItemResultMapper patrolItemResultMapper;
-    private final FacFireEquipmentCategoryMapper fireEquipmentCategoryMapper;
 
     /**
      * 防火巡查记录短 TTL 缓存：patrols() 读 fac_fire_patrol_item_def + fac_fire_patrol + 全量异常结果
@@ -69,70 +78,92 @@ public class FireMonitoringService {
     private final Cache<String, List<FirePatrolRecord>> patrolsCache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
 
-    /** 消防救援力量统计：来自 fac_rescue_force_stat */
+    /**
+     * 消防救援力量：真源统一为「队伍体系」fac_brigade_*（与管理端 GET /rescue-resources/brigades 同源）——
+     * 队伍数取队伍表条数，人员/装备/车辆取各队明细表条数；取代原先手填的 fac_rescue_force_stat
+     * （10 支 / 398 人 / 123 套 / 83 台 与实际队伍编制完全脱节）。
+     */
     public List<RescueForceStat> rescueForces() {
-        List<FacRescueForceStat> rows = rescueForceStatMapper.selectList(
-                new LambdaQueryWrapper<FacRescueForceStat>().orderByAsc(FacRescueForceStat::getSortNo));
         List<RescueForceStat> out = new ArrayList<>();
-        for (FacRescueForceStat r : rows) {
-            RescueForceStat s = new RescueForceStat();
-            s.setLabel(r.getLabel());
-            s.setValue(r.getStatCount());
-            s.setUnit(r.getUnit());
-            s.setIconType(r.getIconType());
-            out.add(s);
-        }
+        out.add(forceStat("消防队伍", brigadeTeamMapper.selectCount(null), "支", "squad"));
+        out.add(forceStat("救援人员", brigadePersonMapper.selectCount(null), "人", "person"));
+        out.add(forceStat("救援装备", brigadeEquipmentMapper.selectCount(null), "套", "equipment"));
+        out.add(forceStat("救援车辆", brigadeVehicleMapper.selectCount(null), "台", "vehicle"));
         return out;
     }
 
-    /** 特殊作业统计：来自 fac_special_operation_stat */
+    private static RescueForceStat forceStat(String label, Long count, String unit, String iconType) {
+        RescueForceStat s = new RescueForceStat();
+        s.setLabel(label);
+        s.setValue(count == null ? 0 : count.intValue());
+        s.setUnit(unit);
+        s.setIconType(iconType);
+        return s;
+    }
+
+    /**
+     * 特殊作业统计：类别与顺序取自 fac_special_operation_stat（降级为「类别字典」），
+     * 数量改为按明细票表 fac_special_operation_ticket 的 op_type 实时计数
+     * ——与管理端 GET /special-operations 的明细同源，取代原先手填的 stat_count（48 vs 实际票数）。
+     * 无票的类别保留 0（前端据此渲染灰色零值态）。
+     */
     public List<SpecialOperationStat> specialOperations() {
-        List<FacSpecialOperationStat> rows = specialOperationStatMapper.selectList(
+        List<FacSpecialOperationStat> dict = specialOperationStatMapper.selectList(
                 new LambdaQueryWrapper<FacSpecialOperationStat>().orderByAsc(FacSpecialOperationStat::getSortNo));
+        Map<String, Long> countByType = specialOperationTicketMapper.selectList(null).stream()
+                .filter(t -> t.getOpType() != null)
+                .collect(Collectors.groupingBy(FacSpecialOperationTicket::getOpType, Collectors.counting()));
         List<SpecialOperationStat> out = new ArrayList<>();
-        for (FacSpecialOperationStat r : rows) {
+        for (FacSpecialOperationStat r : dict) {
             SpecialOperationStat s = new SpecialOperationStat();
             s.setId(r.getId());
             s.setLabel(r.getLabel());
-            s.setCount(r.getStatCount());
+            s.setCount(countByType.getOrDefault(r.getLabel(), 0L).intValue());
             out.add(s);
         }
         return out;
     }
 
-    /** 消防设备分类清单：来自 V24 fac_fire_equipment_category，取代大屏硬编码 fireEquipment。 */
+    /**
+     * 消防设备分类清单：真源统一为「消防设施监测」fac_fire_facility_monitor
+     * （与管理端 GET /fire-facility/monitors 完全同源、同一套设施分类），按类型汇总设备台数。
+     * 取代原先手填的 fac_fire_equipment_category（分类名相同但数量完全脱节：7980 vs 983）。
+     */
     public List<FireEquipmentItem> equipment() {
-        List<FacFireEquipmentCategory> rows = fireEquipmentCategoryMapper.selectList(
-                new LambdaQueryWrapper<FacFireEquipmentCategory>().orderByAsc(FacFireEquipmentCategory::getSortNo));
+        List<FacFireFacilityMonitor> rows = fireFacilityMonitorMapper.selectList(
+                new LambdaQueryWrapper<FacFireFacilityMonitor>().orderByAsc(FacFireFacilityMonitor::getSortNo));
         List<FireEquipmentItem> out = new ArrayList<>();
-        for (FacFireEquipmentCategory r : rows) {
+        for (FacFireFacilityMonitor m : rows) {
             FireEquipmentItem item = new FireEquipmentItem();
-            item.setId(r.getId());
-            item.setName(r.getCategoryName());
-            item.setCount(r.getEquipCount());
+            item.setId(m.getId());
+            item.setName(m.getFacilityType());
+            item.setCount(m.getTotalCount() == null ? 0 : m.getTotalCount());
             out.add(item);
         }
         return out;
     }
 
-    /** 消防设施设备状态：来自 fac_fire_equipment_status 单行聚合表；无数据时返回全零而非 null。 */
+    /**
+     * 消防设施设备状态：由 fac_fire_facility_monitor 逐类型汇总（total/offline/fault 求和，
+     * 在线率/完好率实时计算），与 GET /fire-facility/monitors 同源；
+     * 取代原先手填的 fac_fire_equipment_status 单行表（1233 与监测表 983 脱节）。无数据返回全零而非 null。
+     */
     public FireEquipmentStatus equipmentStatus() {
-        FacFireEquipmentStatus row = fireEquipmentStatusMapper.selectOne(
-                new LambdaQueryWrapper<FacFireEquipmentStatus>().last("LIMIT 1"));
-        FireEquipmentStatus s = new FireEquipmentStatus();
-        if (row == null) {
-            s.setTotal(0);
-            s.setOffline(0);
-            s.setFault(0);
-            s.setIntegrityRate(0);
-            s.setOnlineRate(0);
-            return s;
+        List<FacFireFacilityMonitor> rows = fireFacilityMonitorMapper.selectList(null);
+        int total = 0;
+        int offline = 0;
+        int fault = 0;
+        for (FacFireFacilityMonitor m : rows) {
+            total += m.getTotalCount() == null ? 0 : m.getTotalCount();
+            offline += m.getOfflineCount() == null ? 0 : m.getOfflineCount();
+            fault += m.getFaultCount() == null ? 0 : m.getFaultCount();
         }
-        s.setTotal(row.getTotalCnt());
-        s.setOffline(row.getOfflineCnt());
-        s.setFault(row.getFaultCnt());
-        s.setIntegrityRate(row.getIntegrityRate());
-        s.setOnlineRate(row.getOnlineRate());
+        FireEquipmentStatus s = new FireEquipmentStatus();
+        s.setTotal(total);
+        s.setOffline(offline);
+        s.setFault(fault);
+        s.setOnlineRate(total <= 0 ? 0 : Math.round((total - offline) * 100f / total));
+        s.setIntegrityRate(total <= 0 ? 0 : Math.round((total - fault) * 100f / total));
         return s;
     }
 
