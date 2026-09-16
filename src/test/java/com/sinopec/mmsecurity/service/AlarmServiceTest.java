@@ -42,6 +42,20 @@ class AlarmServiceTest {
     }
 
     @Test
+    void page_stringStatusEnum_doesNotThrowAndDelegates() {
+        // 回归：之前对字符串枚举（ACTIVE/ACKED/DISPATCHED/CLOSED）直接 Integer.parseInt 会抛
+        // NumberFormatException（对外 code 100 "For input string: \"CLOSED\""）。修复后改用 mapStatus
+        // 映射为 int，应正常委派且不抛。
+        Page<FacAlarm> page = new Page<>(1, 20);
+        page.setTotal(7);
+        when(mapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+        for (String st : new String[] { "ACTIVE", "ACKED", "DISPATCHED", "CLOSED" }) {
+            Page<FacAlarm> r = service.page(1L, 20L, null, st, null);
+            assertEquals(7, r.getTotal(), "status=" + st + " 应正常委派");
+        }
+    }
+
+    @Test
     void page_invalidDeviceCode_throws() {
         assertThrows(BusinessException.class, () -> service.page(1L, 20L, null, null, "SHORT"));
     }

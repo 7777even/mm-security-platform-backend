@@ -29,7 +29,9 @@ public class AlarmService {
         LambdaQueryWrapper<FacAlarm> qw = new LambdaQueryWrapper<>();
         qw.eq(FacAlarm::getDeleted, 0);
         if (level != null && !level.isEmpty()) qw.eq(FacAlarm::getLevel, Integer.parseInt(level));
-        if (status != null && !status.isEmpty()) qw.eq(FacAlarm::getStatus, Integer.parseInt(status));
+        // status 为字符串枚举（ACTIVE/ACKED/DISPATCHED/CLOSED），复用写操作的 mapStatus 映射为 int，
+        // 不可 Integer.parseInt——否则前端传 "CLOSED" 会抛 NumberFormatException（code 100）。
+        if (status != null && !status.isEmpty()) qw.eq(FacAlarm::getStatus, mapStatus(status));
         if (deviceCode != null && !deviceCode.isEmpty()) {
             validateDeviceCode(deviceCode);
             qw.eq(FacAlarm::getDeviceCode, deviceCode);
