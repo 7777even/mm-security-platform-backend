@@ -38,6 +38,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -76,14 +77,32 @@ public class ProductionService {
                 new LambdaQueryWrapper<FacProductionFacility>()
                         .orderByAsc(FacProductionFacility::getSortNo)).stream()
                 .map(this::toGridItem).collect(Collectors.toList()));
+
+        // 设备分类数量：改由明细表 fac_production_device 按 category 实时聚合（分类表降级为「名称/图标/顺序字典」），
+        // 取代原先手填 item_count（596×7，与明细 35 台完全脱节）。
+        Map<String, Long> deviceCountByCategory = deviceMapper.selectList(null).stream()
+                .filter(d -> d.getCategory() != null)
+                .collect(Collectors.groupingBy(FacProductionDevice::getCategory, Collectors.counting()));
         dto.setDevices(deviceCategoryMapper.selectList(
                 new LambdaQueryWrapper<FacProductionDeviceCategory>()
                         .orderByAsc(FacProductionDeviceCategory::getSortNo)).stream()
-                .map(this::toGridItem).collect(Collectors.toList()));
+                .map(c -> {
+                    OverviewGridItem g = toGridItem(c);
+                    g.setCount(deviceCountByCategory.getOrDefault(c.getName(), 0L).intValue());
+                    return g;
+                }).collect(Collectors.toList()));
+
+        // 报警类 KPI：改由明细表 fac_production_alarm 按 status_name 实时聚合（统计表降级为「标签/单位/图标字典」），
+        // 取代原先手填 value_text（报警总数 36，实际 20）。无明细可算的项（如平均处置时长/环比）沿用统计表原值。
+        long alarmTotal = alarmMapper.selectCount(null);
+        Map<String, Long> alarmByStatus = alarmMapper.selectList(null).stream()
+                .filter(a -> a.getStatusName() != null)
+                .collect(Collectors.groupingBy(FacProductionAlarm::getStatusName, Collectors.counting()));
         dto.setStats(statMapper.selectList(
                 new LambdaQueryWrapper<FacProductionStat>()
                         .orderByAsc(FacProductionStat::getSortNo)).stream()
-                .map(this::toStat).collect(Collectors.toList()));
+                .map(s -> toStat(s, alarmTotal, alarmByStatus)).collect(Collectors.toList()));
+
         dto.setRiskSummary(riskSummary());
         return dto;
     }
@@ -258,6 +277,30 @@ public class ProductionService {
         d.setTrendUp(e.getTrendUp());
         d.setIconIndex(e.getIconIndex());
         return d;
+    }
+
+    /** 报警类 KPI 由 fac_production_alarm 实时聚合覆盖；无法由明细计算的项沿用统计表原值。 */
+    private StatOverviewItem toStat(FacProductionStat e, long alarmTotal, Map<String, Long> alarmByStatus) {
+        StatOverviewItem d = toStat(e);
+        Long real = realAlarmStatValue(e.getLabel(), alarmTotal, alarmByStatus);
+        if (real != null) {
+            d.setValue(String.valueOf(real));
+        }
+        return d;
+    }
+
+    /** 标签 → 明细口径值；命中不到（如「平均处置时长」）返回 null，表示无明细源、沿用原值。 */
+    private static Long realAlarmStatValue(String label, long alarmTotal, Map<String, Long> alarmByStatus) {
+        if (label == null) {
+            return null;
+        }
+        return switch (label) {
+            case "报警总数" -> alarmTotal;
+            case "未处置告警" -> alarmByStatus.getOrDefault("未处置", 0L);
+            case "处置中告警" -> alarmByStatus.getOrDefault("处置中", 0L);
+            case "已处置告警" -> alarmByStatus.getOrDefault("已处置", 0L);
+            default -> null;
+        };
     }
 
     private ProductionAlarmItem toAlarm(FacProductionAlarm e) {

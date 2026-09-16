@@ -164,6 +164,11 @@ class ProductionServiceTest {
     void overview_aggregatesCardsAndRiskSummary() {
         when(facilityMapper.selectList(any())).thenReturn(List.of(facility(2L, "生产装置")));
         when(deviceCategoryMapper.selectList(any())).thenReturn(List.of(category()));
+        when(deviceMapper.selectList(any())).thenReturn(List.of(
+                device(1L, "监测点", "正常"), device(2L, "监测点", "正常"), device(3L, "卡口/通道", "正常")));
+        when(alarmMapper.selectCount(any())).thenReturn(5L);
+        when(alarmMapper.selectList(any())).thenReturn(List.of(
+                alarm(1L), alarm(2L), alarmWithStatus(3L, "已处置")));
         when(statMapper.selectList(any())).thenReturn(List.of(stat()));
         when(riskWarningMapper.selectList(any())).thenReturn(List.of(
                 warning(1L, "red"), warning(2L, "red"), warning(3L, "orange"), warning(4L, "yellow")));
@@ -171,14 +176,21 @@ class ProductionServiceTest {
         ProductionOverview out = service.overview();
         assertEquals(1, out.getFacilities().size());
         assertEquals("生产装置", out.getFacilities().get(0).getName());
-        assertEquals(596, out.getFacilities().get(0).getCount());
+        assertEquals(596, out.getFacilities().get(0).getCount(), "facilities 暂无对应明细表，沿用字典值");
         assertEquals("监测点", out.getDevices().get(0).getName());
+        assertEquals(2, out.getDevices().get(0).getCount(), "设备分类数量改由 fac_production_device 明细聚合");
         assertEquals("未处置告警", out.getStats().get(0).getLabel());
-        assertEquals("12", out.getStats().get(0).getValue());
+        assertEquals("2", out.getStats().get(0).getValue(), "报警 KPI 改由 fac_production_alarm 明细聚合");
         assertEquals("起", out.getStats().get(0).getUnit());
         assertEquals(2, out.getRiskSummary().getRed());
         assertEquals(1, out.getRiskSummary().getOrange());
         assertEquals(1, out.getRiskSummary().getYellow());
+    }
+
+    private static FacProductionAlarm alarmWithStatus(long id, String statusName) {
+        FacProductionAlarm e = alarm(id);
+        e.setStatusName(statusName);
+        return e;
     }
 
     @Test

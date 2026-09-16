@@ -15,6 +15,8 @@ import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
 import com.sinopec.mmsecurity.entity.FacTvMapPoint;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
+import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
+import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
@@ -50,6 +52,8 @@ public class TvService {
     private final FacTvInspectionRecordMapper inspectionRecordMapper;
     private final FacTvMapPointMapper tvMapPointMapper;
     private final FacTvMonitorMapper tvMonitorMapper;
+    /** 重大危险源（与 GET /hazards 同源）：用于校正总览卡片的「重大危险源」数量。 */
+    private final FacMajorHazardMapper majorHazardMapper;
 
     /**
      * 工业电视首屏聚合短 TTL 缓存：大屏高频轮询入口，聚合读 fac_tv_stat_item + fac_tv_operation_stat。
@@ -68,13 +72,16 @@ public class TvService {
                 new LambdaQueryWrapper<FacTvStatItem>().orderByAsc(FacTvStatItem::getSortNo));
 
         TvOverview overview = new TvOverview();
+        long hazardCount = majorHazardMapper.selectCount(null);
         overview.setOverviewItems(items.stream()
                 .filter(i -> CAT_OVERVIEW.equals(i.getItemCategory()))
                 .map(i -> {
                     TvOverviewItem item = new TvOverviewItem();
                     item.setId(i.getId());
                     item.setLabel(i.getLabel());
-                    item.setValue(i.getItemCount());
+                    // 「重大危险源」改由 fac_major_hazard 实时计数（与 GET /hazards 同源），不再取手填值；
+                    // 其余项（生产设施/厂界/封闭入口/其他入口/其它）暂无对应明细表，沿用字典值。
+                    item.setValue("重大危险源".equals(i.getLabel()) ? (int) hazardCount : i.getItemCount());
                     item.setIconIndex(i.getIconIndex());
                     return item;
                 }).collect(Collectors.toList()));
@@ -97,16 +104,22 @@ public class TvService {
                     return item;
                 }).collect(Collectors.toList()));
 
+        // 运行统计：改由监控点明细 fac_tv_monitor 实时聚合（取代手填的 fac_tv_operation_stat 单行表：
+        // 原 total 1233 与监测点实际数量完全脱节）。eventTotal 无对应明细表，沿用统计表原值。
+        List<FacTvMonitor> monitors = tvMonitorMapper.selectList(null);
+        int monitorTotal = monitors.size();
+        int offlineCount = (int) monitors.stream()
+                .filter(m -> !Boolean.TRUE.equals(m.getOnline())).count();
+        int faultCount = (int) monitors.stream()
+                .filter(m -> m.getIntegrity() != null && !"良好".equals(m.getIntegrity())).count();
         FacTvOperationStat stat = operationStatMapper.selectList(null).stream().findFirst().orElse(null);
         TvOperationStats stats = new TvOperationStats();
-        if (stat != null) {
-            stats.setTotal(stat.getTotalCount());
-            stats.setOffline(stat.getOfflineCount());
-            stats.setFault(stat.getFaultCount());
-            stats.setIntegrityRate(stat.getIntegrityRate());
-            stats.setOnlineRate(stat.getOnlineRate());
-            stats.setEventTotal(stat.getEventTotal());
-        }
+        stats.setTotal(monitorTotal);
+        stats.setOffline(offlineCount);
+        stats.setFault(faultCount);
+        stats.setOnlineRate(monitorTotal <= 0 ? 0 : Math.round((monitorTotal - offlineCount) * 100f / monitorTotal));
+        stats.setIntegrityRate(monitorTotal <= 0 ? 0 : Math.round((monitorTotal - faultCount) * 100f / monitorTotal));
+        stats.setEventTotal(stat == null ? 0 : stat.getEventTotal());
         overview.setOperationStats(stats);
         return overview;
     }

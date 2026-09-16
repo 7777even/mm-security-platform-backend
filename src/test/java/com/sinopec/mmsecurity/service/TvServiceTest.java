@@ -3,9 +3,12 @@ package com.sinopec.mmsecurity.service;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
 import com.sinopec.mmsecurity.dto.TvOverview;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
+import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
+import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
+import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +35,10 @@ class TvServiceTest {
     private FacTvOperationStatMapper operationStatMapper;
     @Mock
     private FacTvInspectionRecordMapper inspectionRecordMapper;
+    @Mock
+    private FacTvMonitorMapper tvMonitorMapper;
+    @Mock
+    private FacMajorHazardMapper majorHazardMapper;
 
     @InjectMocks
     private TvService service;
@@ -53,40 +60,53 @@ class TvServiceTest {
         return item;
     }
 
+    private static FacTvMonitor monitor(boolean online, String integrity) {
+        FacTvMonitor m = new FacTvMonitor();
+        m.setOnline(online);
+        m.setIntegrity(integrity);
+        return m;
+    }
+
     @Test
     void overview_splitsCategoriesAndMapsStats() {
         when(statItemMapper.selectList(any())).thenReturn(List.of(
                 statItem("OVERVIEW", "重大危险源", 665, null, null, 1),
                 statItem("MAINTENANCE", "未接单", 12, null, "grey", 1),
                 statItem("EVENT", "区域入侵", 152, "#f0b429", null, 1)));
+        when(majorHazardMapper.selectCount(any())).thenReturn(12L);
+        when(tvMonitorMapper.selectList(any())).thenReturn(List.of(
+                monitor(true, "良好"), monitor(true, "良好"), monitor(false, "故障")));
         FacTvOperationStat stat = new FacTvOperationStat();
-        stat.setTotalCount(1233);
-        stat.setOfflineCount(23);
-        stat.setFaultCount(23);
-        stat.setIntegrityRate(98);
-        stat.setOnlineRate(98);
         stat.setEventTotal(110);
         when(operationStatMapper.selectList(any())).thenReturn(List.of(stat));
 
         TvOverview overview = service.overview();
 
         assertEquals(1, overview.getOverviewItems().size());
-        assertEquals(665, overview.getOverviewItems().get(0).getValue());
+        assertEquals(12, overview.getOverviewItems().get(0).getValue(),
+                "「重大危险源」改由 fac_major_hazard 计数（与 GET /hazards 同源），不再取手填 665");
         assertEquals("grey", overview.getMaintenanceOrders().get(0).getTone());
         assertEquals("#f0b429", overview.getEventBreakdown().get(0).getColor());
-        assertEquals(1233, overview.getOperationStats().getTotal());
-        assertEquals(110, overview.getOperationStats().getEventTotal());
+        assertEquals(3, overview.getOperationStats().getTotal(), "运行统计改由 fac_tv_monitor 明细聚合");
+        assertEquals(1, overview.getOperationStats().getOffline());
+        assertEquals(1, overview.getOperationStats().getFault());
+        assertEquals(67, overview.getOperationStats().getOnlineRate(), "(3-1)/3 = 66.7% → 67");
+        assertEquals(67, overview.getOperationStats().getIntegrityRate());
+        assertEquals(110, overview.getOperationStats().getEventTotal(), "eventTotal 无明细源，沿用统计表原值");
     }
 
     @Test
     void overview_handlesMissingStatRow() {
         when(statItemMapper.selectList(any())).thenReturn(List.of());
         when(operationStatMapper.selectList(any())).thenReturn(List.of());
+        when(tvMonitorMapper.selectList(any())).thenReturn(List.of());
+        when(majorHazardMapper.selectCount(any())).thenReturn(0L);
 
         TvOverview overview = service.overview();
 
         assertEquals(0, overview.getOverviewItems().size());
-        assertNull(overview.getOperationStats().getTotal());
+        assertEquals(0, overview.getOperationStats().getTotal(), "无监测点时 total 为 0 而非 null");
+        assertEquals(0, overview.getOperationStats().getEventTotal());
     }
 
     @Test
