@@ -11,8 +11,9 @@
   环境变量 `JAVA_HOME=D:\jdk-17_windows-x64_bin\jdk-17.0.4.1`。
   `mvn` / `mvnw` 均不可用，勿用。
 - **CI 绝不能带 `ci-settings.xml`**：该文件硬编码本机 Windows `.m2` 路径，仅本地冒烟用。
-- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。当前 **468 单测全绿**（2026-09-11 实测；口径为 `src/test` 下 `@Test` 计数，测试类 80）；jacoco 行覆盖红线 **0.80**。
-  > **勿再手写此数字**：以 `mvn test` 的 surefire 汇总为准，文档里的历史数字极易过期（此处曾长期停留在 434 / 446 两个互相矛盾的值）。下文的变更日志中出现的门禁数字是**当时的快照**，不要回改。
+- 单测基线：standalone MockMvc + 纯 Mockito（**不起 Spring 上下文**）。**2026-09-16 实测：`Tests run: 619, Failures: 0, Errors: 0`，jacoco 行覆盖达标（分析 520 类），BUILD SUCCESS**（历史数字曾写 468 / 446 / 434，均已过期）。jacoco 行覆盖红线 **0.80**。
+  > **勿手写此数字**：以当次 `mvn test` 的 surefire 汇总为准（口径＝surefire 的 `Tests run` 行）。上文那个 619 只是**最近一次实测的锚点**，不是恒定值——测试会随 Change 增减。下文的变更日志中出现的门禁数字是**当时的快照**，不要回改。
+  > 复现命令（本机唯一可用）：`JAVA_HOME=D:/jdk-17_windows-x64_bin/jdk-17.0.4.1 <maven>/bin/mvn.cmd -s ci-settings.xml test`。
 - 带 DB 的 `*IT` 在引入 Testcontainers 后启用；本机无 Docker 时如实报告未执行，**禁止用零 DB 通过冒充**。
 
 ## 2. 契约真源与四同步
@@ -23,7 +24,8 @@
   2. 前端契约 `docs/api/<domain>.openapi.json`（四条铁律：按域分组 / 接口有注释 / 字段有中文 description / 有 example）
   3. 后端实现 → 跑 `scripts/check-api-contract.mjs`（路由 + schema 双层级守门，`--strict` 进 CI）
   4. 通知前端 `npm run gen:api-types` 重新生成 TS 类型
-- 后端 `node scripts/check-api-contract.mjs --strict`：路由差异 0 / schema 漂移 0（可比约 **197** schema）即达标；脚本默认 `--contracts ../frontend-scaffold/docs/api`。
+- 后端 `node scripts/check-api-contract.mjs --strict`：路由差异 0 / schema 漂移 0（**2026-09-16 实测可比 249 schema**）即达标；脚本默认 `--contracts ../frontend-scaffold/docs/api`。
+  > ⚠️ 这个数字**随域增加而变，勿手写**（曾长期停留在 197，实测已达 249）；以脚本每次输出的「schema 层摘要：可比 N / 漂移 0」为准。另注：脚本有**三类豁免**（枚举/别名无属性、外部 gis server 绝对 URL、后端内部包装类契约无同名）——豁免清单会随契约演进变化，排查时先看输出里的豁免段，别把豁免当成漏检。
 - 守门输出格式 `字段:契约≠后端`（左契约右实现）。`number≠integer` 类漂移按**后端种子数据**裁决：种子全整数就改契约为 integer，别反过来动已跑通的后端。
 - `oasFamily()` 已修：OpenAPI 3.1 可空联合 `"type":["string","null"]` 剥离 `'null'` 后取剩余类型，多类型联合遇 `null` 不比对（曾误判 90 处假漂移）。再遇批量 `object≠string` 先怀疑脚本而非契约。
 
@@ -113,6 +115,8 @@
   `/auth/me`、`/auth/menus` 已移出白名单（契约声明 401/403）；`/ws` 免鉴权是刻意设计（内网只读流，勿给 `ws.ts` 加 query 令牌）。
   ⚠️ 注意：Controller 不加 `@RequireAuth` ≠ 免鉴权，全局过滤器仍强制带 token（例如 `/tv/*` 无 token 返回 401）。
 - 前端**无 401 静默刷新拦截器**：401 仅清内存令牌 + `onUnauthorized` 重登；续期须走 rt Cookie 调 `/auth/refresh` 并防重试死循环。
+- **写端点授权覆盖度（2026-09-16 实测，含一处已知治理缺口）**：`*Controller.java` 下 **POST/PUT/DELETE 端点 43 个**，其中声明 `perm=` 约束 **37 处**、`role=` **20 处**；代码引用的 23 个具体 perm 码**全部存在于 `sys_menu.perm_code` 种子**（交叉核对 0 缺失，故无「perm 拼错 → 全员 403」的隐患）。唯一合理例外是 `AuthController` 的 5 个写端点（`/auth/{login,refresh,logout}` 白名单 + `/auth/password`·`/auth/profile` 自助，靠 `AuthorizationService.assertSelfOrAdmin` 兜底）。
+  > ⚠️ **缺口：没有自动门禁校验「写端点必须声明权限」**。后端 CI 只有 `check-api-contract.mjs`（路由+schema）与 `check-openspec-hygiene.mjs`（变更治理）两个守门脚本，**均不检查鉴权注解**。因此现状的 37/43 覆盖**靠人工纪律维持、无回归防护**：新增一个 `@PostMapping` 漏写 `@RequireAuth(perm=…)` 时 CI 全绿即可合并，该端点对**所有已登录用户**开放。建议按 `check-openspec-hygiene.mjs` 同款范式补 `check-endpoint-authz.mjs` 并进 CI。
 
 ## 7. 联调与默认环境
 
