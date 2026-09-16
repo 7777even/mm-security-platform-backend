@@ -106,3 +106,18 @@ jobs:
       # 此前这类回归无任何自动防护，全靠人工纪律。
       - name: 端点授权覆盖守门（写端点必须声明角色/权限）
         run: node scripts/check-endpoint-authz.mjs
+
+  dialect-consistency:
+    name: 三方言迁移静态一致性校验
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出后端源码
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 三方言迁移一致性校验（版本/表/列名/终结符，结构性错误即失败）
+        run: python scripts/check-dialect-migration-consistency.py --migration-dir src/main/resources/db/migration --dialects h2,dameng,postgresql
