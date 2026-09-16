@@ -54,6 +54,10 @@ import com.sinopec.mmsecurity.mapper.FacEmergencyPhaseMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyProcessStageMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyResponseModeMapper;
 import com.sinopec.mmsecurity.mapper.FacNodePhaseConfigMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
+import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
@@ -75,9 +79,12 @@ import java.util.stream.Collectors;
  * <p>数据来源分两类（见 openspec Change design ADR-1）：
  * <ul>
  *   <li><b>真实聚合</b>：{@link #closedCases()} 来自 fac_alarm(status=3 CLOSED)，随库变化。</li>
- *   <li><b>DB 参考配置</b>：strength / duty / phones / knowledge 为企业应急资源固定配置（通讯录、值班表、
- *       知识库、力量统计），由 V8 迁移至 DB 参考表（sys_emergency_strength / sys_emergency_phone /
- *       sys_knowledge_item / sys_duty_member），运营可在不改动代码的前提下维护。</li>
+ *   <li><b>混合</b>：{@link #strength()} 保留 sys_emergency_strength 作为类别字典与无明细源项的兜底值，
+ *       可聚合项（应急专家/应急物资/应急车辆/救援队伍）改由管理端台账实时计数，
+ *       保证「应急力量」两端的同名项数字同源。</li>
+ *   <li><b>DB 参考配置</b>：duty / phones / knowledge 为企业应急资源固定配置（通讯录、值班表、知识库），
+ *       由 V8 迁移至 DB 参考表（sys_emergency_phone / sys_knowledge_item / sys_duty_member），
+ *       运营可在不改动代码的前提下维护。</li>
  * </ul>
  */
 @Service
@@ -87,6 +94,11 @@ public class EmergencyService {
     private final AlarmMapper alarmMapper;
     private final FacEmergencyAssistStatMapper assistStatMapper;
     private final SysEmergencyStrengthMapper strengthMapper;
+    /** 应急力量台账（与 GET /rescue-resources/* 同源）——可聚合项的真源，保证两端同名项数字一致。 */
+    private final FacRescuePersonnelMapper rescuePersonnelMapper;
+    private final FacRescueEquipmentMapper rescueEquipmentMapper;
+    private final FacRescueVehicleMapper rescueVehicleMapper;
+    private final FacBrigadeTeamMapper brigadeTeamMapper;
     private final SysEmergencyPhoneMapper phoneMapper;
     private final SysKnowledgeItemMapper knowledgeMapper;
     private final SysDutyMemberMapper dutyMapper;
@@ -135,13 +147,41 @@ public class EmergencyService {
         for (SysEmergencyStrength r : rows) {
             EmergencyResource res = new EmergencyResource();
             res.setKind(r.getKind());
-            res.setCount(r.getCount());
+            // 可聚合项由管理端台账（GET /rescue-resources/*）实时计数覆盖，避免同一概念两套数字；
+            // 无明细源的项（装备车辆/应急场所/医疗机构/消防设施）沿用 sys_emergency_strength 人工维护值。
+            Integer ledgerCount = strengthCountFromLedger(r.getKind());
+            res.setCount(ledgerCount != null ? ledgerCount : r.getCount());
             res.setIcon(r.getIcon());
             resources.add(res);
         }
         s.setResources(resources);
         return s;
         });
+    }
+
+    /**
+     * 应急力量各项对应的管理端台账真实计数；无明细源的类别返回 {@code null}（调用方沿用人工维护值）。
+     *
+     * <p>映射（与 {@code RescueResourceService} 同名端点同表）：
+     * 应急专家→fac_rescue_personnel、应急物资→fac_rescue_equipment、
+     * 应急车辆→fac_rescue_vehicle、救援队伍→fac_brigade_team。
+     */
+    private Integer strengthCountFromLedger(String kind) {
+        if (kind == null) {
+            return null;
+        }
+        switch (kind) {
+            case "应急专家":
+                return rescuePersonnelMapper.selectList(null).size();
+            case "应急物资":
+                return rescueEquipmentMapper.selectList(null).size();
+            case "应急车辆":
+                return rescueVehicleMapper.selectList(null).size();
+            case "救援队伍":
+                return brigadeTeamMapper.selectList(null).size();
+            default:
+                return null;
+        }
     }
 
     /**

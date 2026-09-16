@@ -19,11 +19,19 @@ import com.sinopec.mmsecurity.entity.FacEmergencyResponseMode;
 import com.sinopec.mmsecurity.entity.FacNodePhaseConfig;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
+import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
+import com.sinopec.mmsecurity.entity.FacRescueEquipment;
+import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
+import com.sinopec.mmsecurity.entity.FacRescueVehicle;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
+import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyAssistStatMapper;
 import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
@@ -64,6 +72,10 @@ class EmergencyServiceTest {
     private final AlarmMapper alarmMapper = mock(AlarmMapper.class);
     private final FacEmergencyAssistStatMapper assistStatMapper = mock(FacEmergencyAssistStatMapper.class);
     private final SysEmergencyStrengthMapper strengthMapper = mock(SysEmergencyStrengthMapper.class);
+    private final FacRescuePersonnelMapper rescuePersonnelMapper = mock(FacRescuePersonnelMapper.class);
+    private final FacRescueEquipmentMapper rescueEquipmentMapper = mock(FacRescueEquipmentMapper.class);
+    private final FacRescueVehicleMapper rescueVehicleMapper = mock(FacRescueVehicleMapper.class);
+    private final FacBrigadeTeamMapper brigadeTeamMapper = mock(FacBrigadeTeamMapper.class);
     private final SysEmergencyPhoneMapper phoneMapper = mock(SysEmergencyPhoneMapper.class);
     private final SysKnowledgeItemMapper knowledgeMapper = mock(SysKnowledgeItemMapper.class);
     private final SysDutyMemberMapper dutyMapper = mock(SysDutyMemberMapper.class);
@@ -83,7 +95,9 @@ class EmergencyServiceTest {
             mock(FacEmergencyGuidanceRosterMapper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final EmergencyService service = new EmergencyService(
-            alarmMapper, assistStatMapper, strengthMapper, phoneMapper, knowledgeMapper, dutyMapper,
+            alarmMapper, assistStatMapper, strengthMapper,
+            rescuePersonnelMapper, rescueEquipmentMapper, rescueVehicleMapper, brigadeTeamMapper,
+            phoneMapper, knowledgeMapper, dutyMapper,
             dispatchPersonnelMapper, cmdMapper, nodePhaseConfigMapper, emergencyPhaseMapper,
             responseModeMapper, processStageMapper, nodeGuidanceMapper, guidanceRosterMapper,
             objectMapper);
@@ -128,20 +142,41 @@ class EmergencyServiceTest {
     }
 
     @Test
-    void strength_readsFromReferenceTable() {
+    void strength_aggregatesFromLedgerAndKeepsManualForNoLedgerKinds() {
         when(strengthMapper.selectList(null)).thenReturn(List.of(
                 strength("应急专家", 47, "UserFilled"),
                 strength("应急物资", 3510, "Box"),
                 strength("救援队伍", 12, "Soldier"),
                 strength("装备车辆", 28, "Van"),
                 strength("应急场所", 6, "LocationFilled"),
-                strength("医疗机构", 3, "FirstAidKit"),
-                strength("应急车辆", 18, "Truck"),
-                strength("消防设施", 42, "Fire")));
+                strength("应急车辆", 18, "Truck")));
+        when(rescuePersonnelMapper.selectList(null)).thenReturn(List.of(
+                new FacRescuePersonnel(), new FacRescuePersonnel(), new FacRescuePersonnel()));
+        when(rescueEquipmentMapper.selectList(null)).thenReturn(List.of(new FacRescueEquipment()));
+        when(rescueVehicleMapper.selectList(null)).thenReturn(List.of(
+                new FacRescueVehicle(), new FacRescueVehicle()));
+        when(brigadeTeamMapper.selectList(null)).thenReturn(List.of(new FacBrigadeTeam()));
+
         EmergencyStrength s = service.strength();
-        assertEquals(8, s.getResources().size());
+
+        assertEquals(6, s.getResources().size());
         assertEquals("应急专家", s.getResources().get(0).getKind());
-        assertEquals(47, s.getResources().get(0).getCount());
+        assertEquals(3, s.getResources().get(0).getCount(), "应急专家取人员台账计数，覆盖手填 47");
+        assertEquals(1, s.getResources().get(1).getCount(), "应急物资取装备台账计数，覆盖手填 3510");
+        assertEquals(1, s.getResources().get(2).getCount(), "救援队伍取队伍台账计数，覆盖手填 12");
+        assertEquals(28, s.getResources().get(3).getCount(), "装备车辆无明细源，保留手填值");
+        assertEquals(6, s.getResources().get(4).getCount(), "应急场所无明细源，保留手填值");
+        assertEquals(2, s.getResources().get(5).getCount(), "应急车辆取车辆台账计数，覆盖手填 18");
+    }
+
+    @Test
+    void strength_returnsZeroWhenLedgerEmpty() {
+        when(strengthMapper.selectList(null)).thenReturn(List.of(strength("应急专家", 47, "UserFilled")));
+
+        EmergencyStrength s = service.strength();
+
+        assertEquals(1, s.getResources().size());
+        assertEquals(0, s.getResources().get(0).getCount(), "台账为空即 0，不回退手填值以免造假");
     }
 
     @Test
