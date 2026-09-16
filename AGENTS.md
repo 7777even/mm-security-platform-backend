@@ -89,14 +89,20 @@
 | Entity / Mapper / `resources/db/*.sql` / 分页 / 逻辑删除     | `./mvnw test` + 启动后 `scripts/smoke-test.ps1`（见 §2.3）    |
 | `pom.xml`、依赖、构建配置                                   | `./mvnw clean package -DskipTests`                          |
 | 对外接口增删改（含字段 / 错误码 / 权限码）                  | `node scripts/check-api-contract.mjs` + `./mvnw test`       |
+| 新增 / 改动 Controller 写端点（`@Post/Put/Delete/PatchMapping`） | `node scripts/check-endpoint-authz.mjs`（写端点必须带 `role=`/`perm=`，或进脚本 ALLOWLIST 并写理由） |
 | L3 / L4                                                     | 按 `tasks.md` 验收标准全量，不得以 L1 / L2 降级             |
 
 禁止为形式化验证在每次 L1 / L2 后连跑 compile + test + package 三套；只跑矩阵中对应的一行。
 
 **环境注记（Windows）**：
 
-- 一律用仓库自带 Maven Wrapper `./mvnw`（Git-Bash）或 `mvnw.cmd`（PowerShell / CMD）；**禁止**使用裸 `mvn` 造成版本漂移，也**禁止** `rm -rf target` 清理（用 `./mvnw clean`）。
-- 终止 Java 进程用 Windows 真实 PID：`taskkill /PID <pid> /F /T`；在 Git-Bash 里 `kill <pid>` 杀不掉 Windows JVM（PID 命名空间不同）。验活以 `curl -s -m 4 http://localhost:8080/api/v1/health` 是否拒绝连接为准。
+- **Maven 命令有两种口径，唯一判定依据是 `docs/system-facts.md §1`**——下表与别处出现的 `./mvnw` 请按当前机器口径替换：
+  - **本开发沙箱（当前环境）**：`mvnw` 与裸 `mvn` **均不可用**。唯一可用是
+    `D:\apache-maven-3.9.11\apache-maven-3.9.11\bin\mvn.cmd -s ci-settings.xml <goal>`，
+    且 `JAVA_HOME` 必须写成正斜杠形式 `D:/jdk-17_windows-x64_bin/jdk-17.0.4.1`（反斜杠会失败）。
+  - **普通开发机 / CI**：用仓库自带 `mvnw` / `mvnw.cmd`；CI 用裸 `mvn`，且**绝不能带 `-s ci-settings.xml`**（该文件硬编码本机 Windows `.m2` 路径，仅本地冒烟用）。
+  - 通用：清理一律 `clean`，**禁止** `rm -rf target`。
+- 终止 Java 进程用 Windows 真实 PID：`taskkill /PID <pid> /F /T`；在 Git-Bash 里 `kill <pid>` 杀不掉 Windows JVM（PID 命名空间不同）。验活以 `curl -s -m 4 http://localhost:8787/actuator/health` 是否拒绝连接为准（**dev 端口是 8787，不是 8080**；`application.yml` 默认 8080 会被启动参数覆盖）。
 - PowerShell 执行脚本若报执行策略限制：用 `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1`，不要改全局策略。
 
 ### 2.2 测试策略（起步基线）

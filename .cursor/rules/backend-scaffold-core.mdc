@@ -26,12 +26,15 @@ alwaysApply: true
 
 ## 3. 最小验证矩阵（只跑对应一行）
 
+> ⚠️ 下面写的是 `./mvnw`；**本开发沙箱 `mvnw`/裸 `mvn` 均不可用**，口径以 `docs/system-facts.md §1` 为准（唯一可用 `mvn.cmd -s ci-settings.xml <goal>` + `JAVA_HOME=D:/jdk-17_windows-x64_bin/jdk-17.0.4.1`）。
+
 - 文档/规范/注释：`git diff --check`
 - 单个 Controller/Service/DTO：`./mvnw -q compile`
 - `common/`、`security/`、`config/` 横切层：`./mvnw test`
 - Entity/Mapper/`resources/db/*.sql`/分页/逻辑删除：`./mvnw test` + `scripts/smoke-test.ps1`
 - `pom.xml`/依赖/构建：`./mvnw clean package -DskipTests`
 - 对外接口增删改：`node scripts/check-api-contract.mjs` + `./mvnw test`
+- 写端点（`@Post/Put/Delete/PatchMapping`）：`node scripts/check-endpoint-authz.mjs`
 - L3/L4：按 tasks.md 验收全量；禁止 L1/L2 后连跑 compile+test+package 三套。
 
 Windows 环境：一律用 `./mvnw`（Git-Bash）或 `mvnw.cmd`（PowerShell）；杀 Java 进程用 `taskkill /PID <winpid> /F /T`，Git-Bash 的 `kill` 杀不掉 Windows JVM。

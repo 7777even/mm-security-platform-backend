@@ -111,8 +111,9 @@ openspec list --specs       # 列出稳定规格
 | `openspec: command not found`   | CLI 未装 / 未进 PATH                | 按"二"安装；或把命令体 `openspec` 换成 `npx @fission-ai/openspec` |
 | `No changes found` / 找不到目录 | 不在仓库根目录运行                  | `cd` 到 `backend-scaffold/` 再执行                                |
 | `validate` 报 schema 错误       | CLI 版本与仓库 `config.yaml` 不兼容 | 统一 pin 到同一版本（建议 1.12.0）                                |
-| `./mvnw` 起不来                 | 用了裸 `mvn` 或 JDK 版本不对        | 用仓库自带 `./mvnw`，确认 JDK 17                                  |
+| `./mvnw` 起不来                 | **本沙箱 `mvnw`/裸 `mvn` 均不可用** | 口径以 `docs/system-facts.md §1` 为准：用 `mvn.cmd -s ci-settings.xml <goal>`，`JAVA_HOME` 写 `D:/...`（正斜杠） |
 | 接口改了前端没跟上              | 漏走跨库四同步                      | 同步 `frontend-scaffold/docs/api/*.openapi.json` 并重生成类型     |
+| 新增写端点忘了加权限            | 漏声明 `@RequireAuth(role=/perm=)`  | 跑 `node scripts/check-endpoint-authz.mjs`（CI 已守门；确属自助端点则登记进脚本 ALLOWLIST 并写理由） |
 
 ---
 

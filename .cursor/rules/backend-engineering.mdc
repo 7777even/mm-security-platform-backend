@@ -45,6 +45,6 @@ alwaysApply: true
 
 ## 6. Windows 工程注记
 
-- 一律用 `./mvnw`（Git-Bash）或 `mvnw.cmd`（PowerShell/CMD），禁止裸 `mvn`；清理用 `./mvnw clean`，禁止 `rm -rf target`。
-- 结束 Java 进程：`taskkill /PID <winpid> /F /T`；Git-Bash `kill` 无效。验活看 `curl -s -m 4 http://localhost:8080/api/v1/health` 是否拒绝连接。
+- **Maven 命令口径以 `docs/system-facts.md §1` 为唯一依据**：⚠️ 本开发沙箱 `./mvnw` 与裸 `mvn` **均不可用**，唯一可用是 `mvn.cmd -s ci-settings.xml <goal>` 且 `JAVA_HOME=D:/jdk-17_windows-x64_bin/jdk-17.0.4.1`（正斜杠）；普通机器/CI 才用 `mvnw`。清理禁止 `rm -rf target`。
+- 结束 Java 进程：`taskkill /PID <winpid> /F /T`；Git-Bash `kill` 无效。验活看 `curl -s -m 4 http://localhost:8787/actuator/health` 是否拒绝连接（**dev 端口 8787，非 8080**）。
 - Java 统一 4 空格缩进、UTF-8、关键处中文注释；新增对外接口必须同步前端契约。

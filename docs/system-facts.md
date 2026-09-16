@@ -115,8 +115,9 @@
   `/auth/me`、`/auth/menus` 已移出白名单（契约声明 401/403）；`/ws` 免鉴权是刻意设计（内网只读流，勿给 `ws.ts` 加 query 令牌）。
   ⚠️ 注意：Controller 不加 `@RequireAuth` ≠ 免鉴权，全局过滤器仍强制带 token（例如 `/tv/*` 无 token 返回 401）。
 - 前端**无 401 静默刷新拦截器**：401 仅清内存令牌 + `onUnauthorized` 重登；续期须走 rt Cookie 调 `/auth/refresh` 并防重试死循环。
-- **写端点授权覆盖度（2026-09-16 实测，含一处已知治理缺口）**：`*Controller.java` 下 **POST/PUT/DELETE 端点 43 个**，其中声明 `perm=` 约束 **37 处**、`role=` **20 处**；代码引用的 23 个具体 perm 码**全部存在于 `sys_menu.perm_code` 种子**（交叉核对 0 缺失，故无「perm 拼错 → 全员 403」的隐患）。唯一合理例外是 `AuthController` 的 5 个写端点（`/auth/{login,refresh,logout}` 白名单 + `/auth/password`·`/auth/profile` 自助，靠 `AuthorizationService.assertSelfOrAdmin` 兜底）。
-  > ⚠️ **缺口：没有自动门禁校验「写端点必须声明权限」**。后端 CI 只有 `check-api-contract.mjs`（路由+schema）与 `check-openspec-hygiene.mjs`（变更治理）两个守门脚本，**均不检查鉴权注解**。因此现状的 37/43 覆盖**靠人工纪律维持、无回归防护**：新增一个 `@PostMapping` 漏写 `@RequireAuth(perm=…)` 时 CI 全绿即可合并，该端点对**所有已登录用户**开放。建议按 `check-openspec-hygiene.mjs` 同款范式补 `check-endpoint-authz.mjs` 并进 CI。
+- **写端点授权覆盖度（2026-09-16 实测 + 已补门禁）**：`*Controller.java` 下 **写端点 43 个**，其中声明 `perm=` 约束 **37 处**、`role=` **20 处**；代码引用的 23 个具体 perm 码**全部存在于 `sys_menu.perm_code` 种子**（交叉核对 0 缺失，故无「perm 拼错 → 全员 403」的隐患）。未带 `role=`/`perm=` 的仅 **7 个**，全部是**设计内**自助/入站端点，已逐条登记在 `scripts/check-endpoint-authz.mjs` 的 `ALLOWLIST` 并写明理由：`AuthController` 的 5 个（`/auth/{login,refresh,logout}` 属 `JwtFilter` 白名单；`/auth/password`·`/auth/profile` 为本人操作，靠 `AuthorizationService.assertSelfOrAdmin` 兜底）+ `UplinkController` 的 2 个（防爆手机现场回传、前端审计上报）。
+  > ✅ **自动门禁已落地**：`scripts/check-endpoint-authz.mjs`（2026-09-16 新增，已进后端 CI 的 `contract-guard` job）。规则＝写端点（`@Post/Put/Delete/PatchMapping`）必须带 `role=`/`perm=` 的 `@RequireAuth`（方法级优先、回落类级），或在脚本 `ALLOWLIST` 显式豁免并写理由；**另有「名单腐烂检查」**——`ALLOWLIST` 里的键若不再对应任何写端点即失败，防止豁免静默变成漏检。正/负双向已验（注入违规端点→exit 1；注入失效豁免→exit 1；现有代码→exit 0）。
+  > ⚠️ **仍需人工决策的一处**：`POST /api/v1/audit/log` 前端上报自身操作审计，现状**登录即可提交** → 任意登录账号可伪造审计记录。要收紧应改为「只允许上报与自己相关的动作」或 Service 侧校验，**不宜简单加 `role=ADMIN`**（会挡死普通用户的审计上报）。已在 ALLOWLIST 标注 `⚠️待安全确认`。
 
 ## 7. 联调与默认环境
 

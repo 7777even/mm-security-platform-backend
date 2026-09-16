@@ -39,8 +39,8 @@
 ## 5. 工程约定
 
 - **Git 提交**：`type(scope): 描述`，scope 固定枚举 `auth/device/alarm/dashboard/security/common/db/config/docs/chore`，禁止自造；横切层（`common`/`security`）先行、业务域跟随；提交信息单行成句、禁止分点列表；禁止提交临时输出（`mvn-out.txt`、`nohup.out`）。
-- **验证矩阵**（改动后只跑对应一行，禁止 L1/L2 后连跑 compile+test+package 三套）：文档 `git diff --check`；单类 `./mvnw -q compile`；横切层 `./mvnw test`；数据层 `./mvnw test` + `scripts/smoke-test.ps1`；构建配置 `./mvnw clean package -DskipTests`；对外接口 `node scripts/check-api-contract.mjs` + `./mvnw test`；L3/L4 按 tasks 验收全量。
-- **Windows 工程**：用 `./mvnw` / `mvnw.cmd`，禁止裸 `mvn`；清理用 `./mvnw clean`，禁止 `rm -rf target`；杀 Java 用 `taskkill /PID <winpid> /F /T`（Git-Bash `kill` 无效）。
+- **验证矩阵**（改动后只跑对应一行，禁止 L1/L2 后连跑 compile+test+package 三套）：文档 `git diff --check`；单类 `./mvnw -q compile`；横切层 `./mvnw test`；数据层 `./mvnw test` + `scripts/smoke-test.ps1`；构建配置 `./mvnw clean package -DskipTests`；对外接口 `node scripts/check-api-contract.mjs` + `./mvnw test`；写端点 `node scripts/check-endpoint-authz.mjs`；L3/L4 按 tasks 验收全量。
+- **Windows 工程**：⚠️ **`./mvnw` 在本开发沙箱不可用**——命令口径以 `docs/system-facts.md §1` 为唯一依据（本机唯一可用：`mvn.cmd -s ci-settings.xml <goal>` + `JAVA_HOME=D:/jdk-17_windows-x64_bin/jdk-17.0.4.1`；普通机器/CI 才用 `mvnw`）。Dev 端口 **8787**（非 8080）；清理禁止 `rm -rf target`；杀 Java 用 `taskkill /PID <winpid> /F /T`（Git-Bash `kill` 无效）。
 - **Review 结论三选一**：通过 / 需修改 / 需人工决策（禁止"基本可以"等模糊结论）。
 
 ## 6. 范围边界（跨库定位）
