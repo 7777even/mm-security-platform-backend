@@ -155,7 +155,7 @@ public class EmergencyService {
         summary.setItems(rows.stream().map(row -> {
             EmergencyAssistStat item = new EmergencyAssistStat();
             item.setLabel(row.getLabel());
-            item.setValue(row.getValue());
+            item.setValue(row.getStatValue());
             item.setUnit(row.getUnit());
             item.setTone(row.getTone());
             return item;

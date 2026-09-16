@@ -24,9 +24,14 @@ public class FacEmergencyAssistStat implements Serializable {
     /** 统计项标签：应急预案 / 现场处置卡 / 应急联络人 / 可用消防水源 */
     private String label;
 
-    /** 数值（如应急预案 15 套的 15）；列名 stat_value 以避开 H2 保留字 value */
+    /**
+     * 数值（如应急预案 15 套的 15）。
+     * 列名取 stat_value、**属性名也避开 value**：MyBatis-Plus 会按属性名生成别名（stat_value AS value），
+     * 而 H2 把 VALUE 视为保留字 → 曾报 "Syntax error ... expected identifier" 500。
+     * 对外契约字段名仍是 value（由 DTO EmergencyAssistStat 承担），此处仅内部改名。
+     */
     @TableField("stat_value")
-    private Integer value;
+    private Integer statValue;
 
     /** 单位：套 / 张 / 人 / 处 */
     private String unit;

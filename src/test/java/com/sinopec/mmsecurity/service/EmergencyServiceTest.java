@@ -429,7 +429,7 @@ class EmergencyServiceTest {
     private static FacEmergencyAssistStat assistStat(String label, int value, String unit, String tone, int sortNo) {
         FacEmergencyAssistStat s = new FacEmergencyAssistStat();
         s.setLabel(label);
-        s.setValue(value);
+        s.setStatValue(value);
         s.setUnit(unit);
         s.setTone(tone);
         s.setSortNo(sortNo);
