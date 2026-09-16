@@ -92,7 +92,8 @@ jobs:
           echo "  · 前端仓已新增同名 contract-guard job，可直接在那里先验证契约侧是否自洽。"
           echo "  · 若属时序红（前端契约晚到）：前端仓 contract-guard 绿后会自动发 repository_dispatch 重跑本 job；"
           echo "    也可在 Actions 页手动 Re-run（workflow_dispatch / repository_dispatch 均已接入）。"
-          echo "  详见根 AGENTS.md §4「跨库推送顺序」与 §11.2 四同步纪律。"
+          echo "  详见本仓 AGENTS.md §11.2「契约变更四同步」及其子节「推送顺序与跨仓契约竞态（已根治）」，"
+          echo "  以及 §1.4「前后端契约仲裁（跨库特例）」。"
 
       # openspec 闭环纪律守门：changes/ 下不允许存在 tasks 全勾未归档的 Change、
       # 四件套缺失、archive/ 目录缺日期前缀（规则见根 AGENTS.md §7.1）。
