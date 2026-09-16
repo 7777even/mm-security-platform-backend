@@ -8,7 +8,6 @@
 ├── rules/
 │   ├── backend-scaffold-core.mdc      # 入口/分级/唯一规格源/跨库契约/验证矩阵/提交/权限边界
 │   ├── api-contract.mdc               # 零下行控制/B3 Result 包络/20位MDM/HMAC/无状态JWT/错误码分段/四同步
-│   ├── openapi-contract-writing.mdc   # 契约真源唯一/四条铁律/四同步顺序纪律/禁止平行契约体系
 │   ├── end-to-end-roadmap.mdc         # L3/L4 开工前先读路线图→进度台账→当前 Change，禁止占位实现
 │   └── backend-engineering.mdc        # 分层职责/过滤器链/密钥与日志脱敏/DB 变更/环境差异/Windows 工程注记
 ├── commands/                    # 显式触发：用户在 Cursor 里敲 /opsx:<name> 才跑

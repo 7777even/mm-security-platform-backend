@@ -15,14 +15,14 @@
 
 ## 过程记录（engineering/）
 
-| 模板                      | 落点目录               | 关键约束                                                                       |
-| ------------------------- | ---------------------- | ------------------------------------------------------------------------------ |
-| `_qa_template.md`         | `engineering/qa/`       | 范围 / 验收口径 / 实际命令与用例数 / 未运行项 / 证据附件 / 结论                 |
-| `_retro_template.md`      | `engineering/retro/`    | 做得好 / 问题 / 原因 / 改进方案 四段式                                         |
-| `_ship_template.md`       | `engineering/ship/`     | 发布检查与回滚五段式（代码 / 迁移 / 环境 / 部署 / 回滚）                        |
-| `_stage_report_template.md` | `engineering/reports/` | 对照 `docs/architecture/roadmap.md §2` 判据的干系人阶段简报，用证据说话         |
+| 模板                        | 落点目录                 | 关键约束                                                               |
+| --------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `_qa_template.md`           | `engineering/qa/`         | 范围 / 验收口径 / 实际命令与用例数 / 未运行项 / 证据附件 / 结论         |
+| `_retro_template.md`        | `engineering/retro/`      | 做得好 / 问题 / 原因 / 改进方案 四段式                                 |
+| `_ship_template.md`         | `engineering/ship/`       | 发布检查与回滚五段式（代码 / 迁移 / 环境 / 部署 / 回滚）                |
+| `_stage_report_template.md` | `engineering/plans/`      | 阶段汇报（对照 `docs/architecture/roadmap.md §2` 判据，用证据说话）      |
 
-L3 / L4 任务完成后**即刻**写 QA + Retro，不允许攒到最后补；`reports/` 面向干系人，与 `qa/`+`retro/`（工程内部）不可互相顶替。
+L3 / L4 任务完成后**即刻**写 QA + Retro，不允许攒到最后补；阶段汇报落 `engineering/plans/`（与推进计划同目录，不另建 `reports/`）。
 
 ## API 契约
 
@@ -34,7 +34,7 @@ L3 / L4 任务完成后**即刻**写 QA + Retro，不允许攒到最后补；`re
 
 1. 新建 L3 / L4 变更：`cp templates/_openspec-{proposal,design,tasks,spec-delta}_template.md openspec/changes/<name>/`。
 2. 完成后：`cp templates/_qa_template.md engineering/qa/YYYY-MM-DD-<slug>.md`，同理 Retro；发布检查用 `_ship_template.md` 落到 `engineering/ship/`。
-3. 阶段收口：`cp templates/_stage_report_template.md engineering/reports/YYYY-MM-DD-stage-<n>-report.md`。
-4. 编写 / 修改 `controller/`、`dto/` 时对照 `api-contract-writing-guide.md` 自检（同款红线已固化在 `.cursor/rules/openapi-contract-writing.mdc`，由 harness 自动加载）。
+3. 阶段收口：`cp templates/_stage_report_template.md engineering/plans/YYYY-MM-DD-stage-<n>-report.md`。
+4. 编写 / 修改 `controller/`、`dto/` 时对照 `api-contract-writing-guide.md` 自检（契约红线另见 `.cursor/rules/api-contract.mdc`，由 harness 自动加载）。
 
 > 本目录为模板源，不参与构建；文件名带 `_` 前缀以区别于真实实例。

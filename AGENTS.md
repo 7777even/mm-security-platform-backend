@@ -273,12 +273,9 @@ L3 / L4 任务完成后**即刻**写 `engineering/qa/` 与 `engineering/retro/`�
 | `templates/_qa_template.md`                  | engineering/qa 记录    |
 | `templates/_retro_template.md`               | engineering/retro 记录 |
 | `templates/_ship_template.md`                | engineering/ship 发布检查与回滚 |
-| `templates/_stage_report_template.md`        | engineering/reports 阶段简报（干系人） |
 | `templates/api-contract-writing-guide.md`    | §3 契约编写与同步手册  |
 
 `templates/README.md` 为索引与用法说明。
-
-**落点区分**：`engineering/qa/`+`retro/` 面向工程内部；`engineering/ship/` 管上线检查与回滚；`engineering/reports/` 面向干系人（对照 `docs/architecture/roadmap.md §2` 判据的阶段简报）。三者不可互相顶替，各自 `README.md` 说明用法。
 
 ## 8. L4 硬门禁清单
 
