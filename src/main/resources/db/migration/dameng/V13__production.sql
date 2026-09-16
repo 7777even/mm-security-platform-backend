@@ -17,7 +17,7 @@ CREATE TABLE fac_production_facility (
     item_count NUMBER(9) NOT NULL DEFAULT 0,
     image VARCHAR2(128),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_device_category (
@@ -26,7 +26,7 @@ CREATE TABLE fac_production_device_category (
     item_count NUMBER(9) NOT NULL DEFAULT 0,
     image VARCHAR2(128),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_stat (
@@ -38,7 +38,7 @@ CREATE TABLE fac_production_stat (
     trend_up NUMBER(1) NOT NULL DEFAULT 0,
     icon_index NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_alarm (
@@ -53,7 +53,7 @@ CREATE TABLE fac_production_alarm (
     icon_index NUMBER(9) NOT NULL DEFAULT 0,
     thumb VARCHAR2(128),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_risk_warning (
@@ -66,7 +66,7 @@ CREATE TABLE fac_production_risk_warning (
     level_code VARCHAR2(16) NOT NULL,
     level_label VARCHAR2(32) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_personnel (
@@ -82,7 +82,7 @@ CREATE TABLE fac_production_personnel (
     marker_dot VARCHAR2(32),
     marker_line VARCHAR2(32),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_device (
@@ -95,7 +95,7 @@ CREATE TABLE fac_production_device (
     longitude DOUBLE PRECISION,
     latitude DOUBLE PRECISION,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_area_metric (
@@ -104,7 +104,7 @@ CREATE TABLE fac_production_area_metric (
     label VARCHAR2(64) NOT NULL,
     value_text VARCHAR2(64) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_production_area_zone (
@@ -115,7 +115,7 @@ CREATE TABLE fac_production_area_zone (
     alarm_count NUMBER(9) NOT NULL DEFAULT 0,
     zone_index NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 设施总览卡片：与 productionMock.facilityItems 一致（image 为前端 production 模块静态资源名）
@@ -123,7 +123,7 @@ INSERT INTO fac_production_facility (name, item_count, image, sort_no) VALUES ('
 INSERT INTO fac_production_facility (name, item_count, image, sort_no) VALUES ('生产装置', 596, 'image_0008.png', 2)
 INSERT INTO fac_production_facility (name, item_count, image, sort_no) VALUES ('仓库', 596, 'image_0006.png', 3)
 INSERT INTO fac_production_facility (name, item_count, image, sort_no) VALUES ('重大危险源', 596, 'image_0012.png', 4)
-INSERT INTO fac_production_facility (name, item_count, image, sort_no) VALUES ('储罐', 596, 'image_0007.png', 5)
+INSERT INTO fac_production_facility (name, item_count, image, sort_no) VALUES ('储罐', 596, 'image_0007.png', 5);
 
 
 -- 设备分类总览卡片：与 productionMock.deviceItems 一致（名称同时作为 fac_production_device.category 外键语义）
@@ -133,7 +133,7 @@ INSERT INTO fac_production_device_category (name, item_count, image, sort_no) VA
 INSERT INTO fac_production_device_category (name, item_count, image, sort_no) VALUES ('消防设施', 596, 'image_0010.png', 4)
 INSERT INTO fac_production_device_category (name, item_count, image, sort_no) VALUES ('通风设备', 596, 'image_0004.png', 5)
 INSERT INTO fac_production_device_category (name, item_count, image, sort_no) VALUES ('广播', 596, 'image_0011.png', 6)
-INSERT INTO fac_production_device_category (name, item_count, image, sort_no) VALUES ('电话', 596, 'image_0005.png', 7)
+INSERT INTO fac_production_device_category (name, item_count, image, sort_no) VALUES ('电话', 596, 'image_0005.png', 7);
 
 
 -- 统计概览条：与 productionMock.statOverview 一致（valueSuffix 对应契约 unit，无单位的告警计数统一为「起」）
@@ -141,7 +141,7 @@ INSERT INTO fac_production_stat (label, value_text, unit, trend, trend_up, icon_
 INSERT INTO fac_production_stat (label, value_text, unit, trend, trend_up, icon_index, sort_no) VALUES ('未处置告警', '12', '起', 8, 1, 1, 2)
 INSERT INTO fac_production_stat (label, value_text, unit, trend, trend_up, icon_index, sort_no) VALUES ('已处置告警', '24', '起', 5, 0, 2, 3)
 INSERT INTO fac_production_stat (label, value_text, unit, trend, trend_up, icon_index, sort_no) VALUES ('处置中告警', '6', '起', 3, 1, 3, 4)
-INSERT INTO fac_production_stat (label, value_text, unit, trend, trend_up, icon_index, sort_no) VALUES ('平均处置时长', '18', '分32秒', 10, 0, 4, 5)
+INSERT INTO fac_production_stat (label, value_text, unit, trend, trend_up, icon_index, sort_no) VALUES ('平均处置时长', '18', '分32秒', 10, 0, 4, 5);
 
 
 -- 生产报警：取自 productionMock.productionAlarms（前 14 条为 mock 原文，后 6 条为同类补充）。
@@ -165,7 +165,7 @@ INSERT INTO fac_production_alarm (facility_id, title, title_color, location, occ
 INSERT INTO fac_production_alarm (facility_id, title, title_color, location, occurred_at, description, status_name, icon_index, thumb, sort_no) VALUES (5, '人员聚集', 'orange', '乙烯区裂解炉北侧', '2026-03-17 09:20:11', '检修人员集中17人，接近上限20人。', '未处置', 2, 'person_gathering.png', 17)
 INSERT INTO fac_production_alarm (facility_id, title, title_color, location, occurred_at, description, status_name, icon_index, thumb, sort_no) VALUES (5, '人员滞留', 'warning', '化工区芳烃抽提装置三层', '2026-03-17 08:55:03', '同一人员停留超45分钟，请复核。', '已处置', 0, 'person_fall.png', 18)
 INSERT INTO fac_production_alarm (facility_id, title, title_color, location, occurred_at, description, status_name, icon_index, thumb, sort_no) VALUES (5, '火焰检测报警', 'danger', '炼油区常减压装置加热炉', '2026-03-17 08:31:47', '火焰检测器检出明火信号，请立即核实。', '未处置', 1, 'gas_leak.png', 19)
-INSERT INTO fac_production_alarm (facility_id, title, title_color, location, occurred_at, description, status_name, icon_index, thumb, sort_no) VALUES (5, '区域超员', 'orange', '储罐区T-203罐组围堰内', '2026-03-17 08:05:29', '围堰内实时人数19人，超出核定15人。', '未处置', 2, 'person_gathering.png', 20)
+INSERT INTO fac_production_alarm (facility_id, title, title_color, location, occurred_at, description, status_name, icon_index, thumb, sort_no) VALUES (5, '区域超员', 'orange', '储罐区T-203罐组围堰内', '2026-03-17 08:05:29', '围堰内实时人数19人，超出核定15人。', '未处置', 2, 'person_gathering.png', 20);
 
 
 -- 风险预警：取自 productionMock.riskWarnings；level_code 为红/橙/黄三级，总览的 riskSummary 由本表聚合得出
@@ -175,14 +175,14 @@ INSERT INTO fac_production_risk_warning (location, type_name, occurred_at, perso
 INSERT INTO fac_production_risk_warning (location, type_name, occurred_at, person, phone, level_code, level_label, sort_no) VALUES ('催化装置区', '温度偏高', '2026-03-17 05:40:33', '赵伟', '1350666****', 'orange', '橙色', 4)
 INSERT INTO fac_production_risk_warning (location, type_name, occurred_at, person, phone, level_code, level_label, sort_no) VALUES ('水东港区作业区', '风速超限', '2026-03-17 06:18:55', '黄国强', '1360200****', 'orange', '橙色', 5)
 INSERT INTO fac_production_risk_warning (location, type_name, occurred_at, person, phone, level_code, level_label, sort_no) VALUES ('苯乙烯装置区', '液位预警', '2026-03-17 07:02:11', '周敏', '1880255****', 'yellow', '黄色', 6)
-INSERT INTO fac_production_risk_warning (location, type_name, occurred_at, person, phone, level_code, level_label, sort_no) VALUES ('港区储罐区', '温度预警', '2026-03-17 07:45:02', '吴涛', '1890288****', 'yellow', '黄色', 7)
+INSERT INTO fac_production_risk_warning (location, type_name, occurred_at, person, phone, level_code, level_label, sort_no) VALUES ('港区储罐区', '温度预警', '2026-03-17 07:45:02', '吴涛', '1890288****', 'yellow', '黄色', 7);
 
 
 -- 人员定位标记：left/top 为舞台百分比（版面定位），经纬度由 map.pgw + 设计稿贴图区换算得到的 WGS84 坐标。
 -- 契约中 popup_bg/marker_dot/marker_line 为颜色串（前端按契约着色），故不沿用 mock 的图片资源名。
 INSERT INTO fac_production_personnel (left_ratio, top_ratio, longitude, latitude, location, person_count, marker_icon, popup_bg, marker_dot, marker_line, sort_no) VALUES ('54.2%', '25.3%', 110.8836, 21.6838, '炼化厂区丙侧', 365, 'person_cluster.png', '#0b2a4a', '#3ec6ff', '#3ec6ff', 1)
 INSERT INTO fac_production_personnel (left_ratio, top_ratio, longitude, latitude, location, person_count, marker_icon, popup_bg, marker_dot, marker_line, sort_no) VALUES ('33.8%', '28.1%', 110.8753, 21.6831, '炼化厂区丙侧', 365, 'person_cluster.png', '#0b2a4a', '#3ec6ff', '#3ec6ff', 2)
-INSERT INTO fac_production_personnel (left_ratio, top_ratio, longitude, latitude, location, person_count, marker_icon, popup_bg, marker_dot, marker_line, sort_no) VALUES ('46.5%', '46.4%', 110.8805, 21.6787, '炼化厂区丙侧', 365, 'person_cluster.png', '#0b2a4a', '#3ec6ff', '#3ec6ff', 3)
+INSERT INTO fac_production_personnel (left_ratio, top_ratio, longitude, latitude, location, person_count, marker_icon, popup_bg, marker_dot, marker_line, sort_no) VALUES ('46.5%', '46.4%', 110.8805, 21.6787, '炼化厂区丙侧', 365, 'person_cluster.png', '#0b2a4a', '#3ec6ff', '#3ec6ff', 3);
 
 
 -- 设备清单：7 个分类 × 5 台 = 35 台，名称与类型沿用 productionDeviceMock 的命名规则（前缀 + 序号#），
@@ -221,7 +221,7 @@ INSERT INTO fac_production_device (category, name, type_name, area, status_name,
 INSERT INTO fac_production_device (category, name, type_name, area, status_name, longitude, latitude, sort_no) VALUES ('电话', '应急电话2#', '应急电话', '化工区', '正常', 110.8805, 21.6829, 32)
 INSERT INTO fac_production_device (category, name, type_name, area, status_name, longitude, latitude, sort_no) VALUES ('电话', '装置电话3#', '固定电话', '储运区', '正常', 110.8822, 21.6843, 33)
 INSERT INTO fac_production_device (category, name, type_name, area, status_name, longitude, latitude, sort_no) VALUES ('电话', '值班电话4#', '应急电话', '公用工程区', '离线', 110.8839, 21.6824, 34)
-INSERT INTO fac_production_device (category, name, type_name, area, status_name, longitude, latitude, sort_no) VALUES ('电话', '应急电话5#', '固定电话', '乙烯区', '故障', 110.8856, 21.6834, 35)
+INSERT INTO fac_production_device (category, name, type_name, area, status_name, longitude, latitude, sort_no) VALUES ('电话', '应急电话5#', '固定电话', '乙烯区', '故障', 110.8856, 21.6834, 35);
 
 
 -- 装置区指标卡：13 个标签 × 5 个设施；取值沿用 productionAreaMock.buildMetrics 的
@@ -290,7 +290,7 @@ INSERT INTO fac_production_area_metric (facility_id, label, value_text, sort_no)
 INSERT INTO fac_production_area_metric (facility_id, label, value_text, sort_no) VALUES (5, '通风设备', '542', 10)
 INSERT INTO fac_production_area_metric (facility_id, label, value_text, sort_no) VALUES (5, '灭火设施', '555', 11)
 INSERT INTO fac_production_area_metric (facility_id, label, value_text, sort_no) VALUES (5, '无线通讯', '568', 12)
-INSERT INTO fac_production_area_metric (facility_id, label, value_text, sort_no) VALUES (5, '可燃气体检测仪', '581', 13)
+INSERT INTO fac_production_area_metric (facility_id, label, value_text, sort_no) VALUES (5, '可燃气体检测仪', '581', 13);
 
 
 -- 装置区分区：沿用 productionAreaMock.buildZones，名称 = 分区字母 + 设施名，报警数 A/B/C 依次为 2/1/0
@@ -308,4 +308,4 @@ INSERT INTO fac_production_area_zone (facility_id, zone_code, name, alarm_count,
 INSERT INTO fac_production_area_zone (facility_id, zone_code, name, alarm_count, zone_index, sort_no) VALUES (4, 'c', 'C重大危险源', 0, 2, 3)
 INSERT INTO fac_production_area_zone (facility_id, zone_code, name, alarm_count, zone_index, sort_no) VALUES (5, 'a', 'A储罐', 2, 0, 1)
 INSERT INTO fac_production_area_zone (facility_id, zone_code, name, alarm_count, zone_index, sort_no) VALUES (5, 'b', 'B储罐', 1, 1, 2)
-INSERT INTO fac_production_area_zone (facility_id, zone_code, name, alarm_count, zone_index, sort_no) VALUES (5, 'c', 'C储罐', 0, 2, 3)
+INSERT INTO fac_production_area_zone (facility_id, zone_code, name, alarm_count, zone_index, sort_no) VALUES (5, 'c', 'C储罐', 0, 2, 3);

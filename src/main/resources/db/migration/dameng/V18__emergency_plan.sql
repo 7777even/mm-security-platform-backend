@@ -19,7 +19,7 @@ CREATE TABLE fac_emergency_plan (
     accident_type VARCHAR2(32) NOT NULL,
     facility VARCHAR2(64) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_plan_instance (
@@ -28,7 +28,7 @@ CREATE TABLE fac_plan_instance (
     title VARCHAR2(256) NOT NULL,
     description VARCHAR2(1024) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_plan_major_phase (
@@ -38,7 +38,7 @@ CREATE TABLE fac_plan_major_phase (
     phase_name VARCHAR2(128) NOT NULL,
     phase_order NUMBER(9) NOT NULL DEFAULT 0,
     upgrade_process VARCHAR2(1024)
-)
+);
 
 
 CREATE TABLE fac_plan_sub_phase (
@@ -49,7 +49,7 @@ CREATE TABLE fac_plan_sub_phase (
     phase_name VARCHAR2(128) NOT NULL,
     phase_order NUMBER(9) NOT NULL DEFAULT 0,
     progress NUMBER(9)
-)
+);
 
 
 CREATE TABLE fac_plan_risk_event (
@@ -58,7 +58,7 @@ CREATE TABLE fac_plan_risk_event (
     event_code VARCHAR2(32) NOT NULL,
     sub_phase_code VARCHAR2(32) NOT NULL,
     event_name VARCHAR2(256) NOT NULL
-)
+);
 
 
 CREATE TABLE fac_plan_resource (
@@ -74,7 +74,7 @@ CREATE TABLE fac_plan_resource (
     longitude DOUBLE PRECISION,
     latitude DOUBLE PRECISION,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_plan_action_card (
@@ -91,7 +91,7 @@ CREATE TABLE fac_plan_action_card (
     card_status VARCHAR2(16) NOT NULL,
     is_global NUMBER(1) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 预案切换目录（7 条，页签顺序：disposal / fire / company / superior）
@@ -101,7 +101,7 @@ INSERT INTO fac_emergency_plan (tab_key, plan_name, accident_type, facility, sor
 INSERT INTO fac_emergency_plan (tab_key, plan_name, accident_type, facility, sort_no) VALUES ('fire', '储罐区泡沫灭火救援预案', '火灾/爆炸', '乙烯罐区', 4)
 INSERT INTO fac_emergency_plan (tab_key, plan_name, accident_type, facility, sort_no) VALUES ('company', '茂名石化应急预案', '火灾/爆炸', '乙烯罐区', 5)
 INSERT INTO fac_emergency_plan (tab_key, plan_name, accident_type, facility, sort_no) VALUES ('company', '茂名石化综合应急预案（修订版）', '泄漏', '重油加氢装置', 6)
-INSERT INTO fac_emergency_plan (tab_key, plan_name, accident_type, facility, sort_no) VALUES ('superior', '广东省石化行业应急预案', '火灾/爆炸', '乙烯罐区', 7)
+INSERT INTO fac_emergency_plan (tab_key, plan_name, accident_type, facility, sort_no) VALUES ('superior', '广东省石化行业应急预案', '火灾/爆炸', '乙烯罐区', 7);
 
 
 -- 预案实例（3 条，sort_no=1 的 T103 塔灭火救援预案为默认预案）
@@ -110,7 +110,7 @@ INSERT INTO fac_plan_instance (plan_code, title, description, sort_no) VALUES ('
 INSERT INTO fac_plan_instance (plan_code, title, description, sort_no) VALUES ('plan-flood-003', '应急救援中心防洪防内涝应急专项预案',
    '应对厂区降雨量达到150毫米至200毫米状态下，中心各消防中队、机关后勤协同开展挡水防汛与大功率排涝强排的实战响应矩阵。', 2)
 INSERT INTO fac_plan_instance (plan_code, title, description, sort_no) VALUES ('plan-maoming-001', '中国石化茂名分公司化工厂区突发环境事件综合应急预案',
-   '依据2022年版环境预案编制，实现车间级(Ⅲ级)、分部级(Ⅱ级)和茂名石化社会级(Ⅰ级)的突发环境事件响应联动。', 3)
+   '依据2022年版环境预案编制，实现车间级(Ⅲ级)、分部级(Ⅱ级)和茂名石化社会级(Ⅰ级)的突发环境事件响应联动。', 3);
 
 
 -- ------------------------------ plan-t103-002 ------------------------------
@@ -122,7 +122,7 @@ INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_ord
 INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_order, upgrade_process) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'm3_3', '3、联合总攻与工艺切断', 3,
    '配合车间工艺操作组关闭泄漏阀门并进行氮气置换；上级指挥员到场接管，出动增援泡沫车和重型排涝机器，对着火区域下风向实施水幕覆盖和泡沫消防流洒火。')
 INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_order, upgrade_process) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'm3_4', '4、监护退却与后期恢复', 4,
-   '明火扑灭后持续冷却，直到设备温度降至自燃点以下。安全观察组清查现场，确认无余气和零星阴燃后，下达撤退与应急终止指令。')
+   '明火扑灭后持续冷却，直到设备温度降至自燃点以下。安全观察组清查现场，确认无余气和零星阴燃后，下达撤退与应急终止指令。');
 
 
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'sp3_1_1', 'm3_1', '接警核实与全勤出动', 1, 100)
@@ -134,13 +134,13 @@ INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'sp3_3_2', 'm3_3', '增援力量出动与泡沫运输', 7, 10)
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'sp3_3_3', 'm3_3', '总攻灭火与系统氮气置换', 8, 0)
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'sp3_4_1', 'm3_4', '设备持续冷却降温', 9, 0)
-INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'sp3_4_2', 'm3_4', '清查防复燃与终止应急', 10, 0)
+INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'sp3_4_2', 'm3_4', '清查防复燃与终止应急', 10, 0);
 
 
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 're3_1', 'sp3_2_2', '地面油品流洒火大面积蔓延')
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 're3_2', 'sp3_3_1', '泄漏工艺阀门高温受热卡死无法操作')
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 're3_3', 'sp3_3_3', 'T101脱丁烷塔或F101加热炉受热开裂发生二次爆炸')
-INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 're3_4', 'sp3_4_1', '设备温度高于储存介质自燃点导致复燃')
+INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 're3_4', 'sp3_4_1', '设备温度高于储存介质自燃点导致复燃');
 
 
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'res-t103-1', '火灾救援现场消防总指挥部与通信班组', '5', '5', NULL, NULL,
@@ -154,7 +154,7 @@ INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expect
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'res-t103-5', '加氢制氢部紧急切断与倒罐操作班组', '6', '6', NULL, NULL,
    '执行T103塔底紧急降压与密闭安全倒罐；现场配合消防火场关阀；实施泄漏管线的氮气吹扫与惰性置换。', 110.8842, 21.6852, 5)
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'res-t103-6', '防灭减灾室现场风险与水务监督组', '4', '4', NULL, NULL,
-   '落实现场供水水压保障并协调增开备用消防稳压泵；全程红外实时扫描监测T103塔体与毗邻反应器温升情况，监督指导侦察与总攻安全。', 110.8858, 21.6838, 6)
+   '落实现场供水水压保障并协调增开备用消防稳压泵；全程红外实时扫描监测T103塔体与毗邻反应器温升情况，监督指导侦察与总攻安全。', 110.8858, 21.6838, 6);
 
 
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'c-t103-101', 'res-t103-1', '成立火灾救援现场指挥部并联系工艺人员',
@@ -174,7 +174,7 @@ INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, 
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'c-t103-303', 'res-t103-5', '往受灾管段吹扫高压氮气防止管道负压回火',
    '装置区工艺隔离完成后，对泄漏减压管段注入0.8MPa氮气吹扫置换。', NULL, 'sp3_3_3', 'sp3_3_3', 're3_3', 'pending', 0, 8)
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-t103-002'), 'c-t103-401', 'res-t103-6', '明火熄灭后，继续使用水炮降温确保其低于储存自燃点',
-   '明火熄灭后不停歇冷却，使用红外测温枪确认温度低于120摄氏度。', NULL, 'sp3_4_1', 'sp3_4_1', 're3_4', 'pending', 0, 9)
+   '明火熄灭后不停歇冷却，使用红外测温枪确认温度低于120摄氏度。', NULL, 'sp3_4_1', 'sp3_4_1', 're3_4', 'pending', 0, 9);
 
 
 -- ------------------------------ plan-flood-003 ------------------------------
@@ -186,7 +186,7 @@ INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_ord
 INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_order, upgrade_process) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'm4_3', '3、抢险总攻与大功率排涝', 3,
    '雨量达150-200mm，降雨级别升级。调动特勤中队紧急增援。在高碳装置雨水池污水池部署龙吸水排涝车；在净化水气泵房、新鲜水泵房部署大功率水泵和大水牛排涝机器人，实施满负荷强力抽排。')
 INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_order, upgrade_process) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'm4_4', '4、后期清淤与保障收退', 4,
-   '雨势减弱，厂区积水排干。各中队配合车间清理排洪沟泥沙淤积；安全监督员确认电力设施无漏电风险后，清理器材并归建。')
+   '雨势减弱，厂区积水排干。各中队配合车间清理排洪沟泥沙淤积；安全监督员确认电力设施无漏电风险后，清理器材并归建。');
 
 
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'sp4_1_1', 'm4_1', '启动领导带班与预案动员', 1, 100)
@@ -197,12 +197,12 @@ INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'sp4_3_2', 'm4_3', '大水牛机器人深水排涝', 6, 40)
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'sp4_3_3', 'm4_3', '地磅北地沟大功率强排', 7, 10)
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'sp4_4_1', 'm4_4', '排洪主沟泥沙防阻清淤', 8, 0)
-INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'sp4_4_2', 'm4_4', '防触电检测与防线收退', 9, 0)
+INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'sp4_4_2', 'm4_4', '防触电检测与防线收退', 9, 0);
 
 
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 're4_1', 'sp4_2_2', '强降雨沙土流失导致排洪沟堵塞溢流')
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 're4_2', 'sp4_3_2', '变电站及水泵房深水淹没区发生线路漏电')
-INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 're4_3', 'sp4_3_3', '强力抽排导致301事故池超负荷漫溢')
+INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 're4_3', 'sp4_3_3', '强力抽排导致301事故池超负荷漫溢');
 
 
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'res-flood-1', '应急中心领导与带班室', '5', '5', NULL, NULL,
@@ -216,7 +216,7 @@ INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expect
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'res-flood-5', '炼油中队（炼油厂区）', '20', '20', NULL, NULL,
    '负责炼油区域内应急，在6#路与9#路、11#路交界处及各门岗设置挡水板。', NULL, NULL, 5)
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'res-flood-6', '高碳中队（雨排污）', '12', '12', NULL, NULL,
-   '负责高碳装置雨污水池排涝，部署和操作大排量“龙吸水”排涝车。', NULL, NULL, 6)
+   '负责高碳装置雨污水池排涝，部署和操作大排量“龙吸水”排涝车。', NULL, NULL, 6);
 
 
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'c-flood-101', 'res-flood-1', '机关室分为化工组与炼油组，分头执勤值守',
@@ -236,7 +236,7 @@ INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, 
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'c-flood-401', 'res-flood-3', '使用漏电测试仪对配电房周边水体检测',
    '防灾监督员现场监督，检测强排低洼淹没区有无动力漏电，确保作业安全。', NULL, 'sp4_3_2', 'sp4_4_2', NULL, 'pending', 1, 8)
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-flood-003'), 'c-flood-402', 'res-flood-4', '配合装置进行排洪明沟和临时排涝渠防漏清淤',
-   '清除积水消退后的砂石泥污，保障后期管网排水通畅，防止泥浆滞留。', NULL, 'sp4_4_1', 'sp4_4_2', NULL, 'pending', 0, 9)
+   '清除积水消退后的砂石泥污，保障后期管网排水通畅，防止泥浆滞留。', NULL, 'sp4_4_1', 'sp4_4_2', NULL, 'pending', 0, 9);
 
 
 -- ----------------------------- plan-maoming-001 -----------------------------
@@ -248,7 +248,7 @@ INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_ord
 INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_order, upgrade_process) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'm3', '3、Ⅰ级响应（社会政企联动）', 3,
    '茂名石化公司应急指挥中心接管，启动政企联动机制，30分钟内向茂名市政府及市生态环境局提报初报，全力配合政府消防、交警、环保、医疗等增援力量。')
 INSERT INTO fac_plan_major_phase (instance_id, phase_code, phase_name, phase_order, upgrade_process) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'm4', '4、后期处置与解除', 4,
-   '危险源彻底消除，由茂名市环境指挥部或现场总指挥共同确认无二次衍生隐患后，下达应急解除令，转入环境洗消、损害评估与调查总结工作。')
+   '危险源彻底消除，由茂名市环境指挥部或现场总指挥共同确认无二次衍生隐患后，下达应急解除令，转入环境洗消、损害评估与调查总结工作。');
 
 
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'sp1_1', 'm1', '异常察觉与15分钟初报', 1, 100)
@@ -260,13 +260,13 @@ INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'sp3_2', 'm3', '泡沫洗消与水幕隔离总攻', 7, 0)
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'sp3_3', 'm3', '周边社区疏散与交警戒严', 8, 0)
 INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'sp4_1', 'm4', '现场洗消与废水回收降解', 9, 0)
-INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'sp4_2', 'm4', '环境损害评估与事故调查', 10, 0)
+INSERT INTO fac_plan_sub_phase (instance_id, phase_code, parent_code, phase_name, phase_order, progress) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'sp4_2', 'm4', '环境损害评估与事故调查', 10, 0);
 
 
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'r1', 'sp1_2', '泄漏剧毒/易燃品遇静电产生闪燃爆炸')
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'r2', 'sp1_3', '有毒事故废水经雨水沟排入厂外河流')
 INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'r3', 'sp2_2', 'DCS/SIS紧急切断阀卡涩导致持续泄漏')
-INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'r4', 'sp3_3', '恶劣风向致有毒气体向下风向敏感点扩散')
+INSERT INTO fac_plan_risk_event (instance_id, event_code, sub_phase_code, event_name) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'r4', 'sp3_3', '恶劣风向致有毒气体向下风向敏感点扩散');
 
 
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'res-1', '现场应急指挥中心与总指挥组', '6', '6',
@@ -282,7 +282,7 @@ INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expect
    '陈光远（车间主任）', '0668-2288405（内线 8405）',
    '第一现场初期先期处置；紧急操作ESD系统实施联锁切料、火炬放空与安全倒罐；现场协助关闭雨水总排连通阀；引导后续消防主战队伍就近接入稳压消防水接口。', 110.8838, 21.6848, 4)
 INSERT INTO fac_plan_resource (instance_id, resource_code, resource_name, expected_count, actual_count, leader_name, contact_phone, duties, longitude, latitude, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'res-5', '安全环保处现场督查与防护勤查组', '12', '12', NULL, NULL,
-   '现场安全防护监管与风向实时研判；监督参战人员重型防护着装与双人同侪安全制落实；负责热区进出人员及设备的洗消；评估初期环境损害态势。', 110.8865, 21.683, 5)
+   '现场安全防护监管与风向实时研判；监督参战人员重型防护着装与双人同侪安全制落实；负责热区进出人员及设备的洗消；评估初期环境损害态势。', 110.8865, 21.683, 5);
 
 
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'c-env-101', 'res-4', '当班班组确认异常并执行工艺紧急切断',
@@ -300,4 +300,4 @@ INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, 
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'c-env-303', 'res-5', '监测下风向敏感点并组织社区疏散',
    '实时研判风向，对下风向敏感点实施警戒疏散，配合交警戒严。', NULL, 'sp3_3', 'sp3_3', 'r4', 'pending', 0, 7)
 INSERT INTO fac_plan_action_card (instance_id, card_code, resource_code, title, content_text, description_text, start_sub_phase_code, end_sub_phase_code, risk_event_code, card_status, is_global, sort_no) VALUES ((SELECT id FROM fac_plan_instance WHERE plan_code = 'plan-maoming-001'), 'c-env-401', 'res-5', '现场洗消与废水回收降解',
-   '对污染区域洗消，废水导入事故池回收降解，确认无二次污染。', NULL, 'sp4_1', 'sp4_2', NULL, 'pending', 0, 8)
+   '对污染区域洗消，废水导入事故池回收降解，确认无二次污染。', NULL, 'sp4_1', 'sp4_2', NULL, 'pending', 0, 8);

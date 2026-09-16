@@ -37,7 +37,7 @@ CREATE TABLE fac_perimeter_alarm (
     monitor_label VARCHAR2(64),
     work_order_no VARCHAR2(32),
     snapshot_bytes BLOB
-)
+);
 
 
 -- 2) 种子：当前待处置告警（南门西侧周界，对应原 demo-intrusion-1）
@@ -53,7 +53,7 @@ INSERT INTO fac_perimeter_alarm (
     '非授权人员翻越周界进入厂区，请立即核实。', '周界摄像机', 'CAM-PERI-07', '南门西侧 200 米',
     '南门西侧 200 米', '翻越围栏', 'CAM-PERI-07', 110.8872, 21.6709,
     NULL, 1, 0, '', '', 7, 'cam-peri-07', '南门西侧周界监控', NULL
-)
+);
 
 
 -- 3) 种子：历史已处置告警（西门北侧周界，用于详情/列表闭环演示）
@@ -70,4 +70,4 @@ INSERT INTO fac_perimeter_alarm (
     '西门北侧 120 米', '翻越围栏', 'CAM-PERI-03', 110.8768, 21.6814,
     '王成,赵五', 1, 0, '经核实为检修人员临时跨越通道，已现场纠正并封闭临时开口。',
     '2026-08-19 21:42:10', 2, 'cam-peri-03', '西门北侧周界监控', 'WO202608190012'
-)
+);

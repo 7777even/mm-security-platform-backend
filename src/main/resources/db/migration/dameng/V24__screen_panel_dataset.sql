@@ -15,7 +15,7 @@ CREATE TABLE fac_fire_equipment_category (
     category_name VARCHAR2(64) NOT NULL,
     equip_count NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_system_message (
@@ -25,7 +25,7 @@ CREATE TABLE fac_system_message (
     content VARCHAR2(512) NOT NULL,
     occurred_at VARCHAR2(32) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_tv_map_point (
@@ -38,7 +38,7 @@ CREATE TABLE fac_tv_map_point (
     point_height NUMBER(9) NOT NULL DEFAULT 0,
     online NUMBER(1) NOT NULL DEFAULT 1,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_tv_monitor (
@@ -52,7 +52,7 @@ CREATE TABLE fac_tv_monitor (
     location_desc VARCHAR2(64) NOT NULL,
     height_text VARCHAR2(32) NOT NULL,
     angle_text VARCHAR2(32) NOT NULL
-)
+);
 
 
 -- 消防设备分类（12 项，与 mock.ts fireEquipmentCategories 顺序与文案一致）
@@ -67,12 +67,12 @@ INSERT INTO fac_fire_equipment_category (category_name, equip_count, sort_no) VA
 INSERT INTO fac_fire_equipment_category (category_name, equip_count, sort_no) VALUES ('防火分隔设施', 665, 9)
 INSERT INTO fac_fire_equipment_category (category_name, equip_count, sort_no) VALUES ('消防应急广播', 665, 10)
 INSERT INTO fac_fire_equipment_category (category_name, equip_count, sort_no) VALUES ('应急照明及疏散指示系统', 665, 11)
-INSERT INTO fac_fire_equipment_category (category_name, equip_count, sort_no) VALUES ('消防电源', 665, 12)
+INSERT INTO fac_fire_equipment_category (category_name, equip_count, sort_no) VALUES ('消防电源', 665, 12);
 
 
 -- 大屏底部系统消息滚动条（与 mock.ts systemMessages 一致）
 INSERT INTO fac_system_message (msg_type, title, content, occurred_at, sort_no) VALUES ('danger', '人员违规进入', 'A装置区域发现非注册人员，请核实。', '2026-03-17 14:21:30', 1)
-INSERT INTO fac_system_message (msg_type, title, content, occurred_at, sort_no) VALUES ('warning', '有毒气体超标', 'A装置区域有毒气体浓度超过标准值200%，请相关人员立即撤离。', '2026-03-17 14:21:30', 2)
+INSERT INTO fac_system_message (msg_type, title, content, occurred_at, sort_no) VALUES ('warning', '有毒气体超标', 'A装置区域有毒气体浓度超过标准值200%，请相关人员立即撤离。', '2026-03-17 14:21:30', 2);
 
 
 -- 工业电视地图撒点（15 项，经纬度由设计舞台百分比换算后固化）
@@ -90,7 +90,7 @@ INSERT INTO fac_tv_map_point (point_code, point_label, point_group, longitude, l
 INSERT INTO fac_tv_map_point (point_code, point_label, point_group, longitude, latitude, point_height, online, sort_no) VALUES ('boundary-01', '厂区西门', 'boundary', 110.878010, 21.682382, 74, 1, 12)
 INSERT INTO fac_tv_map_point (point_code, point_label, point_group, longitude, latitude, point_height, online, sort_no) VALUES ('boundary-02', '厂区北门', 'boundary', 110.882634, 21.686102, 74, 1, 13)
 INSERT INTO fac_tv_map_point (point_code, point_label, point_group, longitude, latitude, point_height, online, sort_no) VALUES ('boundary-03', '厂界东侧', 'boundary', 110.887339, 21.682309, 74, 1, 14)
-INSERT INTO fac_tv_map_point (point_code, point_label, point_group, longitude, latitude, point_height, online, sort_no) VALUES ('boundary-04', '厂界南侧', 'boundary', 110.882961, 21.677646, 74, 0, 15)
+INSERT INTO fac_tv_map_point (point_code, point_label, point_group, longitude, latitude, point_height, online, sort_no) VALUES ('boundary-04', '厂界南侧', 'boundary', 110.882961, 21.677646, 74, 0, 15);
 
 
 -- 视频监控档案（与地图撒点一一对应，默认档案项取自 tvMock defaultVideoMonitorDetail）
@@ -108,4 +108,4 @@ INSERT INTO fac_tv_monitor (monitor_code, monitor_name, online, integrity, monit
 INSERT INTO fac_tv_monitor (monitor_code, monitor_name, online, integrity, monitor_type, department, location_desc, height_text, angle_text) VALUES ('boundary-01', '厂区西门', 1, '良好', '枪机', '安环部', '110.878010, 21.682382', '15m', '56°')
 INSERT INTO fac_tv_monitor (monitor_code, monitor_name, online, integrity, monitor_type, department, location_desc, height_text, angle_text) VALUES ('boundary-02', '厂区北门', 1, '良好', '枪机', '安环部', '110.882634, 21.686102', '15m', '56°')
 INSERT INTO fac_tv_monitor (monitor_code, monitor_name, online, integrity, monitor_type, department, location_desc, height_text, angle_text) VALUES ('boundary-03', '厂界东侧', 1, '良好', '球机', '安环部', '110.887339, 21.682309', '15m', '56°')
-INSERT INTO fac_tv_monitor (monitor_code, monitor_name, online, integrity, monitor_type, department, location_desc, height_text, angle_text) VALUES ('boundary-04', '厂界南侧', 0, '一般', '枪机', '安环部', '110.882961, 21.677646', '15m', '56°')
+INSERT INTO fac_tv_monitor (monitor_code, monitor_name, online, integrity, monitor_type, department, location_desc, height_text, angle_text) VALUES ('boundary-04', '厂界南侧', 0, '一般', '枪机', '安环部', '110.882961, 21.677646', '15m', '56°');

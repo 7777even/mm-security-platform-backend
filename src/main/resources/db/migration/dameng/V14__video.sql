@@ -18,7 +18,7 @@ CREATE TABLE fac_video_group (
     group_kind VARCHAR2(16) NOT NULL,
     icon_index NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_video_camera (
@@ -30,7 +30,7 @@ CREATE TABLE fac_video_camera (
     hd NUMBER(1) NOT NULL DEFAULT 1,
     thumb_index NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_video_linkage (
@@ -42,7 +42,7 @@ CREATE TABLE fac_video_linkage (
     linkage_count NUMBER(9) NOT NULL DEFAULT 0,
     business_objects VARCHAR2(256),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_video_linkage_rule (
@@ -52,7 +52,7 @@ CREATE TABLE fac_video_linkage_rule (
     object_category VARCHAR2(32) NOT NULL,
     object_name VARCHAR2(64) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 分类（group_kind=CATEGORY，8 个，沿用 videoControlMock.videoControlCategories）
@@ -63,7 +63,7 @@ INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_ind
 INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('gate', '出入口', NULL, 'CATEGORY', 4, 5)
 INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('warehouse', '仓库', NULL, 'CATEGORY', 5, 6)
 INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('pump', '泵房', NULL, 'CATEGORY', 6, 7)
-INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('other', '其它区域', NULL, 'CATEGORY', 7, 8)
+INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('other', '其它区域', NULL, 'CATEGORY', 7, 8);
 
 
 -- 分组树（group_kind=TREE，沿用 videoControlMock.videoControlTree）
@@ -77,7 +77,7 @@ INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_ind
 INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('patrol-1', '巡检区域-1', 'patrol', 'TREE', 0, 1)
 INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('patrol-2', '巡检区域-2', 'patrol', 'TREE', 0, 2)
 INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('key', '重点监控', NULL, 'TREE', 0, 4)
-INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('key-1', '炼油罐区-5#球机', 'key', 'TREE', 0, 1)
+INSERT INTO fac_video_group (node_code, label, parent_code, group_kind, icon_index, sort_no) VALUES ('key-1', '炼油罐区-5#球机', 'key', 'TREE', 0, 1);
 
 
 -- 摄像头台账（27 路，沿用 videoControlMock.buildPageCells 生成规则：名称/类型循环、
@@ -108,7 +108,7 @@ INSERT INTO fac_video_camera (name, camera_type, location, status_name, hd, thum
 INSERT INTO fac_video_camera (name, camera_type, location, status_name, hd, thumb_index, sort_no) VALUES ('办公区-2', '云台', '中海壳牌石油化工有限公司', 'live', 1, 5, 24)
 INSERT INTO fac_video_camera (name, camera_type, location, status_name, hd, thumb_index, sort_no) VALUES ('配电房-1', '固定点机', '中海壳牌石油化工有限公司', 'live', 1, 0, 25)
 INSERT INTO fac_video_camera (name, camera_type, location, status_name, hd, thumb_index, sort_no) VALUES ('配电房-2', '球机', '中海壳牌石油化工有限公司', 'live', 1, 1, 26)
-INSERT INTO fac_video_camera (name, camera_type, location, status_name, hd, thumb_index, sort_no) VALUES ('消防站-1', '枪机', '中海壳牌石油化工有限公司', 'live', 1, 2, 27)
+INSERT INTO fac_video_camera (name, camera_type, location, status_name, hd, thumb_index, sort_no) VALUES ('消防站-1', '枪机', '中海壳牌石油化工有限公司', 'live', 1, 2, 27);
 
 
 -- 视频联动配置（沿用 videoLinkageMock.videoLinkageConfigs）
@@ -116,7 +116,7 @@ INSERT INTO fac_video_linkage (config_code, name, code, category, linkage_count,
 INSERT INTO fac_video_linkage (config_code, name, code, category, linkage_count, business_objects, sort_no) VALUES ('lk-002', 'XX强3-5棚伯', 'HKJK-5124864', '枪机', 1, '石脑油罐区', 2)
 INSERT INTO fac_video_linkage (config_code, name, code, category, linkage_count, business_objects, sort_no) VALUES ('lk-003', '1#厂区高空AR', 'HKJK-5124865', '高空AR', 2, 'A生产区、B生产区', 3)
 INSERT INTO fac_video_linkage (config_code, name, code, category, linkage_count, business_objects, sort_no) VALUES ('lk-004', '北2路33#枪机', 'HKJK-5124866', '枪机', 3, '北2路、储油罐区、炼化厂区门口', 4)
-INSERT INTO fac_video_linkage (config_code, name, code, category, linkage_count, business_objects, sort_no) VALUES ('lk-005', '储油罐区-2#球机', 'HKJK-5124867', '球机', 2, '储油罐区、消防水系统', 5)
+INSERT INTO fac_video_linkage (config_code, name, code, category, linkage_count, business_objects, sort_no) VALUES ('lk-005', '储油罐区-2#球机', 'HKJK-5124867', '球机', 2, '储油罐区、消防水系统', 5);
 
 
 -- 联动规则（沿用 videoLinkageMock.buildLinkageRules；未预置的配置由服务端回退默认规则）
@@ -126,4 +126,4 @@ INSERT INTO fac_video_linkage_rule (config_code, preset_point, object_category, 
 INSERT INTO fac_video_linkage_rule (config_code, preset_point, object_category, object_name, sort_no) VALUES ('lk-001', '储油罐区-西侧出入口', '储罐', '储油罐区', 4)
 INSERT INTO fac_video_linkage_rule (config_code, preset_point, object_category, object_name, sort_no) VALUES ('lk-002', '石脑油罐区-东南角', '重大危险源', '石脑油罐区', 1)
 INSERT INTO fac_video_linkage_rule (config_code, preset_point, object_category, object_name, sort_no) VALUES ('lk-003', '炼化厂区门口', '库区', 'A生产区', 1)
-INSERT INTO fac_video_linkage_rule (config_code, preset_point, object_category, object_name, sort_no) VALUES ('lk-003', '北2路中段', '库区', 'B生产区', 2)
+INSERT INTO fac_video_linkage_rule (config_code, preset_point, object_category, object_name, sort_no) VALUES ('lk-003', '北2路中段', '库区', 'B生产区', 2);

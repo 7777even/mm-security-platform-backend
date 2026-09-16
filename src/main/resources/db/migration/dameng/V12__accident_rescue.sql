@@ -24,7 +24,7 @@ CREATE TABLE fac_accident_incident (
     reported NUMBER(1) NOT NULL DEFAULT 0,
     facility_name VARCHAR2(128) NOT NULL,
     is_default NUMBER(1) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_accident_detail_field (
@@ -33,7 +33,7 @@ CREATE TABLE fac_accident_detail_field (
     field_label VARCHAR2(64) NOT NULL,
     field_value VARCHAR2(512),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_accident_dispatch_resource (
@@ -53,7 +53,7 @@ CREATE TABLE fac_accident_dispatch_resource (
     longitude DOUBLE PRECISION,
     latitude DOUBLE PRECISION,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_accident_duty_person (
@@ -63,7 +63,7 @@ CREATE TABLE fac_accident_duty_person (
     phone VARCHAR2(32),
     avatar_index NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_accident_aux_stat (
@@ -72,7 +72,7 @@ CREATE TABLE fac_accident_aux_stat (
     value_name NUMBER(9) NOT NULL DEFAULT 0,
     icon_index NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_accident_dynamic (
@@ -86,11 +86,11 @@ CREATE TABLE fac_accident_dynamic (
     reply VARCHAR2(1024),
     stage_label VARCHAR2(64),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 INSERT INTO fac_accident_incident (event_id, title, location, longitude, latitude, hazard_source_level, map_status, started_at, ended_at, status_name, reported, facility_name, is_default)
-VALUES (4, '乙烯裂解装置区火灾', '乙烯裂解装置区', 110.8781, 21.6812, '一级', '主力扑救', '2026-04-27 14:54:49', NULL, 'processing', 1, '乙烯裂解装置', 1)
+VALUES (4, '乙烯裂解装置区火灾', '乙烯裂解装置区', 110.8781, 21.6812, '一级', '主力扑救', '2026-04-27 14:54:49', NULL, 'processing', 1, '乙烯裂解装置', 1);
 
 
 INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, sort_no) VALUES (1, '事故时间', '2026-04-27 14:54:49', 1)
@@ -109,7 +109,7 @@ INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, so
 INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, sort_no) VALUES (1, '轻伤人数', '0人', 14)
 INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, sort_no) VALUES (1, '外部救援', '已启动预案', 15)
 INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, sort_no) VALUES (1, '已采取措施', '现场已启动疏散撤离，打开附近消防泡沫管道喷淋降温，同时确认无关人员已疏散', 16)
-INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, sort_no) VALUES (1, '附件信息', '—', 17)
+INSERT INTO fac_accident_detail_field (incident_id, field_label, field_value, sort_no) VALUES (1, '附件信息', '—', 17);
 
 
 INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resource_name, code, organization, area, status_name, distance_km, eta_minutes, capacity, contact, phone, longitude, latitude, sort_no) VALUES ('team-01', '救援队伍', '炼油消防一中队', 'TEAM-RY-01', '消防救援中心', '炼油区', '可调度', 1.2, 6, '18人 · 泡沫灭火', '王钰', '18300556145', 110.8781, 21.6812, 1)
@@ -119,13 +119,13 @@ INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resour
 INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resource_name, code, organization, area, status_name, distance_km, eta_minutes, capacity, contact, phone, longitude, latitude, sort_no) VALUES ('material-01', '应急物资', '抗溶性水成膜泡沫液', 'MAT-PM-0031', '炼油应急物资库', '炼油区', '可调度', 0.9, 5, '库存 12t · 可用 10t', '赵敏', '18300556150', 110.8822, 21.6815, 5)
 INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resource_name, code, organization, area, status_name, distance_km, eta_minutes, capacity, contact, phone, longitude, latitude, sort_no) VALUES ('material-02', '应急物资', '重型防化服', 'MAT-FH-0018', '炼油应急物资库', '炼油区', '可调度', 0.9, 5, '库存 36套 · 可用 28套', '赵敏', '18300556150', 110.8824, 21.6812, 6)
 INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resource_name, code, organization, area, status_name, distance_km, eta_minutes, capacity, contact, phone, longitude, latitude, sort_no) VALUES ('expert-01', '应急专家', '周建国', 'EXP-HG-008', '茂名石化专家组', '炼油区', '可调度', 3.1, 15, '危化品泄漏与火灾处置', '周建国', '13802556008', 110.8738, 21.6833, 7)
-INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resource_name, code, organization, area, status_name, distance_km, eta_minutes, capacity, contact, phone, longitude, latitude, sort_no) VALUES ('team-03', '救援队伍', '港区危化品抢险队', 'TEAM-GQ-02', '港区作业部', '港区', '离线', 18.6, 35, '15人 · 海上围控', '梁海', '13802556012', 110.9462, 21.5837, 8)
+INSERT INTO fac_accident_dispatch_resource (resource_code, resource_type, resource_name, code, organization, area, status_name, distance_km, eta_minutes, capacity, contact, phone, longitude, latitude, sort_no) VALUES ('team-03', '救援队伍', '港区危化品抢险队', 'TEAM-GQ-02', '港区作业部', '港区', '离线', 18.6, 35, '15人 · 海上围控', '梁海', '13802556012', 110.9462, 21.5837, 8);
 
 
 INSERT INTO fac_accident_duty_person (name, role, phone, avatar_index, sort_no) VALUES ('杨恒朋', '值班领导', '13792536966', 0, 1)
 INSERT INTO fac_accident_duty_person (name, role, phone, avatar_index, sort_no) VALUES ('高策', '值班员', '18300556145', 1, 2)
 INSERT INTO fac_accident_duty_person (name, role, phone, avatar_index, sort_no) VALUES ('高颖', '值班员', '18300556145', 2, 3)
-INSERT INTO fac_accident_duty_person (name, role, phone, avatar_index, sort_no) VALUES ('王磊', '值班员', '18300556145', 3, 4)
+INSERT INTO fac_accident_duty_person (name, role, phone, avatar_index, sort_no) VALUES ('王磊', '值班员', '18300556145', 3, 4);
 
 
 INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUES ('应急专家', 47, 0, 1)
@@ -135,7 +135,7 @@ INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUE
 INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUES ('应急场所', 62, 4, 5)
 INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUES ('医疗机构', 80, 5, 6)
 INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUES ('应急车辆', 33, 6, 7)
-INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUES ('消防设施', 11, 7, 8)
+INSERT INTO fac_accident_aux_stat (label, value_name, icon_index, sort_no) VALUES ('消防设施', 11, 7, 8);
 
 
 INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, responder, reply, stage_label, sort_no) VALUES ('rescue', '应急救援', '【固定指令】', '2026-04-03 12:15:45', '指令内容：请消防一队立即赶赴储罐区B-3，开展主力扑救并同步上报现场情况，注意保持安全距离。', '王钰', '【已回复】：已接收指令，车辆已出发，预计8分钟到达现场。', NULL, 1)
@@ -156,4 +156,4 @@ INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, resp
 INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, responder, reply, stage_label, sort_no) VALUES ('awareness', '视频监控', '【快报】', '2026-04-27 15:05:12', '主监控画面显示明火已熄灭，现场烟雾明显减少。', '视频监控中心', '【已同步】', NULL, 16)
 INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, responder, reply, stage_label, sort_no) VALUES ('awareness', '人员定位', '【快报】', '2026-04-27 15:12:33', '现场作业人员已全部撤离至安全集合点，无失联。', '人员定位系统', '【已同步】', NULL, 17)
 INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, responder, reply, stage_label, sort_no) VALUES ('awareness', '气体监测', '【快报】', '2026-04-27 15:19:50', '便携式检测仪显示O2浓度正常，CO浓度持续下降。', '气体检测组', '【已同步】', NULL, 18)
-INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, responder, reply, stage_label, sort_no) VALUES ('awareness', '消防设施', '【快报】', '2026-04-27 15:27:21', '固定消防炮运行正常，管网压力维持在额定区间。', '消防设施组', '【已同步】', NULL, 19)
+INSERT INTO fac_accident_dynamic (category, title, tag, time, command_text, responder, reply, stage_label, sort_no) VALUES ('awareness', '消防设施', '【快报】', '2026-04-27 15:27:21', '固定消防炮运行正常，管网压力维持在额定区间。', '消防设施组', '【已同步】', NULL, 19);

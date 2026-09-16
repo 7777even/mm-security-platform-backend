@@ -41,7 +41,7 @@ CREATE TABLE fac_special_operation_ticket (
     gas_monitor_count NUMBER(9) NOT NULL DEFAULT 0,
     personnel_count NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_special_operation_video (
@@ -49,7 +49,7 @@ CREATE TABLE fac_special_operation_video (
     ticket_id NUMBER(19) NOT NULL,
     name VARCHAR2(64) NOT NULL,
     location VARCHAR2(128) NOT NULL
-)
+);
 
 
 CREATE TABLE fac_special_operation_gas (
@@ -58,7 +58,7 @@ CREATE TABLE fac_special_operation_gas (
     name VARCHAR2(64) NOT NULL,
     value_text VARCHAR2(32) NOT NULL,
     status_name VARCHAR2(16) NOT NULL
-)
+);
 
 
 CREATE TABLE fac_special_operation_person (
@@ -67,7 +67,7 @@ CREATE TABLE fac_special_operation_person (
     name VARCHAR2(32) NOT NULL,
     role_name VARCHAR2(32) NOT NULL,
     phone VARCHAR2(32) NOT NULL
-)
+);
 
 
 -- 作业票种子（12 张，按 buildRecord 规则物化 id 1..12）
@@ -118,37 +118,37 @@ INSERT INTO fac_special_operation_ticket (ticket_area, op_type, op_level, ticket
 INSERT INTO fac_special_operation_ticket (ticket_area, op_type, op_level, ticket_status, start_time, end_time, time_range, work_unit, apply_unit,
    operation_date, work_location, is_contractor, hazard_type, leader_name, leader_phone, position,
    longitude, latitude, change_reason, cancel_reason, guardian_name, workers, permit_no, content,
-   video_count, gas_monitor_count, personnel_count, sort_no) VALUES ('仓储区', '动土作业', '一级', '已签发', '2026-06-13 09:30:00', '2026-06-13 17:00:00', '2026.06.13 - 2026.06.13', '中国石油天然气第六建设有限公司', '化工一部', '2026-06-13 09:30:00', '仓储区', '是', '--', '赵忠阳', '11111111', '仓储区一层阀口', 110.8932, 21.6758, '--', '--', '王学龙', '阮国述, 孙业光', '20260601150001332.pdf', '动土作业现场施工', 26, 3, 2, 12)
+   video_count, gas_monitor_count, personnel_count, sort_no) VALUES ('仓储区', '动土作业', '一级', '已签发', '2026-06-13 09:30:00', '2026-06-13 17:00:00', '2026.06.13 - 2026.06.13', '中国石油天然气第六建设有限公司', '化工一部', '2026-06-13 09:30:00', '仓储区', '是', '--', '赵忠阳', '11111111', '仓储区一层阀口', 110.8932, 21.6758, '--', '--', '王学龙', '阮国述, 孙业光', '20260601150001332.pdf', '动土作业现场施工', 26, 3, 2, 12);
 
 
 -- 现场视频（每票 4 路，沿用 mock videos 生成规则）
 INSERT INTO fac_special_operation_video (ticket_id, name, location)
-SELECT id, '现场视频-1', CONCAT(ticket_area, '监控点1') FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '现场视频-1', CONCAT(ticket_area, '监控点1') FROM fac_special_operation_ticket ORDER BY id;
 
 INSERT INTO fac_special_operation_video (ticket_id, name, location)
-SELECT id, '现场视频-2', CONCAT(ticket_area, '监控点2') FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '现场视频-2', CONCAT(ticket_area, '监控点2') FROM fac_special_operation_ticket ORDER BY id;
 
 INSERT INTO fac_special_operation_video (ticket_id, name, location)
-SELECT id, '现场视频-3', CONCAT(ticket_area, '监控点3') FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '现场视频-3', CONCAT(ticket_area, '监控点3') FROM fac_special_operation_ticket ORDER BY id;
 
 INSERT INTO fac_special_operation_video (ticket_id, name, location)
-SELECT id, '现场视频-4', CONCAT(ticket_area, '监控点4') FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '现场视频-4', CONCAT(ticket_area, '监控点4') FROM fac_special_operation_ticket ORDER BY id;
 
 
 -- 气体检测点（每票 3 项，沿用 mock gasPoints）
 INSERT INTO fac_special_operation_gas (ticket_id, name, value_text, status_name)
-SELECT id, '可燃气体', '0.2%LEL', '正常' FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '可燃气体', '0.2%LEL', '正常' FROM fac_special_operation_ticket ORDER BY id;
 
 INSERT INTO fac_special_operation_gas (ticket_id, name, value_text, status_name)
-SELECT id, '氧气', '20.8%', '正常' FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '氧气', '20.8%', '正常' FROM fac_special_operation_ticket ORDER BY id;
 
 INSERT INTO fac_special_operation_gas (ticket_id, name, value_text, status_name)
-SELECT id, '硫化氢', '0ppm', '正常' FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '硫化氢', '0ppm', '正常' FROM fac_special_operation_ticket ORDER BY id;
 
 
 -- 作业人员（每票 2 人，沿用 mock personnel）
 INSERT INTO fac_special_operation_person (ticket_id, name, role_name, phone)
-SELECT id, '阮国述', '施工人员', '13800001111' FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '阮国述', '施工人员', '13800001111' FROM fac_special_operation_ticket ORDER BY id;
 
 INSERT INTO fac_special_operation_person (ticket_id, name, role_name, phone)
-SELECT id, '孙业光', '监护人员', '13800002222' FROM fac_special_operation_ticket ORDER BY id
+SELECT id, '孙业光', '监护人员', '13800002222' FROM fac_special_operation_ticket ORDER BY id;

@@ -37,7 +37,7 @@ CREATE TABLE fac_rescue_equipment (
     issue_registration VARCHAR2(128),
     spare_parts VARCHAR2(128),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_rescue_personnel (
@@ -46,7 +46,7 @@ CREATE TABLE fac_rescue_personnel (
     squadron VARCHAR2(32) NOT NULL,
     person_role VARCHAR2(32) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_rescue_option (
@@ -54,7 +54,7 @@ CREATE TABLE fac_rescue_option (
     option_kind VARCHAR2(32) NOT NULL,
     option_label VARCHAR2(64) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_rescue_vehicle (
@@ -81,7 +81,7 @@ CREATE TABLE fac_rescue_vehicle (
     fault_record VARCHAR2(128),
     inspection_status VARCHAR2(32),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_rescue_vehicle_crew (
@@ -93,7 +93,7 @@ CREATE TABLE fac_rescue_vehicle_crew (
     certificate VARCHAR2(128),
     duty_status VARCHAR2(32),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_rescue_vehicle_equipment (
@@ -106,7 +106,7 @@ CREATE TABLE fac_rescue_vehicle_equipment (
     equipment_status VARCHAR2(32),
     storage_location VARCHAR2(128),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_rescue_vehicle_kv (
@@ -116,7 +116,7 @@ CREATE TABLE fac_rescue_vehicle_kv (
     kv_label VARCHAR2(64) NOT NULL,
     value_text VARCHAR2(128) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_brigade_team (
@@ -133,7 +133,7 @@ CREATE TABLE fac_brigade_team (
     rescue_personnel NUMBER(9) NOT NULL DEFAULT 0,
     rescue_vehicles NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_brigade_vehicle (
@@ -144,7 +144,7 @@ CREATE TABLE fac_brigade_vehicle (
     vehicle_status VARCHAR2(16) NOT NULL,
     parking_location VARCHAR2(64),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_brigade_person (
@@ -156,7 +156,7 @@ CREATE TABLE fac_brigade_person (
     phone VARCHAR2(32) NOT NULL,
     duty_status VARCHAR2(16) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_brigade_equipment (
@@ -169,7 +169,7 @@ CREATE TABLE fac_brigade_equipment (
     equip_status VARCHAR2(16),
     storage_location VARCHAR2(64),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 筛选项：中队 / 岗位 / 车辆类型 / 区域（含“全部”首项，与前端下拉一致）
@@ -205,7 +205,7 @@ INSERT INTO fac_rescue_option (option_kind, option_label, sort_no) VALUES ('BRIG
 INSERT INTO fac_rescue_option (option_kind, option_label, sort_no) VALUES ('BRIGADE_AREA', '仓储区', 4)
 INSERT INTO fac_rescue_option (option_kind, option_label, sort_no) VALUES ('BRIGADE_AREA', '码头区', 5)
 INSERT INTO fac_rescue_option (option_kind, option_label, sort_no) VALUES ('BRIGADE_AREA', '芳烃区', 6)
-INSERT INTO fac_rescue_option (option_kind, option_label, sort_no) VALUES ('BRIGADE_AREA', '特勤保障区', 7)
+INSERT INTO fac_rescue_option (option_kind, option_label, sort_no) VALUES ('BRIGADE_AREA', '特勤保障区', 7);
 
 
 -- 救援装备（35 条；id=1 为 mock 特例值，原样落地）
@@ -348,7 +348,7 @@ INSERT INTO fac_rescue_equipment (id, equip_name, squadron, quantity, leader_nam
 INSERT INTO fac_rescue_equipment (id, equip_name, squadron, quantity, leader_name, leader_phone,
     stock_quantity, equip_model, protection_type, filter_canister, max_continuous_use, storage_location,
     purchase_batch, factory_validity_years, remaining_validity, last_inspection_date,
-    next_mandatory_maintenance_date, equipment_status, scrap_warning, issue_registration, spare_parts) VALUES (35, '隔热服', '罐区中队', 40, '李伟', '13788996655', 29, '隔热服标准型-035', '综合防护', '通用型滤毒罐', '单次连续使用≤60 分钟', '罐区中队装备库房 B 区 12 货架', '202412 消防应急采购', '5 年', '5 年 11 个月', '2026-06-01', '2026-09-01', '待检修', '无', '本月领用 0 套', '备用配件按台账配置')
+    next_mandatory_maintenance_date, equipment_status, scrap_warning, issue_registration, spare_parts) VALUES (35, '隔热服', '罐区中队', 40, '李伟', '13788996655', 29, '隔热服标准型-035', '综合防护', '通用型滤毒罐', '单次连续使用≤60 分钟', '罐区中队装备库房 B 区 12 货架', '202412 消防应急采购', '5 年', '5 年 11 个月', '2026-06-01', '2026-09-01', '待检修', '无', '本月领用 0 套', '备用配件按台账配置');
 
 
 -- 救援人员（52 条；id<=6 为 mock 固定值）
@@ -403,7 +403,7 @@ INSERT INTO fac_rescue_personnel (id, person_name, squadron, person_role) VALUES
 INSERT INTO fac_rescue_personnel (id, person_name, squadron, person_role) VALUES (49, '周军', '乙烯中队', '安全员')
 INSERT INTO fac_rescue_personnel (id, person_name, squadron, person_role) VALUES (50, '吴华', '炼油中队', '班长')
 INSERT INTO fac_rescue_personnel (id, person_name, squadron, person_role) VALUES (51, '张杰', '罐区中队', '副班长')
-INSERT INTO fac_rescue_personnel (id, person_name, squadron, person_role) VALUES (52, '李鹏强', '仓储中队', '战斗员')
+INSERT INTO fac_rescue_personnel (id, person_name, squadron, person_role) VALUES (52, '李鹏强', '仓储中队', '战斗员');
 
 
 -- 救援车辆（12 条）
@@ -454,7 +454,7 @@ INSERT INTO fac_rescue_vehicle (id, plate, vehicle_type, squadron, leader_name, 
 INSERT INTO fac_rescue_vehicle (id, plate, vehicle_type, squadron, leader_name, leader_phone, vehicle_status,
     business_name, vehicle_type_full, parking_location, chassis_model, manufacture_date, inspection_expiry,
     foam_tank_volume, water_tank_volume, max_water_flow, foam_type, last_maintenance_date,
-    next_maintenance_date, total_mileage, fault_record, inspection_status) VALUES (12, '粤K-1212', '登高平台消防车', '仓储中队', '王磊', '13977665544', '维修中', '登高平台消防车（粤K-1212）', '登高平台消防车', '仓储中队消防车库 5 号车位', '重汽豪沃 ZZ5447V506HF2', '2022-08-10', '2026-08-10', '6m³', '12m³', '100L/s', '抗溶泡沫液', '2026-06-01', '2026-09-01', '9440km', '近 3 个月无故障', '正常有效')
+    next_maintenance_date, total_mileage, fault_record, inspection_status) VALUES (12, '粤K-1212', '登高平台消防车', '仓储中队', '王磊', '13977665544', '维修中', '登高平台消防车（粤K-1212）', '登高平台消防车', '仓储中队消防车库 5 号车位', '重汽豪沃 ZZ5447V506HF2', '2022-08-10', '2026-08-10', '6m³', '12m³', '100L/s', '抗溶泡沫液', '2026-06-01', '2026-09-01', '9440km', '近 3 个月无故障', '正常有效');
 
 
 -- 救援车辆乘员（id<=6 各 3 人，其余各 2 人）
@@ -487,7 +487,7 @@ INSERT INTO fac_rescue_vehicle_crew (vehicle_id, member_role, member_name, phone
 INSERT INTO fac_rescue_vehicle_crew (vehicle_id, member_role, member_name, phone, certificate, duty_status, sort_no) VALUES (11, '车长', '李伟', '13788996655', '消防车辆操作证', '在岗', 1)
 INSERT INTO fac_rescue_vehicle_crew (vehicle_id, member_role, member_name, phone, certificate, duty_status, sort_no) VALUES (11, '驾驶员', '刘阳', '13865974412', 'A1 驾驶证、特种车辆准驾证', '在岗', 2)
 INSERT INTO fac_rescue_vehicle_crew (vehicle_id, member_role, member_name, phone, certificate, duty_status, sort_no) VALUES (12, '车长', '王磊', '13977665544', '消防车辆操作证', '在岗', 1)
-INSERT INTO fac_rescue_vehicle_crew (vehicle_id, member_role, member_name, phone, certificate, duty_status, sort_no) VALUES (12, '驾驶员', '刘阳', '13865974412', 'A1 驾驶证、特种车辆准驾证', '在岗', 2)
+INSERT INTO fac_rescue_vehicle_crew (vehicle_id, member_role, member_name, phone, certificate, duty_status, sort_no) VALUES (12, '驾驶员', '刘阳', '13865974412', 'A1 驾驶证、特种车辆准驾证', '在岗', 2);
 
 
 -- 救援车辆随车装备（每车 1 条）
@@ -514,7 +514,7 @@ INSERT INTO fac_rescue_vehicle_equipment (vehicle_id, equip_name, quantity, equi
 INSERT INTO fac_rescue_vehicle_equipment (vehicle_id, equip_name, quantity, equip_model, next_check_date,
     equipment_status, storage_location, sort_no) VALUES (11, '空气呼吸器', '5 套', 'RHZKF6.8/30', '2026-08-05', '完好可用', '车辆左侧器材舱 A 格', 1)
 INSERT INTO fac_rescue_vehicle_equipment (vehicle_id, equip_name, quantity, equip_model, next_check_date,
-    equipment_status, storage_location, sort_no) VALUES (12, '空气呼吸器', '2 套', 'RHZKF6.8/30', '2026-08-05', '完好可用', '车辆左侧器材舱 A 格', 1)
+    equipment_status, storage_location, sort_no) VALUES (12, '空气呼吸器', '2 套', 'RHZKF6.8/30', '2026-08-05', '完好可用', '车辆左侧器材舱 A 格', 1);
 
 
 -- 救援车辆耗材与出动汇总（kv_kind：CONSUMABLE=耗材 / DISPATCH_SUMMARY=出动汇总）
@@ -601,7 +601,7 @@ INSERT INTO fac_rescue_vehicle_kv (vehicle_id, kv_kind, kv_label, value_text, so
 INSERT INTO fac_rescue_vehicle_kv (vehicle_id, kv_kind, kv_label, value_text, sort_no) VALUES (12, 'CONSUMABLE', '应急照明设备', '2 套', 4)
 INSERT INTO fac_rescue_vehicle_kv (vehicle_id, kv_kind, kv_label, value_text, sort_no) VALUES (12, 'DISPATCH_SUMMARY', '本月出警次数', '2 次', 1)
 INSERT INTO fac_rescue_vehicle_kv (vehicle_id, kv_kind, kv_label, value_text, sort_no) VALUES (12, 'DISPATCH_SUMMARY', '上次出警时间', '2026-06-15 09:30', 2)
-INSERT INTO fac_rescue_vehicle_kv (vehicle_id, kv_kind, kv_label, value_text, sort_no) VALUES (12, 'DISPATCH_SUMMARY', '出警场景', '仓储中队辖区应急演练', 3)
+INSERT INTO fac_rescue_vehicle_kv (vehicle_id, kv_kind, kv_label, value_text, sort_no) VALUES (12, 'DISPATCH_SUMMARY', '出警场景', '仓储中队辖区应急演练', 3);
 
 
 -- 消防队伍（8 条）
@@ -620,7 +620,7 @@ INSERT INTO fac_brigade_team (id, team_name, area, member_count, leader_name, le
 INSERT INTO fac_brigade_team (id, team_name, area, member_count, leader_name, leader_phone, location,
     longitude, latitude, description, rescue_personnel, rescue_vehicles) VALUES (7, '特勤一中队', '特勤保障区', 12, '周涛', '13855667788', '总厂区东南门', 110.8918, 21.6742, '负责总厂区东南门及周边区域火灾扑救、应急救援与战备值守，下设灭火、抢险、通信保障等分组。', 12, 4)
 INSERT INTO fac_brigade_team (id, team_name, area, member_count, leader_name, leader_phone, location,
-    longitude, latitude, description, rescue_personnel, rescue_vehicles) VALUES (8, '特勤二中队', '特勤保障区', 14, '孙伟', '13744556677', '公用工程区南门', 110.8876, 21.6773, '负责公用工程区南门及周边区域火灾扑救、应急救援与战备值守，下设灭火、抢险、通信保障等分组。', 14, 5)
+    longitude, latitude, description, rescue_personnel, rescue_vehicles) VALUES (8, '特勤二中队', '特勤保障区', 14, '孙伟', '13744556677', '公用工程区南门', 110.8876, 21.6773, '负责公用工程区南门及周边区域火灾扑救、应急救援与战备值守，下设灭火、抢险、通信保障等分组。', 14, 5);
 
 
 -- 消防队伍车辆（39 条）
@@ -662,7 +662,7 @@ INSERT INTO fac_brigade_vehicle (team_id, plate, vehicle_type, vehicle_status, p
 INSERT INTO fac_brigade_vehicle (team_id, plate, vehicle_type, vehicle_status, parking_location, sort_no) VALUES (8, '粤K·X802', '泡沫消防车', '待命', '中队车库', 2)
 INSERT INTO fac_brigade_vehicle (team_id, plate, vehicle_type, vehicle_status, parking_location, sort_no) VALUES (8, '粤K·X803', '抢险救援车', '待命', '厂区执勤点', 3)
 INSERT INTO fac_brigade_vehicle (team_id, plate, vehicle_type, vehicle_status, parking_location, sort_no) VALUES (8, '粤K·X804', '通信指挥车', '出动', '中队车库', 4)
-INSERT INTO fac_brigade_vehicle (team_id, plate, vehicle_type, vehicle_status, parking_location, sort_no) VALUES (8, '粤K·X805', '登高平台消防车', '维修', '厂区执勤点', 5)
+INSERT INTO fac_brigade_vehicle (team_id, plate, vehicle_type, vehicle_status, parking_location, sort_no) VALUES (8, '粤K·X805', '登高平台消防车', '维修', '厂区执勤点', 5);
 
 
 -- 消防队伍人员（110 条）
@@ -775,7 +775,7 @@ INSERT INTO fac_brigade_person (team_id, person_name, person_role, person_group,
 INSERT INTO fac_brigade_person (team_id, person_name, person_role, person_group, phone, duty_status, sort_no) VALUES (8, '周磊', '装备员', '保障', '13817174614', '在岗', 11)
 INSERT INTO fac_brigade_person (team_id, person_name, person_role, person_group, phone, duty_status, sort_no) VALUES (8, '杨涛', '装备员', '保障', '15817277561', '在岗', 12)
 INSERT INTO fac_brigade_person (team_id, person_name, person_role, person_group, phone, duty_status, sort_no) VALUES (8, '王磊峰', '安全员', '战斗', '13517380508', '休假', 13)
-INSERT INTO fac_brigade_person (team_id, person_name, person_role, person_group, phone, duty_status, sort_no) VALUES (8, '吴涛', '安全员', '战斗', '13717483455', '在岗', 14)
+INSERT INTO fac_brigade_person (team_id, person_name, person_role, person_group, phone, duty_status, sort_no) VALUES (8, '吴涛', '安全员', '战斗', '13717483455', '在岗', 14);
 
 
 -- 消防队伍装备（71 条）
@@ -849,4 +849,4 @@ INSERT INTO fac_brigade_equipment (team_id, equip_name, category, item_count, un
 INSERT INTO fac_brigade_equipment (team_id, equip_name, category, item_count, unit, equip_status, storage_location, sort_no) VALUES (8, '液压顶杆', '破拆工具', 4, '套', '待维护', '工具间', 6)
 INSERT INTO fac_brigade_equipment (team_id, equip_name, category, item_count, unit, equip_status, storage_location, sort_no) VALUES (8, '可燃气体探测仪', '侦检仪器', 8, '台', '完好', '侦检柜', 7)
 INSERT INTO fac_brigade_equipment (team_id, equip_name, category, item_count, unit, equip_status, storage_location, sort_no) VALUES (8, '对讲机', '通讯设备', 16, '台', '完好', '值班室', 8)
-INSERT INTO fac_brigade_equipment (team_id, equip_name, category, item_count, unit, equip_status, storage_location, sort_no) VALUES (8, '移动照明灯组', '照明排烟', 6, '台', '报废预警', '器材库', 9)
+INSERT INTO fac_brigade_equipment (team_id, equip_name, category, item_count, unit, equip_status, storage_location, sort_no) VALUES (8, '移动照明灯组', '照明排烟', 6, '台', '报废预警', '器材库', 9);

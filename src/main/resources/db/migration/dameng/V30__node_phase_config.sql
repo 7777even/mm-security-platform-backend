@@ -21,7 +21,7 @@ CREATE TABLE fac_node_phase_config (
     left_hidden_panels VARCHAR2(256) NOT NULL DEFAULT '',
     duty_auto_roster NUMBER(1) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_center, buffer_radius_meters, right_hidden_tabs, left_hidden_panels, duty_auto_roster, sort_no) VALUES ('alarmJudgement', '1. 接警研判', 'alarm_phone_location,event_device,alarm_phone_zone,factory_center', NULL, 260, '', '', 1, 1)
@@ -32,4 +32,4 @@ INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_ce
 INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_center, buffer_radius_meters, right_hidden_tabs, left_hidden_panels, duty_auto_roster, sort_no) VALUES ('companyLevel', '6. 全厂应急', 'factory_center,event_device', NULL, 900, 'auxiliary', 'info', 0, 6)
 INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_center, buffer_radius_meters, right_hidden_tabs, left_hidden_panels, duty_auto_roster, sort_no) VALUES ('govLevel', '7. 政府应急', 'factory_center', NULL, 1400, 'auxiliary,dynamics', 'info,plan', 0, 7)
 INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_center, buffer_radius_meters, right_hidden_tabs, left_hidden_panels, duty_auto_roster, sort_no) VALUES ('handling', '8. 完成处置', 'event_device,factory_center', NULL, 300, '', 'info', 1, 8)
-INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_center, buffer_radius_meters, right_hidden_tabs, left_hidden_panels, duty_auto_roster, sort_no) VALUES ('archive', '9. 总结与恢复', 'factory_center', NULL, 1200, 'auxiliary,dynamics', 'info,plan', 1, 9)
+INSERT INTO fac_node_phase_config (node_id, node_name, camera_anchors, custom_center, buffer_radius_meters, right_hidden_tabs, left_hidden_panels, duty_auto_roster, sort_no) VALUES ('archive', '9. 总结与恢复', 'factory_center', NULL, 1200, 'auxiliary,dynamics', 'info,plan', 1, 9);

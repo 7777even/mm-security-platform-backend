@@ -21,7 +21,7 @@ CREATE TABLE fac_blacklist_entry (
     event_time VARCHAR2(32) NOT NULL,
     entry_status VARCHAR2(16) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_situation_marker (
@@ -37,19 +37,19 @@ CREATE TABLE fac_fire_situation_marker (
     level_name VARCHAR2(32),
     target_id NUMBER(19) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 车辆黑名单（VEHICLE，3 条）
 INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('VEHICLE', '粤K·A4543', NULL, '违规闯入生产区', '2026-08-05 14:20:11', '生效中', 1)
 INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('VEHICLE', '粤K·B2871', NULL, '超速行驶', '2026-08-02 09:15:33', '生效中', 2)
-INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('VEHICLE', '粤K·C6610', NULL, '逾期未出厂', '2026-07-28 18:40:02', '已解除', 3)
+INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('VEHICLE', '粤K·C6610', NULL, '逾期未出厂', '2026-07-28 18:40:02', '已解除', 3);
 
 
 -- 人员黑名单（PERSON，3 条；id_card 为前端已脱敏文本）
 INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('PERSON', '张**', '4409**********1234', '未佩戴安全帽进入高危区', '2026-08-06 10:02:45', '生效中', 1)
 INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('PERSON', '李**', '4409**********5678', '违规携带火种', '2026-08-01 16:22:19', '生效中', 2)
-INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('PERSON', '王**', '4409**********9012', '恶意破坏门禁设备', '2026-07-20 11:08:37', '已解除', 3)
+INSERT INTO fac_blacklist_entry (entry_kind, subject_name, id_card, reason_text, event_time, entry_status, sort_no) VALUES ('PERSON', '王**', '4409**********9012', '恶意破坏门禁设备', '2026-07-20 11:08:37', '已解除', 3);
 
 
 -- 火情态势地图点位（7 个：1 应急事件 + 4 作业 + 2 报警）
@@ -59,4 +59,4 @@ INSERT INTO fac_fire_situation_marker (marker_code, marker_kind, title, subtitle
 INSERT INTO fac_fire_situation_marker (marker_code, marker_kind, title, subtitle, longitude, latitude, important_flag, icon_url, level_name, target_id, sort_no) VALUES ('op-lift', 'operation', '一级吊装作业', '乙烯装置区 · 进行中', 110.8835, 21.6752, 0, '/icons/fire-situation/crane.svg', '一级', 3, 4)
 INSERT INTO fac_fire_situation_marker (marker_code, marker_kind, title, subtitle, longitude, latitude, important_flag, icon_url, level_name, target_id, sort_no) VALUES ('op-height', 'operation', '一级高处作业', '芳烃装置区 · 进行中', 110.8872, 21.6728, 0, '/icons/fire-situation/ladder.svg', '一级', 6, 5)
 INSERT INTO fac_fire_situation_marker (marker_code, marker_kind, title, subtitle, longitude, latitude, important_flag, icon_url, level_name, target_id, sort_no) VALUES ('alarm-1', 'alarm', '火灾报警', '化工区A装置西侧 · 未销警', 110.888, 21.6854, 1, '/icons/fire-situation/bell-ringing.svg', '未销警', 1, 6)
-INSERT INTO fac_fire_situation_marker (marker_code, marker_kind, title, subtitle, longitude, latitude, important_flag, icon_url, level_name, target_id, sort_no) VALUES ('alarm-2', 'alarm', 'GDS报警', '输油管廊 · 未销警', 110.8902, 21.6752, 0, '/icons/fire-situation/gas.svg', '未销警', 2, 7)
+INSERT INTO fac_fire_situation_marker (marker_code, marker_kind, title, subtitle, longitude, latitude, important_flag, icon_url, level_name, target_id, sort_no) VALUES ('alarm-2', 'alarm', 'GDS报警', '输油管廊 · 未销警', 110.8902, 21.6752, 0, '/icons/fire-situation/gas.svg', '未销警', 2, 7);

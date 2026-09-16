@@ -29,7 +29,7 @@ CREATE TABLE fac_major_hazard (
     chemicals_json        VARCHAR2(4000),
     evacuation_routes_json VARCHAR2(4000),
     operations_json       VARCHAR2(4000)
-)
+);
 
 
 CREATE TABLE fac_monitoring_point (
@@ -41,7 +41,7 @@ CREATE TABLE fac_monitoring_point (
     org        VARCHAR2(64),
     longitude  DOUBLE PRECISION,
     latitude   DOUBLE PRECISION
-)
+);
 
 
 CREATE TABLE fac_monitoring_alarm (
@@ -51,7 +51,7 @@ CREATE TABLE fac_monitoring_alarm (
     area  VARCHAR2(64),
     time  VARCHAR2(32),
     level VARCHAR2(16)
-)
+);
 
 
 CREATE TABLE fac_facility_detail (
@@ -60,7 +60,7 @@ CREATE TABLE fac_facility_detail (
     basic_fields_json  VARCHAR2(4000),
     chemical_fields_json VARCHAR2(4000),
     archives_json      VARCHAR2(4000)
-)
+);
 
 
 -- 重大危险源种子（12 条，内容平移自 majorHazardMock）
@@ -159,7 +159,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 
 
 -- 监测点位种子（18 条，平移自 monitoringPointsMock 的核心字段）
@@ -180,13 +180,13 @@ INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, lo
 INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-15', 'A-15温度', '温度', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8896, 21.6732)
 INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-16', 'A-16液位', '液位', 'warning', '2026-09-08T15:53:00Z', '公用工程区', 110.8911, 21.6741)
 INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-17', 'A-17DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8904, 21.6765)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-18', 'A-18气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8888, 21.6751)
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-18', 'A-18气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8888, 21.6751);
 
 
 -- 监测告警种子（3 条，平移自 monitoringPointsMock.resolveMonitoringAlarms）
 INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-1', '压力高高报', 'A点压力已超过阈值，建议立即核查。', '乙烯装置区', '2026-09-08T15:58:00Z', 'high')
 INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-2', '气体浓度预警', '检测到浓度上升，建议加强通风并确认泄漏源。', '乙烯罐区', '2026-09-08T15:52:00Z', 'medium')
-INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-3', '温度偏高', '温度趋势偏离正常区间，请关注后续变化。', '公用工程区', '2026-09-08T15:44:00Z', 'low')
+INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-3', '温度偏高', '温度趋势偏离正常区间，请关注后续变化。', '公用工程区', '2026-09-08T15:44:00Z', 'low');
 
 
 -- 设施档案种子（1 条，平移自 facilityDetailMock）
@@ -194,4 +194,4 @@ INSERT INTO fac_facility_detail (facility_name, hazard_source_code, basic_fields
 ('乙烯裂解装置', '370680917088',
  '[{"label":"重大危险源分类","value":"装置"},{"label":"重大危险源等级","value":"一级"},{"label":"R值","value":"107"},{"label":"地址","value":"--"},{"label":"投用日期","value":"2024-10-15 00:00:00"},{"label":"外边界500米范围人数估算","value":"--"},{"label":"周边防护目标最近距离(米)","value":"--"},{"label":"是否涉及重点监管工艺","value":"--"},{"label":"是否在化工园区内","value":"是"},{"label":"主要负责人","value":"程仁策 - 13705456799"},{"label":"技术负责人","value":"程广生 - 13642098552"},{"label":"操作负责人","value":"熊国辉 - 13936876966"}]',
  '[{"label":"化学品名称","value":"乙烯"},{"label":"CAS号","value":"74-85-1"},{"label":"危险性类别","value":"易燃气体"},{"label":"最大储量","value":"--"},{"label":"临界量","value":"--"}]',
- '[{"id":"1","name":"顺丁橡胶装置SIL定级报告终版.pdf"},{"id":"2","name":"【含7个重大危险源】高端重大危险源评估报告.pdf"}]')
+ '[{"id":"1","name":"顺丁橡胶装置SIL定级报告终版.pdf"},{"id":"2","name":"【含7个重大危险源】高端重大危险源评估报告.pdf"}]');

@@ -19,9 +19,9 @@ CREATE TABLE fac_field_report (
     attempts     NUMBER(9) DEFAULT 0,
     last_error   VARCHAR2(512),
     synced_at    NUMBER(19)
-)
+);
 
 
 -- 种子：2 条已落库回传，供联调验证真实落库（reporter 仅为演示值，真实受理时由服务端按登录态覆盖）
 INSERT INTO fac_field_report (id, kind, title, note, device_code, media_json, created_at, status, reporter, attempts, last_error, synced_at) VALUES ('r-seed-001', 'field-report', 'A2 区火情处置回传', '现场明火已控制', 'DT-A-3012', NULL, 1717488000000, 'done', 'zhang.san', 1, NULL, 1717488060000)
-INSERT INTO fac_field_report (id, kind, title, note, device_code, media_json, created_at, status, reporter, attempts, last_error, synced_at) VALUES ('r-seed-002', 'task-ack', 'B3 区泄漏任务确认', NULL, NULL, NULL, 1717491600000, 'done', 'li.si', 2, NULL, 1717491660000)
+INSERT INTO fac_field_report (id, kind, title, note, device_code, media_json, created_at, status, reporter, attempts, last_error, synced_at) VALUES ('r-seed-002', 'task-ack', 'B3 区泄漏任务确认', NULL, NULL, NULL, 1717491600000, 'done', 'li.si', 2, NULL, 1717491660000);

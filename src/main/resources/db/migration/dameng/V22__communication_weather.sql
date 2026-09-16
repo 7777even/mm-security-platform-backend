@@ -32,7 +32,7 @@ CREATE TABLE fac_comm_device (
     ip_address VARCHAR2(64) NOT NULL,
     last_check_time VARCHAR2(32) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 广播（broadcast，6 台：A装置区 3 / B装置区 2 / 公共区 1）
@@ -59,7 +59,7 @@ INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, d
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-p1', 'broadcast', 'public', '公共区 (1)', '厂区大门广播', '公共区', '厂区大门西侧', '在线',
-   110.878, 21.674, '室内广播', '2024-02-10', '综合部', '10.20.30.101', '2026-08-10 08:30:00', 6)
+   110.878, 21.674, '室内广播', '2024-02-10', '综合部', '10.20.30.101', '2026-08-10 08:30:00', 6);
 
 
 -- 电话（phone，3 台：A装置区 2 / B装置区 1）
@@ -74,7 +74,7 @@ INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, d
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ph-b1', 'phone', 'area-b', 'B装置区 (1)', 'B装置区1#电话', 'B装置区', 'B装置区控制室', '在线',
-   110.885, 21.668, '防爆电话', '2024-01-08', '生产部', '10.20.42.101', '2026-08-10 08:30:00', 9)
+   110.885, 21.668, '防爆电话', '2024-01-08', '生产部', '10.20.42.101', '2026-08-10 08:30:00', 9);
 
 
 -- 对讲（intercom，2 台：A装置区 2）
@@ -85,7 +85,7 @@ INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, d
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ic-a2', 'intercom', 'area-a', 'A装置区 (2)', 'A装置区2#对讲', 'A装置区', 'A装置区巡检点2', '故障',
-   110.883, 21.670, 'IP对讲终端', '2024-07-15', '安环部', '10.20.51.102', '2026-08-09 22:00:00', 11)
+   110.883, 21.670, 'IP对讲终端', '2024-07-15', '安环部', '10.20.51.102', '2026-08-09 22:00:00', 11);
 
 
 -- ---------------------------------------------------------------- 天气实况（单行）
@@ -103,13 +103,13 @@ CREATE TABLE fac_weather_current (
     visibility_text VARCHAR2(16) NOT NULL,
     rainfall_text VARCHAR2(16) NOT NULL,
     updated_at VARCHAR2(32) NOT NULL
-)
+);
 
 
 INSERT INTO fac_weather_current (temperature, condition_text, air_quality, air_quality_level,
     wind_direction, wind_speed, wind_level, humidity_text, pressure_text, visibility_text,
     rainfall_text, updated_at) VALUES
-  (29, '多云', 35, '优', '东南风', '2.4m/s', '2级', '76%', '1004hPa', '18km', '0.0mm', '08-25 10:30')
+  (29, '多云', 35, '优', '东南风', '2.4m/s', '2级', '76%', '1004hPa', '18km', '0.0mm', '08-25 10:30');
 
 
 -- ---------------------------------------------------------------- 逐小时序列（8 点）
@@ -122,7 +122,7 @@ CREATE TABLE fac_weather_hourly (
     pressure_value DOUBLE PRECISION NOT NULL DEFAULT 0,
     humidity_value NUMBER(9) NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
@@ -140,7 +140,7 @@ INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature,
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
     humidity_value, sort_no) VALUES ('03:00', 0.1, 2.2, 26, 1005, 90, 7)
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('06:00', 0.0, 2.5, 27, 1006, 84, 8)
+    humidity_value, sort_no) VALUES ('06:00', 0.0, 2.5, 27, 1006, 84, 8);
 
 
 -- ---------------------------------------------------------------- 七日预报（7 天）
@@ -156,7 +156,7 @@ CREATE TABLE fac_weather_daily (
     humidity_value NUMBER(9) NOT NULL DEFAULT 0,
     rain_value DOUBLE PRECISION NOT NULL DEFAULT 0,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
@@ -172,4 +172,4 @@ INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text,
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
     wind_text, humidity_value, rain_value, sort_no) VALUES ('周日', '08-30', '晴间多云', '🌤', 33, 26, '东风 2级',   70, 0.0,  6)
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('周一', '08-31', '多云',     '☁', 32, 26, '东南风 2级', 73, 0.0,  7)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('周一', '08-31', '多云',     '☁', 32, 26, '东南风 2级', 73, 0.0,  7);

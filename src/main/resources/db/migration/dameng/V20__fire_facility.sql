@@ -24,7 +24,7 @@ CREATE TABLE fac_fire_facility_monitor (
     monitor_status VARCHAR2(16) NOT NULL,
     last_report_time VARCHAR2(32) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_facility_param (
@@ -34,7 +34,7 @@ CREATE TABLE fac_fire_facility_param (
     value_text VARCHAR2(64) NOT NULL,
     tone VARCHAR2(16) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_facility_ledger (
@@ -48,7 +48,7 @@ CREATE TABLE fac_fire_facility_ledger (
     maintainer_phone VARCHAR2(32) NOT NULL,
     enabled_flag NUMBER(1) NOT NULL DEFAULT 1,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_facility_maintenance (
@@ -58,7 +58,7 @@ CREATE TABLE fac_fire_facility_maintenance (
     content_text VARCHAR2(256) NOT NULL,
     report_file VARCHAR2(256),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_facility_fault (
@@ -82,7 +82,7 @@ CREATE TABLE fac_fire_facility_fault (
     acceptance_person VARCHAR2(64),
     acceptance_result VARCHAR2(64),
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_facility_fault_timeline (
@@ -93,7 +93,7 @@ CREATE TABLE fac_fire_facility_fault_timeline (
     action_name VARCHAR2(64) NOT NULL,
     detail_text VARCHAR2(256) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 CREATE TABLE fac_fire_facility_option (
@@ -101,7 +101,7 @@ CREATE TABLE fac_fire_facility_option (
     kind VARCHAR2(32) NOT NULL,
     option_label VARCHAR2(64) NOT NULL,
     sort_no NUMBER(9) NOT NULL DEFAULT 0
-)
+);
 
 
 -- 设施类型下拉（kind=FACILITY_TYPE，14 项：全部类型 + 12 类标准类型 + 维护保养记录）
@@ -118,7 +118,7 @@ INSERT INTO fac_fire_facility_option (kind, option_label, sort_no) VALUES ('FACI
 INSERT INTO fac_fire_facility_option (kind, option_label, sort_no) VALUES ('FACILITY_TYPE', '消防应急广播', 11)
 INSERT INTO fac_fire_facility_option (kind, option_label, sort_no) VALUES ('FACILITY_TYPE', '应急照明及疏散指示系统', 12)
 INSERT INTO fac_fire_facility_option (kind, option_label, sort_no) VALUES ('FACILITY_TYPE', '消防电源', 13)
-INSERT INTO fac_fire_facility_option (kind, option_label, sort_no) VALUES ('FACILITY_TYPE', '维护保养记录', 14)
+INSERT INTO fac_fire_facility_option (kind, option_label, sort_no) VALUES ('FACILITY_TYPE', '维护保养记录', 14);
 
 
 -- 监控卡片（12 类，sort_no 1..12；后续参数子表按 monitor_id 依次取 1..12）
@@ -145,7 +145,7 @@ INSERT INTO fac_fire_facility_monitor (key_code, facility_type, total_count, onl
 INSERT INTO fac_fire_facility_monitor (key_code, facility_type, total_count, online_count,
     offline_count, fault_count, monitor_status, last_report_time, sort_no) VALUES ('lighting', '应急照明及疏散指示系统', 320, 318, 2, 0, '正常', '2026-08-20 10:13:08', 11)
 INSERT INTO fac_fire_facility_monitor (key_code, facility_type, total_count, online_count,
-    offline_count, fault_count, monitor_status, last_report_time, sort_no) VALUES ('power', '消防电源', 96, 93, 2, 1, '告警', '2026-08-20 10:12:36', 12)
+    offline_count, fault_count, monitor_status, last_report_time, sort_no) VALUES ('power', '消防电源', 96, 93, 2, 1, '告警', '2026-08-20 10:12:36', 12);
 
 
 -- 监控参数（29 条）
@@ -177,7 +177,7 @@ INSERT INTO fac_fire_facility_param (monitor_id, label, value_text, tone, sort_n
 INSERT INTO fac_fire_facility_param (monitor_id, label, value_text, tone, sort_no) VALUES (11, '应急模式', '未触发', 'normal', 2)
 INSERT INTO fac_fire_facility_param (monitor_id, label, value_text, tone, sort_no) VALUES (12, '工作状态', '欠压', 'warning', 1)
 INSERT INTO fac_fire_facility_param (monitor_id, label, value_text, tone, sort_no) VALUES (12, '备用电源', '正常', 'normal', 2)
-INSERT INTO fac_fire_facility_param (monitor_id, label, value_text, tone, sort_no) VALUES (12, 'UPS/EPS', '异常', 'danger', 3)
+INSERT INTO fac_fire_facility_param (monitor_id, label, value_text, tone, sort_no) VALUES (12, 'UPS/EPS', '异常', 'danger', 3);
 
 
 -- 设施台账（12 条，sort_no 1..12；后续维保记录子表按 ledger_id 取 1..12）
@@ -216,7 +216,7 @@ INSERT INTO fac_fire_facility_ledger (facility_code, facility_name, facility_typ
    '茂名石化消防维保公司', '0668-2110011', 1, 11)
 INSERT INTO fac_fire_facility_ledger (facility_code, facility_name, facility_type, location_name,
     device_name, maintainer_name, maintainer_phone, enabled_flag, sort_no) VALUES ('XF-012', '消防电源-消防泵房', '消防电源', '消防泵房/泡沫站', '消防泵房',
-   '电气维保单位', '0668-2110012', 1, 12)
+   '电气维保单位', '0668-2110012', 1, 12);
 
 
 -- 维护保养记录（13 条）
@@ -232,7 +232,7 @@ INSERT INTO fac_fire_facility_maintenance (ledger_id, record_date, content_text,
 INSERT INTO fac_fire_facility_maintenance (ledger_id, record_date, content_text, report_file, sort_no) VALUES (9, '2026-06-15', '季度维保：防火门、防火卷帘功能测试。', NULL, 1)
 INSERT INTO fac_fire_facility_maintenance (ledger_id, record_date, content_text, report_file, sort_no) VALUES (10, '2026-06-08', '月度维保：分区广播试音。', NULL, 1)
 INSERT INTO fac_fire_facility_maintenance (ledger_id, record_date, content_text, report_file, sort_no) VALUES (11, '2026-06-01', '季度维保：应急照明切换测试。', NULL, 1)
-INSERT INTO fac_fire_facility_maintenance (ledger_id, record_date, content_text, report_file, sort_no) VALUES (12, '2026-07-25', '月度维保：主备电切换测试、电池巡检。', NULL, 1)
+INSERT INTO fac_fire_facility_maintenance (ledger_id, record_date, content_text, report_file, sort_no) VALUES (12, '2026-07-25', '月度维保：主备电切换测试、电池巡检。', NULL, 1);
 
 
 -- 故障工单（13 条，sort_no 1..13；后续时间线子表按 fault_id 取 1..13）
@@ -318,7 +318,7 @@ INSERT INTO fac_fire_facility_fault (fault_code, facility_code, facility_name, f
     work_order_no, repair_person, estimated_finish, actual_finish, repair_measures,
     acceptance_person, acceptance_result, sort_no) VALUES ('FLT-20260819-010', 'XF-009', '防火分隔设施-全厂', '防火分隔设施', '人为损坏', '一般',
    '2026-08-19 09:40:00', '人工巡检', '常闭防火门未处于正常关闭状态', '门体被挡块撑开', '已派单',
-   'WO-20260819-010', '王维修', '2026-08-21 12:00:00', NULL, NULL, NULL, NULL, 13)
+   'WO-20260819-010', '王维修', '2026-08-21 12:00:00', NULL, NULL, NULL, NULL, 13);
 
 
 -- 故障时间线（49 条）
@@ -419,4 +419,4 @@ INSERT INTO fac_fire_facility_fault_timeline (fault_id, event_time, operator_nam
 INSERT INTO fac_fire_facility_fault_timeline (fault_id, event_time, operator_name, action_name,
     detail_text, sort_no) VALUES (13, '2026-08-19 09:45:20', '值班员-杨恒朋', '确认故障', '确认故障并派单', 2)
 INSERT INTO fac_fire_facility_fault_timeline (fault_id, event_time, operator_name, action_name,
-    detail_text, sort_no) VALUES (13, '2026-08-19 09:48:12', '值班员-杨恒朋', '生成工单并派发', '派发至 王维修', 3)
+    detail_text, sort_no) VALUES (13, '2026-08-19 09:48:12', '值班员-杨恒朋', '生成工单并派发', '派发至 王维修', 3);
