@@ -28,15 +28,16 @@
 - 前端 CI 在 `npm run build` 后上传 `dist/`，与后端上传 JaCoCo 报告形成对称的构建产物可追溯。
 - 契约守门双端互补：前端守「作者侧四铁律」，后端守「实现 ↔ 契约漂移」，任一漂移即失败。
 - 前端补齐覆盖率门禁（v8 + 阈值）与 `lint` 步骤，**已不再是"待补"状态**（本文旧版本此处失真，已订正）。
-- 前端新增 `gate:screen` / `gate:subapp-assets` 两个领域专项门禁；后端新增 `check-endpoint-authz.mjs` 写端点授权门禁。
+- 前端新增 `gate:screen` / `gate:subapp-assets` 两个领域专项门禁，以及 `check-spec-coverage.mjs`（**新增文件测试覆盖守门**，增量口径 `HEAD~1..HEAD`，需 checkout `fetch-depth: 2`）；后端新增 `check-endpoint-authz.mjs` 写端点授权门禁。
 - 跨仓竞态由 `repository_dispatch` + 对端 `contract-guard` 重跑根治，不再依赖人工推送顺序。
 
 ## 3. 待补项与前置条件（不阻塞当前发布）
 
 1. **后端 DB 集成测试层（`*IT` / Testcontainers）** —— 当前仅 1 例 H2 版 `DbLayerIntegrationIT`，三方言（h2/pg/dm）无真实容器验证。**前置：可用 Docker 环境**。
 2. **前端 E2E** —— 现状靠 vitest + 视觉走查，无端到端自动化。前置：确定 E2E 框架与可运行的联调环境。
-3. **前端覆盖率门禁强度** —— `all: true` 会全量插桩 OOM（`vite.config.ts` 注释已说明），故无法简单翻开关。可行方向：对**新增文件**做「必须有引用它的 `.spec.ts`」增量校验。
-4. **后端 Java 静态检查** —— 与前端 ESLint 对齐，补齐 checkstyle / spotbugs 之类；属 L3。
+3. **后端 Java 静态检查** —— 与前端 ESLint 对齐，补齐 checkstyle / spotbugs 之类；属 L3。
+
+> 前端覆盖率门禁的强度限制（`all:false` 只防回退）**已由 `check-spec-coverage.mjs` 兜住新增文件**，不再列为待补；若将来能把 `all:true` 的 OOM 问题解决（如分片插桩），可进一步收敛。
 
 ## 4. 变更纪律
 
