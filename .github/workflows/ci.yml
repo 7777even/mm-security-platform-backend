@@ -99,3 +99,10 @@ jobs:
       # 四件套缺失、archive/ 目录缺日期前缀（规则见根 AGENTS.md §7.1）。
       - name: OpenSpec 卫生检查（全勾必归档）
         run: node scripts/check-openspec-hygiene.mjs
+
+      # 端点授权覆盖守门：写端点（POST/PUT/DELETE/PATCH）必须带 role=/perm= 的 @RequireAuth，
+      # 或在脚本 ALLOWLIST 中显式豁免并写明理由（规则见本仓 AGENTS.md §6.3 / §8）。
+      # 动机：全局 JwtFilter 只保证「已登录」，写端点漏声明权限即对全部登录用户开放；
+      # 此前这类回归无任何自动防护，全靠人工纪律。
+      - name: 端点授权覆盖守门（写端点必须声明角色/权限）
+        run: node scripts/check-endpoint-authz.mjs
