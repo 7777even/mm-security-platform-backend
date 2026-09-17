@@ -1,11 +1,13 @@
 # =============================================================================
 # 达梦 DM8 生产环境配置（--spring.profiles.active=dm 激活）
 #
-# 【状态：暂缓启用 / 后期迁移目标 — 2026-09-08 决策】
-#   本机无 DM8 实例（5236 无监听）、无 DmJdbcDriver18.jar、且未安装 Docker（无法以容器起库），
-#   因此无法实跑验证，暂不启用。当前可运行基线为 dev(H2 内存库)。
-#   本文件与 db/migration/dameng 迁移脚本作为后期迁移资产【保留勿删】，
-#   待具备达梦环境后执行：驱动 install-file → Flyway 迁移 → 启动 → 种子校验 → 接口冒烟。
+# 【状态：2026-09-17 迁移已在真实 DM8 实例实跑通过 —— 此前"本机无实例"的描述已过期】
+#   本机已装达梦 DM8 开发版（D:\dameng，实例数据目录 D:\dameng\data\DAMENG，监听 5236）。
+#   db/migration/dameng 的 V1–V57 已用 disql 逐文件实跑：错误码 0、建表 140、中文往返正确
+#   （执行器 scripts/verify-dameng-migration.cmd；结论见 docs/deployment/dameng-migration-runbook.md §5）。
+#   仍未闭合：① Flyway 集成本身 —— 社区版与商业版均不内置达梦 database 模块，需第三方模块或
+#   自实现 DatabaseType SPI；② 以 --spring.profiles.active=dm 启动后的端到端冒烟。
+#   驱动 jar 不在中央仓库，须先 install-file；本机验证可直接用达梦自带 drivers/jdbc/DmJdbcDriver11.jar。
 #
 # 信创国产化选定生产库（设计稿意图）。本 profile 与 prod(PostgreSQL) 同构的安全基线，
 # 仅数据源与 Flyway 迁移方言不同。
