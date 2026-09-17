@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -379,6 +380,7 @@ public class EmergencyService {
      *
      * <p>入参为前端整表单次提交的全部节点配置；nodeId 缺失的条目跳过，新建行按输入顺序写 sort_no。</p>
      */
+    @RealtimeSync(domain = "emergency.node-phase-config")
     public List<NodePhaseConfig> saveNodePhaseConfigs(List<NodePhaseConfig> configs) {
         if (configs == null || configs.isEmpty()) {
             return nodePhaseConfigs();

@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
@@ -64,6 +65,7 @@ public class SystemRoleService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.role")
     public SystemRoleItem create(SystemRoleSaveRequest req) {
         String code = normalizeCode(req.getRoleCode());
         // 含逻辑删除行判重（唯一索引 + 逻辑删除的语义鸿沟，见 SysUserMapper#countUsernameIncludingDeleted）
@@ -90,6 +92,7 @@ public class SystemRoleService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.role")
     public SystemRoleItem update(Long id, SystemRoleSaveRequest req) {
         SysRole r = require(id);
         String code = normalizeCode(req.getRoleCode());
@@ -126,6 +129,7 @@ public class SystemRoleService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.role")
     public SystemRoleItem updateStatus(Long id, Integer status) {
         if (status == null || (status != 0 && status != 1)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "status 只能为 0（停用）或 1（启用）");
@@ -144,6 +148,7 @@ public class SystemRoleService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.role")
     public DeleteResult delete(Long id) {
         SysRole r = require(id);
         if (isBuiltIn(r)) {
@@ -183,6 +188,7 @@ public class SystemRoleService {
      * （即使账号仍启用）。</p>
      */
     @Transactional
+    @RealtimeSync(domain = "system.role")
     public List<Long> assignMenus(Long id, SystemRoleMenuAssign req) {
         SysRole r = require(id);
         Set<Long> menuIds = new LinkedHashSet<>(req.getMenuIds() == null ? List.of() : req.getMenuIds());

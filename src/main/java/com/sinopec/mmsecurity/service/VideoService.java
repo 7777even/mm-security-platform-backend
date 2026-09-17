@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.DeleteResult;
@@ -346,6 +347,7 @@ public class VideoService {
      * <p>联动规则行整表替换：先删该 configCode 的旧行再按入参顺序重写 sort_no；
      * linkageCount / businessObjects 由 rules 推导。更新时未命中 configCode 返回 null（不抛异常）。</p>
      */
+    @RealtimeSync(domain = "video.linkage")
     public VideoLinkageItem saveLinkage(String configCode, VideoLinkageSaveRequest in) {
         List<VideoLinkageRuleInput> rules = in.getRules() == null ? List.of() : in.getRules();
         FacVideoLinkage linkage;
@@ -380,6 +382,7 @@ public class VideoService {
     }
 
     /** 删除视频联动配置及其规则行；未命中 configCode 时 ok=false（不抛异常）。 */
+    @RealtimeSync(domain = "video.linkage")
     public DeleteResult deleteLinkage(String configCode) {
         DeleteResult result = new DeleteResult();
         FacVideoLinkage linkage = findLinkage(configCode);

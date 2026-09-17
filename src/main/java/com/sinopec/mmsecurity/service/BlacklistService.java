@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.BlacklistPersonItem;
 import com.sinopec.mmsecurity.dto.BlacklistSummary;
@@ -44,11 +45,13 @@ public class BlacklistService {
     }
 
     /** 从车辆黑名单移除记录；id 不存在或类型不符时 ok=false（不抛异常）。 */
+    @RealtimeSync(domain = "blacklist")
     public DeleteResult removeVehicle(Long id) {
         return removeEntry(KIND_VEHICLE, id);
     }
 
     /** 从人员黑名单移除记录；id 不存在或类型不符时 ok=false（不抛异常）。 */
+    @RealtimeSync(domain = "blacklist")
     public DeleteResult removePerson(Long id) {
         return removeEntry(KIND_PERSON, id);
     }

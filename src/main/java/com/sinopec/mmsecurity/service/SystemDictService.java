@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -81,6 +82,7 @@ public class SystemDictService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.dict-type")
     public DictTypeItem createType(DictTypeSaveRequest req) {
         String code = normalizeCode(req.getDictCode());
         requireCodeFree(code, null);
@@ -102,6 +104,7 @@ public class SystemDictService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.dict-type")
     public DictTypeItem updateType(Long id, DictTypeSaveRequest req) {
         SysDictType t = requireType(id);
         String code = normalizeCode(req.getDictCode());
@@ -134,6 +137,7 @@ public class SystemDictService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.dict-type")
     public DeleteResult deleteType(Long id) {
         SysDictType t = requireType(id);
         if (t.getBuiltIn() != null && t.getBuiltIn() == 1) {
@@ -174,6 +178,7 @@ public class SystemDictService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.dict-item")
     public DictItemItem createItem(DictItemSaveRequest req) {
         String code = normalizeCode(req.getDictCode());
         requireTypeByCode(code);
@@ -191,6 +196,7 @@ public class SystemDictService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.dict-item")
     public DictItemItem updateItem(Long id, DictItemSaveRequest req) {
         SysDictItem item = dictItemMapper.selectById(id);
         if (item == null) {
@@ -208,6 +214,7 @@ public class SystemDictService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.dict-item")
     public DeleteResult deleteItem(Long id) {
         SysDictItem item = dictItemMapper.selectById(id);
         if (item == null) {

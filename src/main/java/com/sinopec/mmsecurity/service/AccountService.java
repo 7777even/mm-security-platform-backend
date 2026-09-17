@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
@@ -39,6 +40,7 @@ public class AccountService {
     private final PasswordStateCache passwordStateCache;
 
     /** 本人改密：校验旧口令 → 策略校验 → 落新哈希 → 清强制改密标记。 */
+    @RealtimeSync(domain = "system.user")
     public void changePassword(PasswordChangeRequest req) {
         SysUser u = requireCurrentUser();
         if (!encoder.matches(req.getOldPassword(), u.getPasswordHash())) {
@@ -58,6 +60,7 @@ public class AccountService {
     }
 
     /** 本人资料修改：仅姓名；返回最新 me（含权限码）。 */
+    @RealtimeSync(domain = "system.user")
     public MeResult updateProfile(ProfileUpdateRequest req) {
         SysUser u = requireCurrentUser();
         u.setRealName(req.getRealName());

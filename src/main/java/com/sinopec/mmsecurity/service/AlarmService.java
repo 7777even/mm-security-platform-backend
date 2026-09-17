@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -44,6 +45,7 @@ public class AlarmService {
      * 创建应急事件：生成业务 ID {@code AE-{yyyy}-{seq}}、默认 ACTIVE、逻辑未删；返回对外 AlarmItem。
      * deviceCode 强制 20 位 MDM 校验。
      */
+    @RealtimeSync(domain = "alarm")
     public AlarmItem create(EmergencyEventPayload payload) {
         validateDeviceCode(payload.getDeviceCode());
         FacAlarm a = new FacAlarm();
@@ -68,6 +70,7 @@ public class AlarmService {
     /**
      * 更新应急事件：按 alarmId 寻址；不存在返回 null（前端契约：更新不存在返回 data=null）。
      */
+    @RealtimeSync(domain = "alarm")
     public AlarmItem update(String alarmId, EmergencyEventPayload payload) {
         FacAlarm existing = selectByAlarmId(alarmId);
         if (existing == null) return null;
@@ -93,6 +96,7 @@ public class AlarmService {
     /**
      * 逻辑删除应急事件：deleted 置 1；返回是否实际命中并删除了行。
      */
+    @RealtimeSync(domain = "alarm")
     public DeleteResult delete(String alarmId) {
         int rows = alarmMapper.update(null, new UpdateWrapper<FacAlarm>()
                 .eq("alarm_id", alarmId)

@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -97,6 +98,7 @@ public class UplinkService {
         return item;
     }
 
+    @RealtimeSync(domain = "uplink.field-report")
     public void submitFieldReport(FieldReportItem item) {
         // 水平越权防护：客户端声明的 reporter 必须是本人（管理员除外），否则 403。
         authorizationService.assertSelfOrAdmin(item.getReporter());

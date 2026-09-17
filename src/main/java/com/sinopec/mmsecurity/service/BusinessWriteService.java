@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -77,6 +78,7 @@ public class BusinessWriteService {
      * 登记一条应急指令下发或状态推进记录（系统内部留痕，不触发物理设备）。
      * prevStatus 取该 commandCode 上一条记录的 currStatus，首次下发为空。
      */
+    @RealtimeSync(domain = "emergency.command")
     public EmergencyCommandRecordView createCommandRecord(EmergencyCommandRecordWriteRequest req) {
         if (req == null || !StringUtils.hasText(req.getCommandCode())) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "指令编码 commandCode 不能为空");
@@ -132,6 +134,7 @@ public class BusinessWriteService {
     /* ==================== 2) 台风资源调度 ==================== */
 
     /** 登记一条资源调度单（指派 / 确认 / 释放），orderNo 由服务端生成。 */
+    @RealtimeSync(domain = "typhoon.dispatch")
     public TyphoonDispatchOrderView createDispatchOrder(TyphoonDispatchOrderWriteRequest req) {
         if (req == null || !StringUtils.hasText(req.getResourceCode())) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "资源编码 resourceCode 不能为空");
@@ -183,6 +186,7 @@ public class BusinessWriteService {
     /* ==================== 3) 巡更执行上报 ==================== */
 
     /** 登记一条巡更执行记录（打卡与结果）。 */
+    @RealtimeSync(domain = "fire.patrol")
     public PatrolExecutionView createPatrolExecution(PatrolExecutionWriteRequest req) {
         if (req == null || !StringUtils.hasText(req.getPatrolDate())) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "巡查日期 patrolDate 不能为空");
@@ -233,6 +237,7 @@ public class BusinessWriteService {
     /* ==================== 4) 值班签到 ==================== */
 
     /** 登记一条值班签到 / 签退记录，signTime 为空时按当前时间填充。 */
+    @RealtimeSync(domain = "emergency.duty")
     public DutySignInView createDutySignIn(DutySignInWriteRequest req) {
         if (req == null || !StringUtils.hasText(req.getDutyDate())) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "值班日期 dutyDate 不能为空");

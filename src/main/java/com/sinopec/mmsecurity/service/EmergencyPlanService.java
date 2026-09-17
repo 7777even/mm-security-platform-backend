@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
@@ -193,6 +194,7 @@ public class EmergencyPlanService {
     }
 
     /** 在某预案实例下新建行动卡；planId 未命中实例时返回 null（Result 丢 null data）。 */
+    @RealtimeSync(domain = "emergency.plan")
     public PlanActionCard createActionCard(String planId, PlanActionCardCreate in) {
         FacPlanInstance instance = resolveInstance(planId);
         if (instance == null) {
@@ -217,6 +219,7 @@ public class EmergencyPlanService {
     }
 
     /** 局部更新行动卡（null 字段不覆盖）；实例或卡片未命中时返回 null。 */
+    @RealtimeSync(domain = "emergency.plan")
     public PlanActionCard updateActionCard(String planId, String cardId, PlanActionCardUpdate in) {
         FacPlanInstance instance = resolveInstance(planId);
         if (instance == null) {
@@ -258,6 +261,7 @@ public class EmergencyPlanService {
     }
 
     /** 删除行动卡；实例或卡片未命中时返回 {ok:false}（不抛异常）。 */
+    @RealtimeSync(domain = "emergency.plan")
     public DeleteResult deleteActionCard(String planId, String cardId) {
         DeleteResult result = new DeleteResult();
         FacPlanInstance instance = resolveInstance(planId);

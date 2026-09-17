@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.common.BusinessException;
@@ -92,6 +93,7 @@ public class SystemUserService {
 
     /** 新增用户：用户名唯一校验 + 角色存在性校验 + 初始口令策略校验；置强制首登改密。 */
     @Transactional
+    @RealtimeSync(domain = "system.user")
     public SystemUserItem create(SystemUserCreate req) {
         String username = req.getUsername().trim();
         // 唯一性判定必须**含逻辑删除行**：username 有唯一索引而删除是逻辑删除，
@@ -125,6 +127,7 @@ public class SystemUserService {
 
     /** 修改用户：姓名 / 角色 / 状态；涉及角色或状态变更时执行硬防护。 */
     @Transactional
+    @RealtimeSync(domain = "system.user")
     public SystemUserItem update(Long id, SystemUserUpdate req) {
         SysUser target = require(id);
         boolean roleChanged = req.getRoleCode() != null && !req.getRoleCode().isBlank()
@@ -168,6 +171,7 @@ public class SystemUserService {
 
     /** 逻辑删除用户：禁删自己、禁删最后一个启用 ADMIN。 */
     @Transactional
+    @RealtimeSync(domain = "system.user")
     public DeleteResult delete(Long id) {
         SysUser target = require(id);
         assertNotSelf(target, "不可删除自己的账号");
@@ -185,6 +189,7 @@ public class SystemUserService {
 
     /** 启用 / 停用（停用走硬防护；停用后现有 refresh Cookie 亦无法续期）。 */
     @Transactional
+    @RealtimeSync(domain = "system.user")
     public SystemUserItem updateStatus(Long id, Integer status) {
         if (status == null || (status != 0 && status != 1)) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "status 只能为 0（停用）或 1（启用）");
@@ -194,6 +199,7 @@ public class SystemUserService {
 
     /** 单独分配角色（等价于 update 的角色分支，独立端点便于前端按权限码粒度控制）。 */
     @Transactional
+    @RealtimeSync(domain = "system.user")
     public SystemUserItem assignRole(Long id, String roleCode) {
         if (roleCode == null || roleCode.isBlank()) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "角色不能为空");
@@ -205,6 +211,7 @@ public class SystemUserService {
 
     /** 管理员重置口令：随机临时口令 + 强制下次登录改密；响应一次性返回临时口令。 */
     @Transactional
+    @RealtimeSync(domain = "system.user")
     public PasswordResetResult resetPassword(Long id) {
         SysUser target = require(id);
         String temp = passwordPolicy.generate();

@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
@@ -93,6 +94,7 @@ public class SystemMenuService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.menu")
     public SystemMenuNode create(SystemMenuSaveRequest req) {
         String code = req.getCode().trim();
         Long dup = menuMapper.selectCount(new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getMenuKey, code));
@@ -111,6 +113,7 @@ public class SystemMenuService {
     }
 
     @Transactional
+    @RealtimeSync(domain = "system.menu")
     public SystemMenuNode update(Long id, SystemMenuSaveRequest req) {
         SysMenu m = require(id);
         String code = req.getCode().trim();
@@ -135,6 +138,7 @@ public class SystemMenuService {
 
     /** 删除节点：有子节点或已被角色授权时拒绝。 */
     @Transactional
+    @RealtimeSync(domain = "system.menu")
     public DeleteResult delete(Long id) {
         SysMenu m = require(id);
         Long children = menuMapper.selectCount(new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getParentId, id));
