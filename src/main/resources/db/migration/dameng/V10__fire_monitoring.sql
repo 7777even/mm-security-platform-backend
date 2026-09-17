@@ -71,20 +71,20 @@ CREATE TABLE fac_fire_patrol_item_result (
 
 
 -- —— 种子：消防救援力量统计（原 mock.ts rescueStats）——
-INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('消防队伍', 10,  '支', 'squad',     1)
-INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('救援人员', 398, '人', 'person',    2)
-INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('救援装备', 123, '套', 'equipment', 3)
+INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('消防队伍', 10,  '支', 'squad',     1);
+INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('救援人员', 398, '人', 'person',    2);
+INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('救援装备', 123, '套', 'equipment', 3);
 INSERT INTO fac_rescue_force_stat (label, stat_count, unit, icon_type, sort_no) VALUES ('救援车辆', 83,  '台', 'vehicle',   4);
 
 
 -- —— 种子：八大特殊作业统计（原 mock.ts specialOperations）——
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('动火作业',   48, 1)
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('盲板抽堵',   3,  2)
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('吊装作业',   2,  3)
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('动土作业',   0,  4)
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('受限空间',   9,  5)
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('高处作业',   35, 6)
-INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('临时用电',   25, 7)
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('动火作业',   48, 1);
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('盲板抽堵',   3,  2);
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('吊装作业',   2,  3);
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('动土作业',   0,  4);
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('受限空间',   9,  5);
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('高处作业',   35, 6);
+INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('临时用电',   25, 7);
 INSERT INTO fac_special_operation_stat (label, stat_count, sort_no) VALUES ('断路作业',   1,  8);
 
 
@@ -94,43 +94,43 @@ INSERT INTO fac_fire_equipment_status (total_cnt, offline_cnt, fault_cnt, integr
 
 
 -- —— 种子：防火巡查记录（原 firePatrolMock.ts firePatrolRecords，12 条）——
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-20', '上午', '张三',     '第1次', '1#联合装置,中央控制室',        1,  NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-20', '下午', '王值班长', '第2次', '储运部罐区,装卸区',            0, NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-20', '夜间', '赵四',     '第3次', '常减压装置,消防泵房',          0, NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-19', '上午', '张三',     '第1次', '1#联合装置,中央控制室',        1,  'WO-20260819-010')
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-19', '下午', '王值班长', '第2次', '储运部罐区,装卸区',            1,  NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-19', '夜间', '赵四',     '第3次', '常减压装置,消防泵房',          1,  NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-18', '上午', '李五',     '第1次', '1#联合装置,中央控制室,储运部罐区', 1, NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-18', '下午', '张三',     '第2次', '装卸区,消防泵房',              1,  NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-18', '夜间', '王值班长', '第3次', '常减压装置',                   1,  NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-17', '上午', '赵四',     '第1次', '1#联合装置,中央控制室',        1,  NULL)
-INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-17', '下午', '李五',     '第2次', '储运部罐区,装卸区',            1,  NULL)
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-20', '上午', '张三',     '第1次', '1#联合装置,中央控制室',        1,  NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-20', '下午', '王值班长', '第2次', '储运部罐区,装卸区',            0, NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-20', '夜间', '赵四',     '第3次', '常减压装置,消防泵房',          0, NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-19', '上午', '张三',     '第1次', '1#联合装置,中央控制室',        1,  'WO-20260819-010');
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-19', '下午', '王值班长', '第2次', '储运部罐区,装卸区',            1,  NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-19', '夜间', '赵四',     '第3次', '常减压装置,消防泵房',          1,  NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-18', '上午', '李五',     '第1次', '1#联合装置,中央控制室,储运部罐区', 1, NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-18', '下午', '张三',     '第2次', '装卸区,消防泵房',              1,  NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-18', '夜间', '王值班长', '第3次', '常减压装置',                   1,  NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-17', '上午', '赵四',     '第1次', '1#联合装置,中央控制室',        1,  NULL);
+INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-17', '下午', '李五',     '第2次', '储运部罐区,装卸区',            1,  NULL);
 INSERT INTO fac_fire_patrol (patrol_date, shift_name, duty_person, patrol_count, locations, completed, work_order_no) VALUES ('2026-08-17', '夜间', '张三',     '第3次', '常减压装置,消防泵房',          1,  NULL);
 
 
 -- —— 种子：15 项标准检查项定义（原 firePatrolMock.ts patrolCheckItemDefs）——
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('A1', '用火用电安全管理', '有无违章用火情况', 1)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('A2', '用火用电安全管理', '有无违章用电情况', 2)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('B1', '疏散通道', '安全出口、疏散通道、疏散楼梯是否畅通', 3)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('B2', '疏散通道', '疏散走道、疏散楼梯、安全出口是否堆放可燃物', 4)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('B3', '疏散通道', '疏散走道、疏散楼梯、顶棚装修材料是否合格', 5)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C1', '防火分隔设施', '常闭防火门是否处于正常关闭状态', 6)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C2', '防火分隔设施', '常闭防火门是否被锁闭', 7)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C3', '防火分隔设施', '防火卷帘是否处于正常工作状态', 8)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C4', '防火分隔设施', '防火卷帘下方是否堆放物品', 9)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D1', '消防设施器材', '疏散指示标志是否完好', 10)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D2', '消防设施器材', '应急照明是否完好', 11)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D3', '消防设施器材', '火灾探测器是否正常', 12)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D4', '消防设施器材', '自动喷水灭火系统组件是否完好', 13)
-INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D5', '消防设施器材', '室内外消火栓是否完好', 14)
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('A1', '用火用电安全管理', '有无违章用火情况', 1);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('A2', '用火用电安全管理', '有无违章用电情况', 2);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('B1', '疏散通道', '安全出口、疏散通道、疏散楼梯是否畅通', 3);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('B2', '疏散通道', '疏散走道、疏散楼梯、安全出口是否堆放可燃物', 4);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('B3', '疏散通道', '疏散走道、疏散楼梯、顶棚装修材料是否合格', 5);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C1', '防火分隔设施', '常闭防火门是否处于正常关闭状态', 6);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C2', '防火分隔设施', '常闭防火门是否被锁闭', 7);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C3', '防火分隔设施', '防火卷帘是否处于正常工作状态', 8);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('C4', '防火分隔设施', '防火卷帘下方是否堆放物品', 9);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D1', '消防设施器材', '疏散指示标志是否完好', 10);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D2', '消防设施器材', '应急照明是否完好', 11);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D3', '消防设施器材', '火灾探测器是否正常', 12);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D4', '消防设施器材', '自动喷水灭火系统组件是否完好', 13);
+INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D5', '消防设施器材', '室内外消火栓是否完好', 14);
 INSERT INTO fac_fire_patrol_item_def (item_code, category, content, sort_no) VALUES ('D6', '消防设施器材', '灭火器是否处于正常完好状态', 15);
 
 
 -- —— 种子：非「正常」检查项结果（仅异常 / 不适用，其余由服务端按标准表补齐为「正常」）——
 -- 巡查 4（2026-08-19 上午）：C1 异常
-INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (4, 'C1', '异常',   '3F 常闭防火门被挡块撑开', 'patrol-photo-placeholder.png')
-INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (7, 'B2', '异常',   '疏散走道堆放施工材料',    'patrol-photo-placeholder.png')
-INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (7, 'C3', '不适用', NULL, NULL)
-INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (7, 'C4', '不适用', NULL, NULL)
-INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (9, 'D3', '异常',   '5#装置区探测器指示灯不亮', 'patrol-photo-placeholder.png')
+INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (4, 'C1', '异常',   '3F 常闭防火门被挡块撑开', 'patrol-photo-placeholder.png');
+INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (7, 'B2', '异常',   '疏散走道堆放施工材料',    'patrol-photo-placeholder.png');
+INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (7, 'C3', '不适用', NULL, NULL);
+INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (7, 'C4', '不适用', NULL, NULL);
+INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (9, 'D3', '异常',   '5#装置区探测器指示灯不亮', 'patrol-photo-placeholder.png');
 INSERT INTO fac_fire_patrol_item_result (patrol_id, item_code, check_result, abnormal_desc, photo_file) VALUES (11, 'A2', '异常',  '临时用电线路私拉乱接',    'patrol-photo-placeholder.png');

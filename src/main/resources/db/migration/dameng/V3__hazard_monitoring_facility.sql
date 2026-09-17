@@ -71,7 +71,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (2, '15万吨/年顺丁橡胶装置', '二级', 49, 5, 3, '乙烯厂', '装置', '370680917081', 110.8907, 21.6759, '2024-10-15', 1, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -79,7 +79,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (3, '乙烯裂解装置', '一级', 66, 11, 6, '炼油厂', '装置', '370680917082', 110.8886, 21.6754, '2024-10-15', 1, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -87,7 +87,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (4, '催化裂化装置', '三级', 83, 4, 2, '化工分部', '装置', '370680917083', 110.8875, 21.6771, '2024-10-15', 0, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -95,7 +95,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (5, '蜡油加氢装置', '二级', 100, 9, 5, '茂名石化', '装置', '370680917084', 110.8912, 21.6774, '2024-10-15', 1, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -103,7 +103,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (6, '重整装置', '四级', 117, 6, 3, '乙烯厂', '装置', '370680917085', 110.8869, 21.6747, '2024-10-15', 0, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -111,7 +111,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (7, '储罐区B-3', '一级', 20, 8, 2, '炼油厂', '储罐', '370680917086', 110.8892, 21.6739, '2024-10-15', 1, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -119,7 +119,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (8, '环氧乙烷装置', '三级', 37, 5, 4, '化工分部', '装置', '370680917087', 110.8916, 21.6738, '2024-10-15', 0, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -127,7 +127,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (9, '芳烃抽提装置', '二级', 54, 10, 6, '茂名石化', '装置', '370680917088', 110.8901, 21.6761, '2024-10-15', 1, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -135,7 +135,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (10, '硫磺回收装置', '四级', 71, 7, 3, '乙烯厂', '装置', '370680917089', 110.8884, 21.6752, '2024-10-15', 0, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -143,7 +143,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (11, '加氢精制装置', '一级', 88, 12, 5, '炼油厂', '装置', '370680917090', 110.8919, 21.6766, '2024-10-15', 1, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -151,7 +151,7 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
  '[{"id":1,"name":"视频点位-01","status":"正常"}]',
  '[{"id":1,"name":"丁二烯","amount":"120 t"},{"id":2,"name":"氢气","amount":"8 t"},{"id":3,"name":"氮气","amount":"15 t"}]',
  '[{"id":1,"name":"主疏散路线-东","from":"东侧","via":"东二路","to":"厂区东门集结点","status":"畅通"}]',
- '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]')
+ '[{"id":1,"name":"启动喷淋降温","type":"应急操作","owner":"装置操作员","status":"待执行"}]');
 INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_count, enterprise, category, code, longitude, latitude, commission_date, key_process, in_chemical_park, contacts_json, files_json, monitors_json, videos_json, chemicals_json, evacuation_routes_json, operations_json) VALUES (12, '气体分馏装置', '三级', 105, 6, 4, '化工分部', '装置', '370680917091', 110.8871, 21.6744, '2024-10-15', 0, 1,
  '[{"role":"主要负责人","name":"程仁策","phone":"13705456799"},{"role":"技术负责人","name":"王立新","phone":"13800138001"},{"role":"操作负责人","name":"李明华","phone":"13900139002"}]',
  '[{"id":1,"name":"SIL定级报告.pdf"},{"id":2,"name":"安全评价报告.pdf"},{"id":3,"name":"应急预案.pdf"}]',
@@ -163,29 +163,29 @@ INSERT INTO fac_major_hazard (id, name, level, r_value, monitor_count, video_cou
 
 
 -- 监测点位种子（18 条，平移自 monitoringPointsMock 的核心字段）
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-1', 'A-01DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8899, 21.6769)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-2', 'A-02GDS监测', 'GDS', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8907, 21.6759)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-3', 'A-03气体检测', '气体检测', 'warning', '2026-09-08T15:53:00Z', '生产管理部', 110.8886, 21.6754)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-4', 'A-04压力', '压力', 'normal', '2026-09-08T16:00:00Z', '公用工程区', 110.8875, 21.6771)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-5', 'A-05温度', '温度', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8912, 21.6774)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-6', 'A-06液位', '液位', 'alarm', '2026-09-08T15:58:00Z', '乙烯罐区', 110.8869, 21.6747)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-7', 'A-07DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8892, 21.6739)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-8', 'A-08气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '公用工程区', 110.8916, 21.6738)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-9', 'A-09压力', '压力', 'warning', '2026-09-08T15:53:00Z', '乙烯装置区', 110.8902, 21.6763)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-10', 'A-10温度', '温度', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8894, 21.6752)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-11', 'A-11液位', '液位', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8881, 21.6746)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-12', 'A-12DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '公用工程区', 110.8908, 21.6734)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-13', 'A-13气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8914, 21.6768)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-14', 'A-14压力', '压力', 'alarm', '2026-09-08T15:58:00Z', '乙烯罐区', 110.8878, 21.6756)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-15', 'A-15温度', '温度', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8896, 21.6732)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-16', 'A-16液位', '液位', 'warning', '2026-09-08T15:53:00Z', '公用工程区', 110.8911, 21.6741)
-INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-17', 'A-17DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8904, 21.6765)
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-1', 'A-01DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8899, 21.6769);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-2', 'A-02GDS监测', 'GDS', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8907, 21.6759);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-3', 'A-03气体检测', '气体检测', 'warning', '2026-09-08T15:53:00Z', '生产管理部', 110.8886, 21.6754);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-4', 'A-04压力', '压力', 'normal', '2026-09-08T16:00:00Z', '公用工程区', 110.8875, 21.6771);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-5', 'A-05温度', '温度', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8912, 21.6774);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-6', 'A-06液位', '液位', 'alarm', '2026-09-08T15:58:00Z', '乙烯罐区', 110.8869, 21.6747);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-7', 'A-07DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8892, 21.6739);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-8', 'A-08气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '公用工程区', 110.8916, 21.6738);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-9', 'A-09压力', '压力', 'warning', '2026-09-08T15:53:00Z', '乙烯装置区', 110.8902, 21.6763);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-10', 'A-10温度', '温度', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8894, 21.6752);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-11', 'A-11液位', '液位', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8881, 21.6746);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-12', 'A-12DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '公用工程区', 110.8908, 21.6734);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-13', 'A-13气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8914, 21.6768);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-14', 'A-14压力', '压力', 'alarm', '2026-09-08T15:58:00Z', '乙烯罐区', 110.8878, 21.6756);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-15', 'A-15温度', '温度', 'normal', '2026-09-08T16:00:00Z', '生产管理部', 110.8896, 21.6732);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-16', 'A-16液位', '液位', 'warning', '2026-09-08T15:53:00Z', '公用工程区', 110.8911, 21.6741);
+INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-17', 'A-17DCS监测', 'DCS', 'normal', '2026-09-08T16:00:00Z', '乙烯装置区', 110.8904, 21.6765);
 INSERT INTO fac_monitoring_point (id, name, category, status, last_time, org, longitude, latitude) VALUES ('mp-18', 'A-18气体检测', '气体检测', 'normal', '2026-09-08T16:00:00Z', '乙烯罐区', 110.8888, 21.6751);
 
 
 -- 监测告警种子（3 条，平移自 monitoringPointsMock.resolveMonitoringAlarms）
-INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-1', '压力高高报', 'A点压力已超过阈值，建议立即核查。', '乙烯装置区', '2026-09-08T15:58:00Z', 'high')
-INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-2', '气体浓度预警', '检测到浓度上升，建议加强通风并确认泄漏源。', '乙烯罐区', '2026-09-08T15:52:00Z', 'medium')
+INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-1', '压力高高报', 'A点压力已超过阈值，建议立即核查。', '乙烯装置区', '2026-09-08T15:58:00Z', 'high');
+INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-2', '气体浓度预警', '检测到浓度上升，建议加强通风并确认泄漏源。', '乙烯罐区', '2026-09-08T15:52:00Z', 'medium');
 INSERT INTO fac_monitoring_alarm (id, title, detail, area, time, level) VALUES ('al-3', '温度偏高', '温度趋势偏离正常区间，请关注后续变化。', '公用工程区', '2026-09-08T15:44:00Z', 'low');
 
 

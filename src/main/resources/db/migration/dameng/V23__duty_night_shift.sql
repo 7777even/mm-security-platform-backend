@@ -10,9 +10,9 @@
 --   王建国/李志强/刘明/陈红），沿用原姓名与号码，保证迁移前后展示语义一致。
 -- 注：department 沿用 V8 的 '全部'（部门下拉为前端静态项，未做后端维度切分）。
 
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('王建国', '13800138001', '值班领导', '全部', '夜班')
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('李志强', '13800138002', '值班员', '全部', '夜班')
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('刘明', '13800138003', '值班员', '全部', '夜班')
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('陈红', '13800138004', '值班员', '全部', '夜班')
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('高颖', '18300556145', '值班员', '全部', '白班')
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('赵启明', '13800138005', '值班员', '全部', '白班')
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('王建国', '13800138001', '值班领导', '全部', '夜班');
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('李志强', '13800138002', '值班员', '全部', '夜班');
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('刘明', '13800138003', '值班员', '全部', '夜班');
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('陈红', '13800138004', '值班员', '全部', '夜班');
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('高颖', '18300556145', '值班员', '全部', '白班');
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('赵启明', '13800138005', '值班员', '全部', '白班');

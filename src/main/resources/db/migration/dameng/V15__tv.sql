@@ -47,26 +47,26 @@ CREATE TABLE fac_tv_inspection_record (
 
 
 -- 视频概览卡片（OVERVIEW，6 项）
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '重大危险源', 665, NULL, NULL, 0, 1)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '生产设施', 56, NULL, NULL, 1, 2)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '厂界', 56, NULL, NULL, 2, 3)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '封闭入口', 55, NULL, NULL, 3, 4)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '其他入口', 66, NULL, NULL, 4, 5)
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '重大危险源', 665, NULL, NULL, 0, 1);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '生产设施', 56, NULL, NULL, 1, 2);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '厂界', 56, NULL, NULL, 2, 3);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '封闭入口', 55, NULL, NULL, 3, 4);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '其他入口', 66, NULL, NULL, 4, 5);
 INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('OVERVIEW', '其它', 6, NULL, NULL, 5, 6);
 
 
 -- 维保工单（MAINTENANCE，3 项）
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('MAINTENANCE', '未接单', 12, NULL, 'grey', 0, 1)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('MAINTENANCE', '处理中', 25, NULL, 'blue', 0, 2)
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('MAINTENANCE', '未接单', 12, NULL, 'grey', 0, 1);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('MAINTENANCE', '处理中', 25, NULL, 'blue', 0, 2);
 INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('MAINTENANCE', '已超时', 8, NULL, 'red', 0, 3);
 
 
 -- 事件分析（EVENT，6 项；event_total 单列于运行统计行）
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '人员闯入', 150, '#5b8cff', NULL, 0, 1)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '烟火检测', 100, '#6a8fd8', NULL, 0, 2)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '未戴安全帽', 150, '#3dd68c', NULL, 0, 3)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '区域入侵', 152, '#f0b429', NULL, 0, 4)
-INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '设备异常', 120, '#ff6b6b', NULL, 0, 5)
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '人员闯入', 150, '#5b8cff', NULL, 0, 1);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '烟火检测', 100, '#6a8fd8', NULL, 0, 2);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '未戴安全帽', 150, '#3dd68c', NULL, 0, 3);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '区域入侵', 152, '#f0b429', NULL, 0, 4);
+INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '设备异常', 120, '#ff6b6b', NULL, 0, 5);
 INSERT INTO fac_tv_stat_item (item_category, label, item_count, color, tone, icon_index, sort_no) VALUES ('EVENT', '其他', 48, '#b07aff', NULL, 0, 6);
 
 
@@ -75,20 +75,20 @@ VALUES (1233, 23, 23, 98, 98, 110);
 
 
 -- 入厂巡检车辆（VEHICLE，8 条）
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤KAA543', '入厂', NULL, '3#门-入', '2026-03-17 10:22:23', 1)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·D8621', '出厂', NULL, '2#门-出', '2026-03-17 10:19:46', 2)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·B3310', '入厂', NULL, '南门-入', '2026-03-17 10:16:08', 3)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·A8821', '出厂', NULL, '东门-出', '2026-03-17 10:11:35', 4)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·F2076', '入厂', NULL, '1#门-入', '2026-03-17 10:07:12', 5)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'chemical', '粤K·C5198', '出厂', NULL, '3#门-出', '2026-03-17 10:02:54', 6)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'chemical', '粤K·E7603', '入厂', NULL, '北门-入', '2026-03-17 09:58:31', 7)
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤KAA543', '入厂', NULL, '3#门-入', '2026-03-17 10:22:23', 1);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·D8621', '出厂', NULL, '2#门-出', '2026-03-17 10:19:46', 2);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·B3310', '入厂', NULL, '南门-入', '2026-03-17 10:16:08', 3);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·A8821', '出厂', NULL, '东门-出', '2026-03-17 10:11:35', 4);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'refinery', '粤K·F2076', '入厂', NULL, '1#门-入', '2026-03-17 10:07:12', 5);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'chemical', '粤K·C5198', '出厂', NULL, '3#门-出', '2026-03-17 10:02:54', 6);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'chemical', '粤K·E7603', '入厂', NULL, '北门-入', '2026-03-17 09:58:31', 7);
 INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('VEHICLE', 'port', '粤K·H1265', '出厂', NULL, '2#门-出', '2026-03-17 09:53:17', 8);
 
 
 -- 入厂巡检人员（PERSON，6 条）
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '陈志强', '员工', '炼油运行一部', '3#门-入', '10:21:18', 1)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '李明辉', '承包商', '广东安建', '2#门-入', '10:18:42', 2)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '王晓峰', '访客', '设备厂商', '东门-入', '10:14:09', 3)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '周宇鹏', '员工', '储运部', '南门-出', '10:09:56', 4)
-INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'chemical', '黄建军', '承包商', '石化检修', '1#门-入', '10:05:23', 5)
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '陈志强', '员工', '炼油运行一部', '3#门-入', '10:21:18', 1);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '李明辉', '承包商', '广东安建', '2#门-入', '10:18:42', 2);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '王晓峰', '访客', '设备厂商', '东门-入', '10:14:09', 3);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'refinery', '周宇鹏', '员工', '储运部', '南门-出', '10:09:56', 4);
+INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'chemical', '黄建军', '承包商', '石化检修', '1#门-入', '10:05:23', 5);
 INSERT INTO fac_tv_inspection_record (record_kind, area_code, subject_name, badge, department, gate_name, record_time, sort_no) VALUES ('PERSON', 'port', '张伟东', '员工', '安全环保部', '3#门-出', '09:59:47', 6);

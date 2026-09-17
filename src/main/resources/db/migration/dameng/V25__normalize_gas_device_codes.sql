@@ -17,13 +17,13 @@
 -- V2 为已进共享环境的不可变迁移，故以本 V25 数据订正；fac_alarm.device_code 为普通列（无外键），
 -- 引用同步订正保持一致。
 
-UPDATE fac_device SET device_code = 'FAC2026GASA000000001' WHERE device_code = 'FAC2026GASA00000001'
+UPDATE fac_device SET device_code = 'FAC2026GASA000000001' WHERE device_code = 'FAC2026GASA00000001';
 
-UPDATE fac_device SET device_code = 'FAC2026GASB000000001' WHERE device_code = 'FAC2026GASB00000001'
+UPDATE fac_device SET device_code = 'FAC2026GASB000000001' WHERE device_code = 'FAC2026GASB00000001';
 
-UPDATE fac_device SET device_code = 'FAC2026GASC000000001' WHERE device_code = 'FAC2026GASC00000001'
+UPDATE fac_device SET device_code = 'FAC2026GASC000000001' WHERE device_code = 'FAC2026GASC00000001';
 
 
-UPDATE fac_alarm SET device_code = 'FAC2026GASA000000001' WHERE device_code = 'FAC2026GASA00000001'
+UPDATE fac_alarm SET device_code = 'FAC2026GASA000000001' WHERE device_code = 'FAC2026GASA00000001';
 
-UPDATE fac_alarm SET device_code = 'FAC2026GASB000000001' WHERE device_code = 'FAC2026GASB00000001'
+UPDATE fac_alarm SET device_code = 'FAC2026GASB000000001' WHERE device_code = 'FAC2026GASB00000001';

@@ -36,27 +36,27 @@ CREATE TABLE sys_duty_member (
 );
 
 
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急专家', 47, 'UserFilled')
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急物资', 3510, 'Box')
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('救援队伍', 12, 'Soldier')
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('装备车辆', 28, 'Van')
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急场所', 6, 'LocationFilled')
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('医疗机构', 3, 'FirstAidKit')
-INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急车辆', 18, 'Truck')
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急专家', 47, 'UserFilled');
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急物资', 3510, 'Box');
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('救援队伍', 12, 'Soldier');
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('装备车辆', 28, 'Van');
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急场所', 6, 'LocationFilled');
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('医疗机构', 3, 'FirstAidKit');
+INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('应急车辆', 18, 'Truck');
 INSERT INTO sys_emergency_strength (kind, count, icon) VALUES ('消防设施', 42, 'Fire');
 
 
-INSERT INTO sys_emergency_phone (name, number, category) VALUES ('消防报警', '119', '消防')
-INSERT INTO sys_emergency_phone (name, number, category) VALUES ('医疗急救', '120', '医疗')
-INSERT INTO sys_emergency_phone (name, number, category) VALUES ('公安报警', '110', '公安')
-INSERT INTO sys_emergency_phone (name, number, category) VALUES ('厂内应急', '0668-2222111', '厂内应急')
+INSERT INTO sys_emergency_phone (name, number, category) VALUES ('消防报警', '119', '消防');
+INSERT INTO sys_emergency_phone (name, number, category) VALUES ('医疗急救', '120', '医疗');
+INSERT INTO sys_emergency_phone (name, number, category) VALUES ('公安报警', '110', '公安');
+INSERT INTO sys_emergency_phone (name, number, category) VALUES ('厂内应急', '0668-2222111', '厂内应急');
 INSERT INTO sys_emergency_phone (name, number, category) VALUES ('保卫值班', '0668-2222333', '保卫值班');
 
 
-INSERT INTO sys_knowledge_item (title, count, icon) VALUES ('岗位应急处置卡', 158, 'Document')
-INSERT INTO sys_knowledge_item (title, count, icon) VALUES ('火灾爆炸应急预案', 42, 'Files')
+INSERT INTO sys_knowledge_item (title, count, icon) VALUES ('岗位应急处置卡', 158, 'Document');
+INSERT INTO sys_knowledge_item (title, count, icon) VALUES ('火灾爆炸应急预案', 42, 'Files');
 INSERT INTO sys_knowledge_item (title, count, icon) VALUES ('气体泄漏处置', 67, 'Warning');
 
 
-INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('杨恒明', '13792536966', '值班领导', '全部', '白班')
+INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('杨恒明', '13792536966', '值班领导', '全部', '白班');
 INSERT INTO sys_duty_member (name, phone, role, department, shift) VALUES ('李伟', '13800138000', '值班员', '全部', '白班');

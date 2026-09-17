@@ -39,23 +39,23 @@ CREATE TABLE fac_comm_device (
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-a1', 'broadcast', 'area-a', 'A装置区 (6)', 'A装置区1#广播', 'A装置区', 'A装置区东北角', '在线',
-   110.881, 21.671, '室外防爆广播', '2024-03-12', '安环部', '10.20.31.101', '2026-08-10 08:30:00', 1)
+   110.881, 21.671, '室外防爆广播', '2024-03-12', '安环部', '10.20.31.101', '2026-08-10 08:30:00', 1);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-a2', 'broadcast', 'area-a', 'A装置区 (6)', 'A装置区2#广播', 'A装置区', 'A装置区西南角', '在线',
-   110.879, 21.669, '室外防爆广播', '2024-03-12', '安环部', '10.20.31.102', '2026-08-10 08:30:00', 2)
+   110.879, 21.669, '室外防爆广播', '2024-03-12', '安环部', '10.20.31.102', '2026-08-10 08:30:00', 2);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-a3', 'broadcast', 'area-a', 'A装置区 (6)', 'A装置区3#广播', 'A装置区', 'A装置区北侧', '故障',
-   110.882, 21.672, '室外防爆广播', '2024-05-20', '安环部', '10.20.31.103', '2026-08-09 20:15:00', 3)
+   110.882, 21.672, '室外防爆广播', '2024-05-20', '安环部', '10.20.31.103', '2026-08-09 20:15:00', 3);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-b1', 'broadcast', 'area-b', 'B装置区 (2)', 'B装置区1#广播', 'B装置区', 'B装置区东侧', '在线',
-   110.886, 21.668, '室外防爆广播', '2024-06-01', '安环部', '10.20.32.101', '2026-08-10 08:30:00', 4)
+   110.886, 21.668, '室外防爆广播', '2024-06-01', '安环部', '10.20.32.101', '2026-08-10 08:30:00', 4);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-b2', 'broadcast', 'area-b', 'B装置区 (2)', 'B装置区2#广播', 'B装置区', 'B装置区西侧', '离线',
-   110.884, 21.667, '室外防爆广播', '2024-06-01', '安环部', '10.20.32.102', '2026-08-08 18:00:00', 5)
+   110.884, 21.667, '室外防爆广播', '2024-06-01', '安环部', '10.20.32.102', '2026-08-08 18:00:00', 5);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('bc-p1', 'broadcast', 'public', '公共区 (1)', '厂区大门广播', '公共区', '厂区大门西侧', '在线',
@@ -66,11 +66,11 @@ INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, d
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ph-a1', 'phone', 'area-a', 'A装置区 (2)', 'A装置区1#电话', 'A装置区', 'A装置区控制室', '在线',
-   110.881, 21.671, '防爆电话', '2023-11-18', '生产部', '10.20.41.101', '2026-08-10 08:30:00', 7)
+   110.881, 21.671, '防爆电话', '2023-11-18', '生产部', '10.20.41.101', '2026-08-10 08:30:00', 7);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ph-a2', 'phone', 'area-a', 'A装置区 (2)', 'A装置区2#电话', 'A装置区', 'A装置区东北角', '在线',
-   110.882, 21.672, '防爆电话', '2023-11-18', '生产部', '10.20.41.102', '2026-08-10 08:30:00', 8)
+   110.882, 21.672, '防爆电话', '2023-11-18', '生产部', '10.20.41.102', '2026-08-10 08:30:00', 8);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ph-b1', 'phone', 'area-b', 'B装置区 (1)', 'B装置区1#电话', 'B装置区', 'B装置区控制室', '在线',
@@ -81,7 +81,7 @@ INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, d
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ic-a1', 'intercom', 'area-a', 'A装置区 (2)', 'A装置区1#对讲', 'A装置区', 'A装置区巡检点1', '在线',
-   110.880, 21.670, 'IP对讲终端', '2024-07-15', '安环部', '10.20.51.101', '2026-08-10 08:30:00', 10)
+   110.880, 21.670, 'IP对讲终端', '2024-07-15', '安环部', '10.20.51.101', '2026-08-10 08:30:00', 10);
 INSERT INTO fac_comm_device (device_code, device_type, group_key, group_label, device_name, area_name,
     location_name, device_status, longitude, latitude, category_name, install_time, owner_name,
     ip_address, last_check_time, sort_no) VALUES ('ic-a2', 'intercom', 'area-a', 'A装置区 (2)', 'A装置区2#对讲', 'A装置区', 'A装置区巡检点2', '故障',
@@ -126,19 +126,19 @@ CREATE TABLE fac_weather_hourly (
 
 
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('当前',   0.0, 2.4, 29, 1004, 76, 1)
+    humidity_value, sort_no) VALUES ('当前',   0.0, 2.4, 29, 1004, 76, 1);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('12:00', 0.2, 2.8, 31, 1003, 72, 2)
+    humidity_value, sort_no) VALUES ('12:00', 0.2, 2.8, 31, 1003, 72, 2);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('15:00', 1.8, 3.6, 32, 1001, 78, 3)
+    humidity_value, sort_no) VALUES ('15:00', 1.8, 3.6, 32, 1001, 78, 3);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('18:00', 4.6, 4.2, 29, 1002, 85, 4)
+    humidity_value, sort_no) VALUES ('18:00', 4.6, 4.2, 29, 1002, 85, 4);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('21:00', 2.1, 3.4, 27, 1004, 88, 5)
+    humidity_value, sort_no) VALUES ('21:00', 2.1, 3.4, 27, 1004, 88, 5);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('00:00', 0.6, 2.6, 26, 1005, 89, 6)
+    humidity_value, sort_no) VALUES ('00:00', 0.6, 2.6, 26, 1005, 89, 6);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
-    humidity_value, sort_no) VALUES ('03:00', 0.1, 2.2, 26, 1005, 90, 7)
+    humidity_value, sort_no) VALUES ('03:00', 0.1, 2.2, 26, 1005, 90, 7);
 INSERT INTO fac_weather_hourly (time_label, rain_value, wind_value, temperature, pressure_value,
     humidity_value, sort_no) VALUES ('06:00', 0.0, 2.5, 27, 1006, 84, 8);
 
@@ -160,16 +160,16 @@ CREATE TABLE fac_weather_daily (
 
 
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('今天', '08-25', '多云',     '⛅', 32, 26, '东南风 2级', 76, 0.0,  1)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('今天', '08-25', '多云',     '⛅', 32, 26, '东南风 2级', 76, 0.0,  1);
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('明天', '08-26', '雷阵雨',   '⛈', 31, 25, '东南风 3级', 84, 9.6,  2)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('明天', '08-26', '雷阵雨',   '⛈', 31, 25, '东南风 3级', 84, 9.6,  2);
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('周四', '08-27', '中雨',     '🌧', 29, 25, '南风 3级',   89, 15.0, 3)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('周四', '08-27', '中雨',     '🌧', 29, 25, '南风 3级',   89, 15.0, 3);
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('周五', '08-28', '阵雨',     '🌦', 30, 25, '东南风 2级', 82, 6.5,  4)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('周五', '08-28', '阵雨',     '🌦', 30, 25, '东南风 2级', 82, 6.5,  4);
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('周六', '08-29', '多云',     '⛅', 32, 26, '东风 2级',   75, 1.2,  5)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('周六', '08-29', '多云',     '⛅', 32, 26, '东风 2级',   75, 1.2,  5);
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
-    wind_text, humidity_value, rain_value, sort_no) VALUES ('周日', '08-30', '晴间多云', '🌤', 33, 26, '东风 2级',   70, 0.0,  6)
+    wind_text, humidity_value, rain_value, sort_no) VALUES ('周日', '08-30', '晴间多云', '🌤', 33, 26, '东风 2级',   70, 0.0,  6);
 INSERT INTO fac_weather_daily (day_label, date_label, condition_text, icon_text, high_temp, low_temp,
     wind_text, humidity_value, rain_value, sort_no) VALUES ('周一', '08-31', '多云',     '☁', 32, 26, '东南风 2级', 73, 0.0,  7);
