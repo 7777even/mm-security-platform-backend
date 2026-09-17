@@ -1,16 +1,16 @@
 # 达梦 DM8 迁移手册（Dameng Migration Runbook）
 
-> 信创生产目标库的迁移实战步骤。当前 `application-dm.yml` + `db/migration/dameng`（**V1–V57 已与 h2/pg 对齐补齐、语句终结符已补、并通过三方言静态一致性校验，0 结构性错误**）已就绪，但**未在真实 DM8 实例实跑**。本手册是具备达梦环境后的操作清单，与 `docs/deployment/README.md §5` 互为补充。
+> 信创生产目标库的迁移实战步骤。当前 `application-dm.yml` + `db/migration/dameng`（**V1–V57 已与 h2/pg 对齐补齐；语句终结符于 2026-09-17 补齐至真正完整，并通过升级后的三方言静态一致性校验，0 结构性错误**）已就绪，但**未在真实 DM8 实例实跑**。本手册是具备达梦环境后的操作清单，与 `docs/deployment/README.md §5` 互为补充。
 
 ## 1. 现状与关键缺口（必须先读）
 
 | 资产 | 位置 | 状态 |
 | ---- | ---- | ---- |
 | DM8 profile | `src/main/resources/application-dm.yml` | ✅ 配置就绪（JWT/签名/CORS/日志基线齐） |
-| DM 迁移脚本 | `src/main/resources/db/migration/dameng/` | ✅ **V1–V57 已与 h2/pg 对齐补齐**（早期仅 V1/V2；2026-09-14 起补齐 V3–V57，2026-09-16 补语句终结符 + 静态校验通过） |
+| DM 迁移脚本 | `src/main/resources/db/migration/dameng/` | ✅ **V1–V57 已与 h2/pg 对齐补齐**（早期仅 V1/V2；2026-09-14 起补齐 V3–V57；2026-09-16 首轮补终结符**不完整**，2026-09-17 补齐 23 文件 1303 处并升级校验判据） |
 | H2 迁移脚本（参照基线） | `src/main/resources/db/migration/h2/` | ✅ 已到 **V57**（与 dameng/postgresql 三方言一致） |
-| PG 迁移脚本 | `src/main/resources/db/migration/postgresql/` | ✅ 已到 **V57**（与 h2/dameng 三方言一致） |
-| 三方言静态一致性校验 | `scripts/check-dialect-migration-consistency.py` | ✅ 已接入后端 CI（`dialect-consistency` job），EXIT=0：版本/表/列名三方言对齐、终结符齐 |
+| PG 迁移脚本 | `src/main/resources/db/migration/postgresql/` | ✅ 已到 **V57**（与 h2/dameng 三方言一致）。**2026-09-17 已用 Docker + Flyway 10 真实实跑通过**（曾抓到并修 `V40` 布尔列 `DEFAULT 1` 的 PG 非法写法） |
+| 三方言静态一致性校验 | `scripts/check-dialect-migration-consistency.py`（终结符审计复用 `scripts/sql_stmt_scan.py`） | ✅ 已接入后端 CI（`dialect-consistency` job）。**2026-09-17 起终结符判据改为括号深度状态机、并升级为阻断性 error**（旧判据「CREATE TABLE 数 > 分号数」对达梦种子检出率为 0 且只 warn 不阻断，曾放行残缺补丁） |
 | DM JDBC 驱动 | `pom.xml` `<profiles><dm>` 已声明依赖 | ⚠️ 驱动 jar 不在中央仓库，需 `mvn install:install-file` 本地安装 |
 
 > ⚠️ **历史风险已消除（版本 parity 已完成）**：DM 迁移早期曾落后 H2 多个版本（仅 V1/V2），现已补齐至 **V57** 并与 h2/pg 保持三方言版本/表/列名一致。后续新增 DM 方言版本仍须遵守「V-file 禁改/删、新增只加 V*+」铁律。剩余唯一未闭合风险是**未在真实 DM8 实例实跑**（本机无实例、无 docker），详见 §5。
@@ -33,6 +33,7 @@
   - 关键字冲突（如 `COMMENT`、`USER`、`LEVEL`）加双引号转义；
   - 自增主键 + MyBatis-Plus `IdType.AUTO` 在 DM 下需用 `IDENTITY`。
 - 达梦因 Oracle 兼容语法不支持多行 `VALUES`，种子数据需拆为逐条 `INSERT`，且常量 `SELECT` 补 `FROM dual`（已由一次性脚本从 h2 版本派生）。
+- ⚠️ **逐条 INSERT 必须「每条」以 `;` 结尾**：达梦种子被拆成一行一条后，2026-09-16 的首轮回填只补了 `CREATE TABLE` 的 `);`，**漏掉全部 INSERT/UPDATE/DELETE**（如 `V19` 补后仅 22 个 `;`，实际需 497）→ Flyway 无法切分、DM8 实跑必失败；H2 侧无此问题故本地不暴露。新增/修改达梦迁移后务必跑 CI 的 `dialect-consistency` job（现已能检出），或用 `python scripts/fix-dameng-terminators.py --migration-dir src/main/resources/db/migration --dialect dameng --dry-run` 自查。
 - 种子数据 `V2__seed_data.sql` 中的 `sys_menu`（5 个 fm-* 顶部菜单 + `allowed_roles`）必须与 `AuthService.menus()` 口径一致（见 `auth-design.md`）。
 
 ## 4. 构建与启动
@@ -52,7 +53,9 @@ java -jar target/mm-security-backend-1.0.0-SNAPSHOT.jar --spring.profiles.active
 
 - 观察启动日志：`Flyway` 应用 `dameng/V1..V57` 成功，`flyway_schema_history` 有 57 行。
 - ⚠️ Flyway 社区版**无官方达梦 database 模块**：若报 `Unsupported Database`，需引入达梦兼容的 Flyway database 插件，或把 Flyway 的数据库探测配为兼容模式（Oracle 兼容）后重试。**此步必须在真实 DM 实例复核**，H2/PG 无法替代验证。
-- 实跑前可先本地用 `python scripts/check-dialect-migration-consistency.py` 复核三方言结构与终结符（CI 已自动跑）。
+- 实跑前可先本地复核三方言结构与终结符（CI 已自动跑）：
+  `python scripts/check-dialect-migration-consistency.py --migration-dir src/main/resources/db/migration --dialects h2,dameng,postgresql`；
+  只查终结符可用 `python scripts/sql_stmt_scan.py --migration-dir src/main/resources/db/migration --dialects h2,dameng,postgresql`。
 
 ## 6. 验收冒烟（对齐 README §7）
 
