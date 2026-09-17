@@ -7,6 +7,8 @@
 CREATE TABLE + ALTER TABLE ADD COLUMN），报告：
 
   1. 版本文件 parity（三方言须有同一组 Vn）
+  1b. 语句终结符审计（每条语句须以 ';' 结尾；缺则 Flyway 默认分隔符无法切分多语句
+      → 达梦/DM8 实跑必失败。判据用 `sql_stmt_scan` 的括号深度状态机，**结构性错误**）
   2. 表存在 parity（某方言有某表，其他方言也须有）
   3. 每表列名 parity（列名与方言无关；DM 缺列会在运行时破坏
      Java @TableField 映射，即使 H2 通过也会在 DM 炸）
@@ -309,16 +311,25 @@ def main():
         for e in extra:
             errors.append(f"[VERSION] {d} 多出 {e}（其他方言无）")
 
-    # 1b. 语句终结符 parity（Flyway 默认 ';' 分隔；缺终结符会导致多语句无法切分）
+    # 1b. 语句终结符审计（Flyway 默认 ';' 分隔；缺终结符 -> 多语句无法切分 -> DM8 必失败）
+    #    判据：括号深度状态机（sql_stmt_scan），可识别单行 INSERT/UPDATE/ALTER 与
+    #    跨多行的 `INSERT ... ) VALUES (...)`；旧的「CREATE TABLE 数 > 分号数」判据对
+    #    达梦种子（几十条连续 INSERT）检出率为 0，且只进 warnings 不阻断 CI，故已弃用。
+    try:
+        import sql_stmt_scan
+    except ImportError:  # 直接以脚本路径执行时确保同目录可导入
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import sql_stmt_scan
     for d in dialects:
         for fname, raw in read_sql_files(args.migration_dir, d):
-            n_ct = len(re.findall(r"CREATE\s+TABLE", raw, re.IGNORECASE))
-            n_semi = raw.count(";")
-            n_slash = len(re.findall(r"^\s*/\s*$", raw, re.MULTILINE))
-            if n_ct > 0 and n_ct > (n_semi + n_slash):
-                warnings.append(
-                    f"[TERMINATOR] {d}/{fname} 含 {n_ct} 个 CREATE TABLE 但仅 {n_semi} 个 ';'/{n_slash} 个 '/'，"
-                    f"Flyway 默认分隔符将无法切分多语句（须在 {d} 实例复核/补终结符）"
+            miss = sql_stmt_scan.scan(raw)
+            if miss:
+                preview = ", ".join(str(x) for x in miss[:8]) + ("..." if len(miss) > 8 else "")
+                errors.append(
+                    f"[TERMINATOR] {d}/{fname} 有 {len(miss)} 处语句缺 ';' 终结符 (行 {preview})；"
+                    f"Flyway 默认分隔符无法切分多语句 → 上库必失败。"
+                    f"修复: python scripts/fix-dameng-terminators.py "
+                    f"--migration-dir {args.migration_dir} --dialect {d}"
                 )
 
     # 2. 表存在 parity
