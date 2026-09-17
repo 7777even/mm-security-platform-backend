@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.websocket;
 
 import com.sinopec.mmsecurity.dto.AlarmItem;
+import com.sinopec.mmsecurity.security.LoginUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,8 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+
+import java.io.IOException;
 
 /**
  * 实时推送 WebSocket 端点（/ws/alarm）。
@@ -31,8 +34,19 @@ public class AlarmWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        broadcastService.addSession(session);
-        log.info("WS 会话建立：{} (当前 {} 个)", session.getId(), broadcastService.sessionCount());
+        // 身份须在握手阶段由 RealtimeAuthHandshakeInterceptor 注入；缺失表示鉴权缺口，强制关闭。
+        Object attr = session.getAttributes().get(RealtimeAuthHandshakeInterceptor.LOGIN_USER_KEY);
+        if (!(attr instanceof LoginUser loginUser)) {
+            log.warn("WS 会话缺少身份（握手拦截器未注入），强制关闭 session={}", session.getId());
+            try {
+                session.close(CloseStatus.NOT_ACCEPTABLE);
+            } catch (IOException ignored) {
+                // 关闭失败也无妨，会话本就被拒绝
+            }
+            return;
+        }
+        broadcastService.addSession(session, loginUser);
+        log.info("WS 会话建立：{} user={} (当前 {} 个)", session.getId(), loginUser.getUsername(), broadcastService.sessionCount());
     }
 
     @Override

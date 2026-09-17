@@ -69,6 +69,8 @@ public class JwtFilter extends OncePerRequestFilter {
             "/api/v1/auth/logout",
             "/actuator",
             "/h2-console",
+            // /ws 仍走白名单：仅跳过 JwtFilter 对 Authorization 头的校验（浏览器 WS 升级请求无法携带该头）；
+            // 实际鉴权由 RealtimeAuthHandshakeInterceptor 在握手阶段完成（?token= 抽取 access 令牌），并非匿名公开端点。
             "/ws",
             "/error"
     };
