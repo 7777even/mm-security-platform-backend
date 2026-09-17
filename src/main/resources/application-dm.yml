@@ -26,7 +26,11 @@
 
 spring:
   datasource:
-    url: jdbc:dm://${DB_HOST:localhost}:${DB_PORT:5236}/${DB_NAME:mm_security}
+    # ⚠️ 达梦「用户 = 模式(schema)」：JDBC URL 里的路径段会被当作【模式名】解析，
+    #   写成 jdbc:dm://host:5236/mm_security 会直接报「无效的模式名[mm_security]」
+    #   （2026-09-17 真机实测；H2/PG 无此语义，故本地一直未暴露）。
+    #   因此 URL 不写路径段，schema 由 DB_USERNAME 决定（默认 SYSDBA 即 SYSDBA 模式）。
+    url: jdbc:dm://${DB_HOST:localhost}:${DB_PORT:5236}
     username: ${DB_USERNAME:SYSDBA}
     password: ${DB_PASSWORD}
     driver-class-name: dm.jdbc.driver.DmDriver
@@ -36,6 +40,13 @@ spring:
   # Flyway 迁移位置：达梦 DM8 方言（classpath:db/migration/dameng）。
   flyway:
     locations: classpath:db/migration/dameng
+    # ⚠️ 必须把 baseline 版本设为 0。原因：达梦实例恒自带系统表（如 ##HISTOGRAMS_TABLE），
+    #    在继承 application.yml 的 baseline-on-migrate=true 时，Flyway 会判定「schema 非空」
+    #    并按默认 baselineVersion=1 打基线 ⇒ **V1__init_schema.sql 被整份跳过**，而 V2 的种子
+    #    又要往 sys_menu 写入 ⇒ 报 `-2104 无效的表名[sys_menu]`（2026-09-17 真机实测）。
+    #    H2/PG 的库是真空的，因此该问题本地长年未暴露。
+    #    设 baseline-version=0 后基线落在 0，V1 起全部按序执行。
+    baseline-version: 0
 
 # JWT：生产必须注入 JWT_SECRET（≥ 256bit），无默认值
 jwt:
