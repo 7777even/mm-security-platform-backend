@@ -1,3 +1,5 @@
+
+SET IDENTITY_INSERT mgmt_ledger_meta ON;
 -- V53 ④-B 收尾：设备设施管理域「设备」(ef-equipment) 真后端化（达梦 DM8 方言 Oracle 兼容，未实跑验证）
 -- 复用 V51 的 mgmt_ledger_meta/row/cell 三表，仅补充数据，无表结构变更。
 -- 列定义沿用前端 mgmtMenus 原型页约定（设备设施管理组 → 设备 叶子）。
@@ -5,12 +7,18 @@
 -- 注：示例数据为合理默认结构，待产品校准实际设备清册（位号/类别体系）后替换。
 
 -- 元数据
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (25, 'ef-equipment', '设备管理', '["编号","设备名称","类别","所属装置","位号","状态"]', '[]', 25);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (25, 'ef-equipment', '设备管理', '["编号","设备名称","类别","所属装置","位号","状态"]', '[]', 25);
+SET IDENTITY_INSERT mgmt_ledger_meta OFF;
+SET IDENTITY_INSERT mgmt_ledger_row ON;
+
 
 -- 数据行
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (50, 'ef-equipment', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (51, 'ef-equipment', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (52, 'ef-equipment', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (50, 'ef-equipment', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (51, 'ef-equipment', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (52, 'ef-equipment', 2, 2);
+SET IDENTITY_INSERT mgmt_ledger_row OFF;
+SET IDENTITY_INSERT mgmt_ledger_cell ON;
+
 
 -- 单元格（col_key 固定 c0..c5；cell_type: ok/warn/bad 渲染状态标签，NULL 为普通文本）
 -- 行 1：循环氢压缩机
@@ -34,3 +42,5 @@ INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_ty
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (283, 52, 3, 'c3', '催化裂化', NULL);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (284, 52, 4, 'c4', 'E-330', NULL);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (285, 52, 5, 'c5', '检修', 'warn');
+
+SET IDENTITY_INSERT mgmt_ledger_cell OFF;

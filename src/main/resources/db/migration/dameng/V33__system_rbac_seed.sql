@@ -26,14 +26,14 @@ FROM sys_menu p WHERE p.code = 'fm-fire';
 
 -- 移动端（不进顶部导航：menus() 仅返回 fm-* 前缀节点）
 INSERT INTO sys_menu (parent_id, name, code, path, icon, sort_order, status, deleted, menu_type, perm_code, visible)
-SELECT 0, '移动端', 'mobile', '/mobile', 'Cellphone', 800, 1, 0, 'DIR', NULL FROM dual;
+SELECT 0, '移动端', 'mobile', '/mobile', 'Cellphone', 800, 1, 0, 'DIR', NULL, 0 FROM dual;
 INSERT INTO sys_menu (parent_id, name, code, path, icon, sort_order, status, deleted, menu_type, perm_code, visible)
 SELECT p.id, '现场采集回传', 'mobile-field-report', '/mobile/field-report', NULL, 801, 1, 0, 'MENU', 'mobile:field-report:view', 1
 FROM sys_menu p WHERE p.code = 'mobile';
 
 -- 系统管理：一级目录
 INSERT INTO sys_menu (parent_id, name, code, path, icon, sort_order, status, deleted, menu_type, perm_code, visible)
-SELECT 0, '系统管理', 'system', '/system', 'Setting', 900, 1, 0, 'DIR', NULL FROM dual;
+SELECT 0, '系统管理', 'system', '/system', 'Setting', 900, 1, 0, 'DIR', NULL, 0 FROM dual;
 
 -- 系统管理：二级菜单
 INSERT INTO sys_menu (parent_id, name, code, path, icon, sort_order, status, deleted, menu_type, perm_code, visible)

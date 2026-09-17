@@ -1,7 +1,7 @@
 -- V51 管理台账通用能力（只读）。数据种子化自 mgmtMenus 静态页，使后台管理端静态页真后端化。
 CREATE TABLE mgmt_ledger_meta (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    domain VARCHAR(64) NOT NULL,
+    domain_code VARCHAR(64) NOT NULL,
     title VARCHAR(128) NOT NULL,
     columns_json VARCHAR(4000),
     filter_json VARCHAR(2000),
@@ -9,7 +9,7 @@ CREATE TABLE mgmt_ledger_meta (
 );
 CREATE TABLE mgmt_ledger_row (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    domain VARCHAR(64) NOT NULL,
+    domain_code VARCHAR(64) NOT NULL,
     row_no INT NOT NULL DEFAULT 0,
     sort_no INT NOT NULL DEFAULT 0
 );
@@ -23,47 +23,47 @@ CREATE TABLE mgmt_ledger_cell (
 );
 
 -- 元数据
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (1, 'alarm-config', '报警规则配置', '["编号","规则名称","报警类型","级别","通知方式","联动动作","启用"]', '[]', 1);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (2, 'chemsafe-db', '危险化学品数据库管理', '["编号","中文名称","英文名称","CAS号","分子式","危险性分类"]', '[]', 2);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (3, 'drill-mgmt', '演练管理', '["编号","计划名称","事件分类","事件类型","内容类型","形式类型","计划时间","状态","报警事件"]', '[]', 3);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (4, 'drill-evaluation', '演练评估管理', '["演练编号","演练名称","评估日期","评估方式","评估方法","综合得分","等级","状态"]', '[]', 4);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (5, 'ef-tank', '储罐', '["编号","储罐名称","类型","容积(m³)","储存介质","所属罐区","状态"]', '[]', 5);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (6, 'ef-tankfarm', '罐区', '["编号","罐区名称","储罐数量","总容积(m³)","主要介质","责任人","启用"]', '[]', 6);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (7, 'ef-unit', '装置', '["编号","装置名称","类型","占地面积(m²)","主要产品","启用"]', '[]', 7);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (8, 'ef-warehouse', '仓库', '["编号","仓库名称","类型","所属库区","存储物品","消防配置","启用"]', '[]', 8);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (9, 'ef-warehouse-zone', '库区', '["编号","库区名称","仓库数","主要存储","责任人","启用"]', '[]', 9);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (10, 'enterprise-basic', '企业基本信息管理', '["项目","内容"]', '[]', 10);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (11, 'fire-rescue-plan', '消防救援预案管理', '["预案编号","预案名称","适用部位","编制单位","版本","启用"]', '[]', 11);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (12, 'flood-point', '厂区易涝点管理', '["编号","名称","所属区域","具体位置","风险等级","状态","责任人"]', '[]', 12);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (13, 'media-fire-params', '介质消防参数管理', '["介质名称","闪点(℃)","燃点(℃)","爆炸下限(%)","灭火剂推荐","备注"]', '[]', 13);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (14, 'org-mgmt', '组织管理', '["组织名称","编码","上级组织","类型","启用"]', '[]', 14);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (15, 'prod-emergency', '生产应急资料管理', '["资料名称","类别","所属装置","上传人","上传时间","状态"]', '[]', 15);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (16, 'training-mgmt', '消防培训与学习管理', '["课程名称","类别","学时","参训人数","最近开课","状态"]', '[]', 16);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (17, 'water-system', '消防水系统管理', '["编号","水源名称","类型","容量(m³)","位置","水位状态","启用"]', '[]', 17);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (18, 'broadcast-template', '广播模板管理', '["模板名称","内容类型","适用场景","内容摘要"]', '[]', 18);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (1, 'alarm-config', '报警规则配置', '["编号","规则名称","报警类型","级别","通知方式","联动动作","启用"]', '[]', 1);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (2, 'chemsafe-db', '危险化学品数据库管理', '["编号","中文名称","英文名称","CAS号","分子式","危险性分类"]', '[]', 2);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (3, 'drill-mgmt', '演练管理', '["编号","计划名称","事件分类","事件类型","内容类型","形式类型","计划时间","状态","报警事件"]', '[]', 3);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (4, 'drill-evaluation', '演练评估管理', '["演练编号","演练名称","评估日期","评估方式","评估方法","综合得分","等级","状态"]', '[]', 4);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (5, 'ef-tank', '储罐', '["编号","储罐名称","类型","容积(m³)","储存介质","所属罐区","状态"]', '[]', 5);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (6, 'ef-tankfarm', '罐区', '["编号","罐区名称","储罐数量","总容积(m³)","主要介质","责任人","启用"]', '[]', 6);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (7, 'ef-unit', '装置', '["编号","装置名称","类型","占地面积(m²)","主要产品","启用"]', '[]', 7);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (8, 'ef-warehouse', '仓库', '["编号","仓库名称","类型","所属库区","存储物品","消防配置","启用"]', '[]', 8);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (9, 'ef-warehouse-zone', '库区', '["编号","库区名称","仓库数","主要存储","责任人","启用"]', '[]', 9);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (10, 'enterprise-basic', '企业基本信息管理', '["项目","内容"]', '[]', 10);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (11, 'fire-rescue-plan', '消防救援预案管理', '["预案编号","预案名称","适用部位","编制单位","版本","启用"]', '[]', 11);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (12, 'flood-point', '厂区易涝点管理', '["编号","名称","所属区域","具体位置","风险等级","状态","责任人"]', '[]', 12);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (13, 'media-fire-params', '介质消防参数管理', '["介质名称","闪点(℃)","燃点(℃)","爆炸下限(%)","灭火剂推荐","备注"]', '[]', 13);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (14, 'org-mgmt', '组织管理', '["组织名称","编码","上级组织","类型","启用"]', '[]', 14);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (15, 'prod-emergency', '生产应急资料管理', '["资料名称","类别","所属装置","上传人","上传时间","状态"]', '[]', 15);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (16, 'training-mgmt', '消防培训与学习管理', '["课程名称","类别","学时","参训人数","最近开课","状态"]', '[]', 16);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (17, 'water-system', '消防水系统管理', '["编号","水源名称","类型","容量(m³)","位置","水位状态","启用"]', '[]', 17);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (18, 'broadcast-template', '广播模板管理', '["模板名称","内容类型","适用场景","内容摘要"]', '[]', 18);
 
 -- 数据行
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (1, 'alarm-config', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (2, 'alarm-config', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (3, 'alarm-config', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (4, 'chemsafe-db', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (5, 'drill-mgmt', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (6, 'drill-evaluation', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (7, 'ef-tank', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (8, 'ef-tankfarm', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (9, 'ef-unit', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (10, 'ef-warehouse', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (11, 'ef-warehouse-zone', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (12, 'fire-rescue-plan', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (13, 'flood-point', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (14, 'media-fire-params', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (15, 'org-mgmt', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (16, 'org-mgmt', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (17, 'prod-emergency', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (18, 'training-mgmt', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (19, 'water-system', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (20, 'water-system', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (21, 'broadcast-template', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (1, 'alarm-config', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (2, 'alarm-config', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (3, 'alarm-config', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (4, 'chemsafe-db', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (5, 'drill-mgmt', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (6, 'drill-evaluation', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (7, 'ef-tank', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (8, 'ef-tankfarm', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (9, 'ef-unit', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (10, 'ef-warehouse', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (11, 'ef-warehouse-zone', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (12, 'fire-rescue-plan', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (13, 'flood-point', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (14, 'media-fire-params', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (15, 'org-mgmt', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (16, 'org-mgmt', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (17, 'prod-emergency', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (18, 'training-mgmt', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (19, 'water-system', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (20, 'water-system', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (21, 'broadcast-template', 0, 0);
 
 -- 单元格
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (1, 1, 0, 'c0', 'R-001', NULL);
@@ -204,16 +204,16 @@ INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_ty
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (136, 21, 3, 'c3', '请沿疏散指示撤离…', NULL);
 
 -- 企业基本信息（原 form 单记录页 → 键值台账：项目/内容）
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (22, 'enterprise-basic', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (23, 'enterprise-basic', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (24, 'enterprise-basic', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (25, 'enterprise-basic', 3, 3);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (26, 'enterprise-basic', 4, 4);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (27, 'enterprise-basic', 5, 5);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (28, 'enterprise-basic', 6, 6);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (29, 'enterprise-basic', 7, 7);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (30, 'enterprise-basic', 8, 8);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (31, 'enterprise-basic', 9, 9);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (22, 'enterprise-basic', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (23, 'enterprise-basic', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (24, 'enterprise-basic', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (25, 'enterprise-basic', 3, 3);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (26, 'enterprise-basic', 4, 4);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (27, 'enterprise-basic', 5, 5);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (28, 'enterprise-basic', 6, 6);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (29, 'enterprise-basic', 7, 7);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (30, 'enterprise-basic', 8, 8);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (31, 'enterprise-basic', 9, 9);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (137, 22, 0, 'c0', '单位名称', NULL);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (138, 22, 1, 'c1', '中国石油化工股份有限公司茂名分公司', NULL);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (139, 23, 0, 'c0', '单位编号', NULL);

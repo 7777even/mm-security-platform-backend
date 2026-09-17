@@ -9,57 +9,57 @@
 
 CREATE TABLE fac_major_hazard (
     id                    NUMBER(19) PRIMARY KEY,
-    name                  VARCHAR2(128),
-    level                 VARCHAR2(8),
+    name                  VARCHAR2(128 CHAR),
+    level                 VARCHAR2(8 CHAR),
     r_value               DOUBLE PRECISION,
     monitor_count         NUMBER(9),
     video_count           NUMBER(9),
-    enterprise            VARCHAR2(64),
-    category              VARCHAR2(32),
-    code                  VARCHAR2(32),
+    enterprise            VARCHAR2(64 CHAR),
+    category              VARCHAR2(32 CHAR),
+    code                  VARCHAR2(32 CHAR),
     longitude             DOUBLE PRECISION,
     latitude              DOUBLE PRECISION,
-    commission_date       VARCHAR2(32),
+    commission_date       VARCHAR2(32 CHAR),
     key_process           NUMBER(1),
     in_chemical_park      NUMBER(1),
-    contacts_json         VARCHAR2(4000),
-    files_json            VARCHAR2(4000),
-    monitors_json         VARCHAR2(4000),
-    videos_json           VARCHAR2(4000),
-    chemicals_json        VARCHAR2(4000),
-    evacuation_routes_json VARCHAR2(4000),
-    operations_json       VARCHAR2(4000)
+    contacts_json         VARCHAR2(4000 CHAR),
+    files_json            VARCHAR2(4000 CHAR),
+    monitors_json         VARCHAR2(4000 CHAR),
+    videos_json           VARCHAR2(4000 CHAR),
+    chemicals_json        VARCHAR2(4000 CHAR),
+    evacuation_routes_json VARCHAR2(4000 CHAR),
+    operations_json       VARCHAR2(4000 CHAR)
 );
 
 
 CREATE TABLE fac_monitoring_point (
-    id         VARCHAR2(32) PRIMARY KEY,
-    name       VARCHAR2(128),
-    category   VARCHAR2(32),
-    status     VARCHAR2(16),
-    last_time  VARCHAR2(32),
-    org        VARCHAR2(64),
+    id         VARCHAR2(32 CHAR) PRIMARY KEY,
+    name       VARCHAR2(128 CHAR),
+    category   VARCHAR2(32 CHAR),
+    status     VARCHAR2(16 CHAR),
+    last_time  VARCHAR2(32 CHAR),
+    org        VARCHAR2(64 CHAR),
     longitude  DOUBLE PRECISION,
     latitude   DOUBLE PRECISION
 );
 
 
 CREATE TABLE fac_monitoring_alarm (
-    id    VARCHAR2(32) PRIMARY KEY,
-    title VARCHAR2(128),
-    detail VARCHAR2(256),
-    area  VARCHAR2(64),
-    time  VARCHAR2(32),
-    level VARCHAR2(16)
+    id    VARCHAR2(32 CHAR) PRIMARY KEY,
+    title VARCHAR2(128 CHAR),
+    detail VARCHAR2(256 CHAR),
+    area  VARCHAR2(64 CHAR),
+    time  VARCHAR2(32 CHAR),
+    level VARCHAR2(16 CHAR)
 );
 
 
 CREATE TABLE fac_facility_detail (
-    facility_name      VARCHAR2(128) PRIMARY KEY,
-    hazard_source_code VARCHAR2(32),
-    basic_fields_json  VARCHAR2(4000),
-    chemical_fields_json VARCHAR2(4000),
-    archives_json      VARCHAR2(4000)
+    facility_name      VARCHAR2(128 CHAR) PRIMARY KEY,
+    hazard_source_code VARCHAR2(32 CHAR),
+    basic_fields_json  VARCHAR2(4000 CHAR),
+    chemical_fields_json VARCHAR2(4000 CHAR),
+    archives_json      VARCHAR2(4000 CHAR)
 );
 
 

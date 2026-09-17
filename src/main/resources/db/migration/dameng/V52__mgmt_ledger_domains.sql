@@ -1,3 +1,5 @@
+
+SET IDENTITY_INSERT mgmt_ledger_meta ON;
 -- V52 ④-C 管理台账扩展：6 个生产必需域种子化（达梦 DM8 方言 Oracle 兼容，未实跑验证）
 -- 复用 V51 的 mgmt_ledger_meta/row/cell 三表，仅补充数据，无表结构变更。
 -- 域：key-location 消防重点部位 / incident-archive 灭火事件档案 / drill-script 演练脚本
@@ -5,32 +7,38 @@
 -- 列定义沿用前端 mgmtMenus 原型页约定；ID 在 V51（meta 1-18 / row 1-31 / cell 1-156）之后顺序延续。
 
 -- 元数据
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (19, 'key-location', '消防重点部位管理', '["消防重点部位名称","类别","火灾危险性","耐火等级","所属装置","责任人","启用"]', '[]', 19);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (20, 'incident-archive', '灭火事件档案管理', '["事件编号","事件名称","起火时间","部位数","起火原因","事件等级"]', '[]', 20);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (21, 'drill-script', '演练脚本管理', '["脚本编号","脚本名称","适用场景","步骤数","版本","启用"]', '[]', 21);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (22, 'linkage-unit', '后勤联动单位管理', '["单位名称","联动类型","联系人","电话","启用"]', '[]', 22);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (23, 'emergency-pool', '应急/雨水监控池管理', '["编号","名称","类型","容积(m³)","深度(m)","所属厂区","监测点位"]', '[]', 23);
-INSERT INTO mgmt_ledger_meta (id, domain, title, columns_json, filter_json, sort_no) VALUES (24, 'ef-medium', '设备介质管理', '["编号","介质名称","所属设备","物态","危险特性","备注"]', '[]', 24);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (19, 'key-location', '消防重点部位管理', '["消防重点部位名称","类别","火灾危险性","耐火等级","所属装置","责任人","启用"]', '[]', 19);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (20, 'incident-archive', '灭火事件档案管理', '["事件编号","事件名称","起火时间","部位数","起火原因","事件等级"]', '[]', 20);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (21, 'drill-script', '演练脚本管理', '["脚本编号","脚本名称","适用场景","步骤数","版本","启用"]', '[]', 21);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (22, 'linkage-unit', '后勤联动单位管理', '["单位名称","联动类型","联系人","电话","启用"]', '[]', 22);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (23, 'emergency-pool', '应急/雨水监控池管理', '["编号","名称","类型","容积(m³)","深度(m)","所属厂区","监测点位"]', '[]', 23);
+INSERT INTO mgmt_ledger_meta (id, domain_code, title, columns_json, filter_json, sort_no) VALUES (24, 'ef-medium', '设备介质管理', '["编号","介质名称","所属设备","物态","危险特性","备注"]', '[]', 24);
+SET IDENTITY_INSERT mgmt_ledger_meta OFF;
+SET IDENTITY_INSERT mgmt_ledger_row ON;
+
 
 -- 数据行
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (32, 'key-location', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (33, 'key-location', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (34, 'key-location', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (35, 'incident-archive', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (36, 'incident-archive', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (37, 'incident-archive', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (38, 'drill-script', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (39, 'drill-script', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (40, 'drill-script', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (41, 'linkage-unit', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (42, 'linkage-unit', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (43, 'linkage-unit', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (44, 'emergency-pool', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (45, 'emergency-pool', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (46, 'emergency-pool', 2, 2);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (47, 'ef-medium', 0, 0);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (48, 'ef-medium', 1, 1);
-INSERT INTO mgmt_ledger_row (id, domain, row_no, sort_no) VALUES (49, 'ef-medium', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (32, 'key-location', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (33, 'key-location', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (34, 'key-location', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (35, 'incident-archive', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (36, 'incident-archive', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (37, 'incident-archive', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (38, 'drill-script', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (39, 'drill-script', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (40, 'drill-script', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (41, 'linkage-unit', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (42, 'linkage-unit', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (43, 'linkage-unit', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (44, 'emergency-pool', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (45, 'emergency-pool', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (46, 'emergency-pool', 2, 2);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (47, 'ef-medium', 0, 0);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (48, 'ef-medium', 1, 1);
+INSERT INTO mgmt_ledger_row (id, domain_code, row_no, sort_no) VALUES (49, 'ef-medium', 2, 2);
+SET IDENTITY_INSERT mgmt_ledger_row OFF;
+SET IDENTITY_INSERT mgmt_ledger_cell ON;
+
 
 -- 单元格（col_key 固定 c0..cN；cell_type: ok/warn/bad 渲染状态标签，NULL 为普通文本）
 -- key-location
@@ -155,3 +163,5 @@ INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_ty
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (265, 49, 3, 'c3', '液化气', NULL);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (266, 49, 4, 'c4', '易燃易爆', NULL);
 INSERT INTO mgmt_ledger_cell (id, row_id, col_index, col_key, cell_text, cell_type) VALUES (267, 49, 5, 'c5', '—', NULL);
+
+SET IDENTITY_INSERT mgmt_ledger_cell OFF;

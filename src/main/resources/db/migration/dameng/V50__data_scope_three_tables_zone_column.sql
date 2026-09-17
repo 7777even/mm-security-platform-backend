@@ -4,6 +4,6 @@
 --   未实跑验证：本机无 DM8 实例、无 docker，待 DM8 环境激活后 flyway 校验。
 -- =============================================================================
 
-ALTER TABLE fac_alarm ADD zone VARCHAR2(64);
-ALTER TABLE fac_video_camera ADD zone VARCHAR2(64);
-ALTER TABLE fac_major_hazard ADD zone VARCHAR2(64);
+ALTER TABLE fac_alarm ADD zone VARCHAR2(64 CHAR);
+ALTER TABLE fac_video_camera ADD zone VARCHAR2(64 CHAR);
+ALTER TABLE fac_major_hazard ADD zone VARCHAR2(64 CHAR);

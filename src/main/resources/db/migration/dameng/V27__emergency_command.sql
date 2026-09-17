@@ -6,15 +6,15 @@
 -- V27 应急指挥指令（真实数据源，替代原 EmergencyService 硬编码常量）。
 -- 列表来自 fac_emergency_cmd；详情富文本（派发对象/日志/媒体）存于 detail_json。
 CREATE TABLE fac_emergency_cmd (
-    id VARCHAR2(64) NOT NULL,
-    grp_id VARCHAR2(64) NOT NULL,
-    grp_label VARCHAR2(128) NOT NULL,
-    grp_tab VARCHAR2(32) NOT NULL,
-    instruction_type VARCHAR2(32),
-    name VARCHAR2(128),
-    location VARCHAR2(256),
-    status VARCHAR2(32),
-    action_label VARCHAR2(64),
+    id VARCHAR2(64 CHAR) NOT NULL,
+    grp_id VARCHAR2(64 CHAR) NOT NULL,
+    grp_label VARCHAR2(128 CHAR) NOT NULL,
+    grp_tab VARCHAR2(32 CHAR) NOT NULL,
+    instruction_type VARCHAR2(32 CHAR),
+    name VARCHAR2(128 CHAR),
+    location VARCHAR2(256 CHAR),
+    status VARCHAR2(32 CHAR),
+    action_label VARCHAR2(64 CHAR),
     done NUMBER(1),
     detail_json LONGVARCHAR,
     PRIMARY KEY (id)

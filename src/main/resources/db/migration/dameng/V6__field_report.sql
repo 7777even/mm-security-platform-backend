@@ -7,17 +7,17 @@
 -- 此前 UplinkService.submitFieldReport 仅受理确认（返回 204），本期收口为「受理即落库」，
 -- 供应急复盘/核查。id 由客户端 UUID 生成，用 INPUT（业务侧显式赋值，非自增）。
 CREATE TABLE fac_field_report (
-    id           VARCHAR2(64) PRIMARY KEY,
-    kind         VARCHAR2(32),
-    title        VARCHAR2(256),
-    note         VARCHAR2(512),
-    device_code  VARCHAR2(32),
-    media_json   VARCHAR2(4000),
+    id           VARCHAR2(64 CHAR) PRIMARY KEY,
+    kind         VARCHAR2(32 CHAR),
+    title        VARCHAR2(256 CHAR),
+    note         VARCHAR2(512 CHAR),
+    device_code  VARCHAR2(32 CHAR),
+    media_json   VARCHAR2(4000 CHAR),
     created_at   NUMBER(19),
-    status       VARCHAR2(16),
-    reporter     VARCHAR2(64),
+    status       VARCHAR2(16 CHAR),
+    reporter     VARCHAR2(64 CHAR),
     attempts     NUMBER(9) DEFAULT 0,
-    last_error   VARCHAR2(512),
+    last_error   VARCHAR2(512 CHAR),
     synced_at    NUMBER(19)
 );
 

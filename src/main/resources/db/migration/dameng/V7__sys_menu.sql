@@ -7,7 +7,7 @@
 -- V1 已建 sys_menu（code/path/sort_order 等列），V2 曾种子旧码（dashboard/facility/alarm/device/emergency）；
 -- 现统一为 fm-* 顶部主模块，旧种子由本迁移清理，改由本迁移维护，避免与前端路由 key 不一致。
 -- 本迁移新增 allowed_roles 列承载 RBAC：menus() 按当前登录角色过滤可见菜单。
-ALTER TABLE sys_menu ADD allowed_roles VARCHAR2(256) NOT NULL DEFAULT 'ADMIN,USER';
+ALTER TABLE sys_menu ADD allowed_roles VARCHAR2(256 CHAR) NOT NULL DEFAULT 'ADMIN,USER';
 
 
 DELETE FROM sys_menu;

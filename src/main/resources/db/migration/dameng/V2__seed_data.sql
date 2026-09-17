@@ -1,3 +1,5 @@
+
+SET IDENTITY_INSERT sys_menu ON;
 -- =============================================================================
 -- V2 种子数据（dev 联调 / 生产初始化可复用）—— 达梦 DM8 方言（Oracle 兼容）
 --   用 INSERT ... SELECT ... FROM dual WHERE NOT EXISTS 保证幂等（重跑不冲突）。
@@ -17,6 +19,8 @@ INSERT INTO sys_menu (id, parent_id, name, code, path, sort_order)
 SELECT 4, 0, '设备台账', 'device', '/device', 4 FROM dual WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 4);
 INSERT INTO sys_menu (id, parent_id, name, code, path, sort_order)
 SELECT 5, 0, '应急指挥', 'emergency', '/emergency', 5 FROM dual WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE id = 5);
+SET IDENTITY_INSERT sys_menu OFF;
+
 
 -- 设备
 INSERT INTO fac_device (device_code, device_name, device_type, zone, status, lat, lon)

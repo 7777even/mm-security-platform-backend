@@ -7,24 +7,24 @@
 -- 种子平移自前端 FIRE_ALARM_TEMPLATES（src/services/alarm.ts），保证 UI 展示一致且为真实数据
 
 CREATE TABLE fac_fire_alarm (
-    alarm_id            VARCHAR2(32) PRIMARY KEY,
-    type_label          VARCHAR2(32),
-    type_tone           VARCHAR2(16),
-    source              VARCHAR2(32),
-    object_type         VARCHAR2(32),
-    object_name         VARCHAR2(64),
-    level               VARCHAR2(16),
-    description         VARCHAR2(256),
-    location            VARCHAR2(128),
-    time                VARCHAR2(32),
-    false_alarm         VARCHAR2(16),
-    status              VARCHAR2(16),
-    rescue_event_id     VARCHAR2(32),
-    monitor_id          VARCHAR2(64),
-    monitor_label       VARCHAR2(128),
-    onsite_monitor_id   VARCHAR2(64),
-    onsite_monitor_label VARCHAR2(128),
-    title               VARCHAR2(128)
+    alarm_id            VARCHAR2(32 CHAR) PRIMARY KEY,
+    type_label          VARCHAR2(32 CHAR),
+    type_tone           VARCHAR2(16 CHAR),
+    source              VARCHAR2(32 CHAR),
+    object_type         VARCHAR2(32 CHAR),
+    object_name         VARCHAR2(64 CHAR),
+    level               VARCHAR2(16 CHAR),
+    description         VARCHAR2(256 CHAR),
+    location            VARCHAR2(128 CHAR),
+    time                VARCHAR2(32 CHAR),
+    false_alarm         VARCHAR2(16 CHAR),
+    status              VARCHAR2(16 CHAR),
+    rescue_event_id     VARCHAR2(32 CHAR),
+    monitor_id          VARCHAR2(64 CHAR),
+    monitor_label       VARCHAR2(128 CHAR),
+    onsite_monitor_id   VARCHAR2(64 CHAR),
+    onsite_monitor_label VARCHAR2(128 CHAR),
+    title               VARCHAR2(128 CHAR)
 );
 
 INSERT INTO fac_fire_alarm (alarm_id, type_label, type_tone, source, object_type, object_name, level, description, location, false_alarm, status, rescue_event_id, monitor_id, monitor_label, onsite_monitor_id, onsite_monitor_label, title, time) VALUES ('FA-20260907-001', '火灾报警', 'fire', '火灾报警', '装置', '蜡油加氢装置', '-', '蜡油加氢装置区疑似出现明火，请核实。', '化工区-蜡油加氢装置区', '未核实', 'ACTIVE', '1', 'cam-a-east', '蜡油加氢东侧监控', 'cam-a-site', '蜡油加氢现场监控', '蜡油加氢装置火灾', '2026-05-31 10:14:12');

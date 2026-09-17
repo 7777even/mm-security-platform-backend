@@ -8,9 +8,9 @@
 
 CREATE TABLE fac_patrol_camera (
     id       NUMBER(19) PRIMARY KEY,
-    name     VARCHAR2(128),
-    zone     VARCHAR2(32),
-    status   VARCHAR2(16),
+    name     VARCHAR2(128 CHAR),
+    zone     VARCHAR2(32 CHAR),
+    status   VARCHAR2(16 CHAR),
     longitude DOUBLE PRECISION,
     latitude  DOUBLE PRECISION
 );
@@ -68,9 +68,9 @@ INSERT INTO fac_patrol_camera (id, name, zone, status, longitude, latitude) VALU
 
 CREATE TABLE fac_gate_control (
     id       NUMBER(19) PRIMARY KEY,
-    name     VARCHAR2(128),
-    location VARCHAR2(64),
-    status   VARCHAR2(16),
+    name     VARCHAR2(128 CHAR),
+    location VARCHAR2(64 CHAR),
+    status   VARCHAR2(16 CHAR),
     longitude DOUBLE PRECISION,
     latitude  DOUBLE PRECISION
 );
@@ -100,9 +100,9 @@ INSERT INTO fac_gate_control (id, name, location, status, longitude, latitude) V
 
 CREATE TABLE fac_bollard (
     id       NUMBER(19) PRIMARY KEY,
-    name     VARCHAR2(128),
-    zone     VARCHAR2(32),
-    status   VARCHAR2(16),
+    name     VARCHAR2(128 CHAR),
+    zone     VARCHAR2(32 CHAR),
+    status   VARCHAR2(16 CHAR),
     longitude DOUBLE PRECISION,
     latitude  DOUBLE PRECISION
 );
@@ -132,11 +132,11 @@ INSERT INTO fac_bollard (id, name, zone, status, longitude, latitude) VALUES (11
 
 CREATE TABLE fac_vehicle_search (
     id         NUMBER(19) PRIMARY KEY,
-    plate      VARCHAR2(32),
+    plate      VARCHAR2(32 CHAR),
     confidence NUMBER(9),
-    gate       VARCHAR2(32),
-    status     VARCHAR2(16),
-    time       VARCHAR2(32)
+    gate       VARCHAR2(32 CHAR),
+    status     VARCHAR2(16 CHAR),
+    time       VARCHAR2(32 CHAR)
 );
 
 INSERT INTO fac_vehicle_search (id, plate, confidence, gate, status, time) VALUES (1, '粤KA4543', 80, '东门-入', '入厂', '2026-01-20 10:23:23');
@@ -154,10 +154,10 @@ INSERT INTO fac_vehicle_search (id, plate, confidence, gate, status, time) VALUE
 
 CREATE TABLE fac_person_search (
     id     NUMBER(19) PRIMARY KEY,
-    name   VARCHAR2(32),
-    gate   VARCHAR2(32),
-    status VARCHAR2(16),
-    date   VARCHAR2(32)
+    name   VARCHAR2(32 CHAR),
+    gate   VARCHAR2(32 CHAR),
+    status VARCHAR2(16 CHAR),
+    date   VARCHAR2(32 CHAR)
 );
 
 INSERT INTO fac_person_search (id, name, gate, status, date) VALUES (1, '张三', '东门-入', '入厂', '2026-01-20');
@@ -174,14 +174,14 @@ INSERT INTO fac_person_search (id, name, gate, status, date) VALUES (6, '周八'
 
 
 CREATE TABLE fac_security_event (
-    event_id VARCHAR2(32) PRIMARY KEY,
-    person   VARCHAR2(32),
-    channel  VARCHAR2(64),
-    card_id  VARCHAR2(32),
-    vehicle  VARCHAR2(32),
-    direction VARCHAR2(8),
+    event_id VARCHAR2(32 CHAR) PRIMARY KEY,
+    person   VARCHAR2(32 CHAR),
+    channel  VARCHAR2(64 CHAR),
+    card_id  VARCHAR2(32 CHAR),
+    vehicle  VARCHAR2(32 CHAR),
+    direction VARCHAR2(8 CHAR),
     level    NUMBER(9),
-    ts       VARCHAR2(32)
+    ts       VARCHAR2(32 CHAR)
 );
 
 INSERT INTO fac_security_event (event_id, person, channel, card_id, vehicle, direction, level, ts) VALUES ('EVT-20260907-0001', '张伟', '1#门-道闸1', 'C1001', '粤K·12345', '进', 1, '2026-09-07 08:02:11');
