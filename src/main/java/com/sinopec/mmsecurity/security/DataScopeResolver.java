@@ -50,12 +50,21 @@ public class DataScopeResolver {
     }
 
     /**
-     * 解析当前登录用户可访问的防区集合。
+     * 解析当前登录用户可访问的防区集合（线程上下文态，供 REST 请求期调用）。
      *
      * @return {@code null} = 不过滤（data_scope=ALL 或匿名）；空集 = 无任何可见防区；非空 = 允许防区集合
      */
     public Set<String> resolveZones() {
-        LoginUser user = UserContext.get();
+        return resolveZonesFor(UserContext.get());
+    }
+
+    /**
+     * 解析指定用户可访问的防区集合（与 {@link #resolveZones()} 同语义，但显式传入用户，
+     * 不依赖线程上下文）。供 WebSocket 等长连接场景在握手/连接建立时绑定身份后调用。
+     *
+     * @return {@code null} = 不过滤（data_scope=ALL 或用户为空）；空集 = 无任何可见防区；非空 = 允许防区集合
+     */
+    public Set<String> resolveZonesFor(LoginUser user) {
         if (user == null) {
             // 匿名（端点公开场景）：无法判定范围 → 不过滤，保持公开行为。
             return null;

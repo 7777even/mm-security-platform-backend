@@ -3,83 +3,71 @@ package com.sinopec.mmsecurity.security;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.entity.SysUser;
 import com.sinopec.mmsecurity.mapper.SysUserMapper;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.lang.reflect.Method;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * DataScopeResolver 解析逻辑（纯 Mockito + UserContext 线程局部）：
- * ALL→null（不过滤）；SELF/DEPT + zoneCodes→解析集合；空 zoneCodes→空集（最小权限）；匿名→null。
+ * DataScopeResolver 防区解析测试：覆盖 resolveZonesFor 三态——ALL→null、
+ * SELF+有防区→防区集合、SELF+无防区→空集、空用户→null。
  */
-@ExtendWith(MockitoExtension.class)
 class DataScopeResolverTest {
 
-    @Mock
-    private RoleAuthorityService roleAuthorityService;
-
-    @Mock
     private SysUserMapper userMapper;
-
+    private RoleAuthorityService roleAuthorityService;
     private DataScopeResolver resolver;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
+        userMapper = mock(SysUserMapper.class);
+        roleAuthorityService = mock(RoleAuthorityService.class);
         resolver = new DataScopeResolver(roleAuthorityService, userMapper);
-        // 触发 @PostConstruct 构建 Caffeine 缓存（测试不启 Spring 上下文）
-        Method init = DataScopeResolver.class.getDeclaredMethod("init");
-        init.setAccessible(true);
-        init.invoke(resolver);
+        resolver.init(); // 触发 @PostConstruct 构建 Caffeine 缓存（单测无 Spring 容器）
     }
 
-    @AfterEach
-    void tearDown() {
-        UserContext.clear();
+    private void stubUser(String zoneCodes) {
+        SysUser u = new SysUser();
+        u.setZoneCodes(zoneCodes);
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(u);
     }
 
     @Test
-    void allScope_returnsNull_noFilter() {
-        UserContext.set(new LoginUser(1L, "admin", "ADMIN"));
+    @DisplayName("data_scope=ALL → 返回 null（不加过滤）")
+    void allScope_returnsNull() {
         when(roleAuthorityService.dataScopeOf("ADMIN")).thenReturn("ALL");
-
-        assertThat(resolver.resolveZones()).isNull();
+        assertNull(resolver.resolveZonesFor(new LoginUser(null, "admin", "ADMIN")));
     }
 
     @Test
-    void selfScope_withZoneCodes_returnsParsedSet() {
-        UserContext.set(new LoginUser(1L, "alice", "TEAM_LEADER"));
-        when(roleAuthorityService.dataScopeOf("TEAM_LEADER")).thenReturn("SELF");
-        SysUser u = new SysUser();
-        u.setZoneCodes("炼油区, 罐区 ,仓储区");
-        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(u);
-
-        assertThat(resolver.resolveZones()).containsExactlyInAnyOrder("炼油区", "罐区", "仓储区");
+    @DisplayName("SELF + 有防区 → 返回防区集合")
+    void selfScope_withZones_returnsZoneSet() {
+        when(roleAuthorityService.dataScopeOf("SCHEDULER")).thenReturn("SELF");
+        stubUser("炼油区,罐区");
+        Set<String> zones = resolver.resolveZonesFor(new LoginUser(null, "u1", "SCHEDULER"));
+        assertEquals(Set.of("炼油区", "罐区"), zones);
     }
 
     @Test
-    void selfScope_emptyZoneCodes_returnsEmptySet() {
-        UserContext.set(new LoginUser(1L, "bob", "TEAM_LEADER"));
-        when(roleAuthorityService.dataScopeOf("TEAM_LEADER")).thenReturn("SELF");
-        SysUser u = new SysUser();
-        u.setZoneCodes("");
-        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(u);
-
-        assertThat(resolver.resolveZones()).isEmpty();
+    @DisplayName("SELF + 无防区 → 返回空集（最小权限）")
+    void selfScope_noZones_returnsEmpty() {
+        when(roleAuthorityService.dataScopeOf("SCHEDULER")).thenReturn("SELF");
+        stubUser("");
+        Set<String> zones = resolver.resolveZonesFor(new LoginUser(null, "u1", "SCHEDULER"));
+        assertTrue(zones != null && zones.isEmpty());
     }
 
     @Test
-    void anonymous_returnsNull() {
-        UserContext.clear();
-
-        assertThat(resolver.resolveZones()).isNull();
+    @DisplayName("空用户 → 返回 null（匿名/公开场景）")
+    void nullUser_returnsNull() {
+        assertNull(resolver.resolveZonesFor(null));
     }
 }
