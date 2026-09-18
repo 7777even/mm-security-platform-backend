@@ -1,6 +1,6 @@
 # 数据权限三核心表防区列治理（A1 剩余项 ②）
 
-> 状态：schema 预备完成（V50），回填与 ABAC 注入**待产品定规则**，本文件为治理说明与待办清单。
+> 状态：schema 预备完成（V50）。**归属规则待客户调研确定（产品亦无法拍板），V51 回填迁移暂缓生成；三表维持现状（全角色可见、不注入 ABAC），待调研结果产出归属规则后再回填+注入。** 本文件为治理说明与待办清单。
 > 关联：V34 数据权限 ABAC 框架、V46 fac_device.zone、V49 工作站域防区词、A1 ① 工作站域已套过滤。
 
 ## 1. 现状
@@ -37,9 +37,14 @@
 
 约束：回填产出的 zone 值必须落在 `sys_zone.zone_name` 已有词条内，禁止自造未登记词条。
 
+> ⚠️ **2026-09-17 决策（待客户调研）**：`location → 防区` 的归属规则产品无法拍板，须待客户现场调研才能定（各厂区防区命名/划分以客户实际为准）。故：
+> - `docs/sql/data-scope-three-tables-backfill.draft.sql` **仅作参考草稿，不转写 V51 迁移、不进 Flyway**；待调研产出权威归属规则后再据此生成正式迁移。
+> - `fac_alarm` / `fac_video_camera` / `fac_major_hazard` **三表维持现状**：全角色可见、Service 不注入 `DataScopeHelper.apply`。此乃已知缺口（非 bug），接受直至调研回填完成。
+> - `major_hazard` 无 `location`，其归属维度（企业名 / 经纬度多边形 / 类别）同样待调研明确，现状下无安全回填入口。
+
 ## 5. 待办清单（顺序执行）
 
-1. 产品确认 `location → 防区` 关键词映射（alarm/camera）与 `危化品 → 防区` 规则（major_hazard）。
+1. **【阻塞·待客户调研】** 确认 `location → 防区` 关键词映射（alarm/camera）与 `危化品 → 防区` 归属维度（major_hazard）。产品无法拍板，须客户现场调研产出权威防区划分后方可定。调研前不生成 V51、不注入 ABAC。
 2. 按确认规则执行 `data-scope-three-tables-backfill.draft.sql`（或转写正式 V51 迁移）。
 3. 跑校验 SQL：三表 `zone` 无 NULL 且全部命中 `sys_zone.zone_name`。
 4. 在三表对应 Service 列表查询注入 `DataScopeResolver` + `DataScopeHelper.apply(qw, Xxx::getZone, zones)`，
