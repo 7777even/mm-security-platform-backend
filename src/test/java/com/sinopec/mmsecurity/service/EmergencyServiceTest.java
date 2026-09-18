@@ -11,6 +11,7 @@ import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
+import com.sinopec.mmsecurity.entity.FacEmergencyCommandRecord;
 import com.sinopec.mmsecurity.entity.FacEmergencyGuidanceRoster;
 import com.sinopec.mmsecurity.entity.FacEmergencyNodeGuidance;
 import com.sinopec.mmsecurity.entity.FacEmergencyPhase;
@@ -35,6 +36,7 @@ import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyAssistStatMapper;
 import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyCommandRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyNodeGuidanceMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyPhaseMapper;
@@ -54,6 +56,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -82,6 +85,8 @@ class EmergencyServiceTest {
     private final FacDispatchPersonnelMapper dispatchPersonnelMapper =
             mock(FacDispatchPersonnelMapper.class);
     private final FacEmergencyCmdMapper cmdMapper = mock(FacEmergencyCmdMapper.class);
+    private final FacEmergencyCommandRecordMapper commandRecordMapper =
+            mock(FacEmergencyCommandRecordMapper.class);
     private final FacNodePhaseConfigMapper nodePhaseConfigMapper =
             mock(FacNodePhaseConfigMapper.class);
     private final FacEmergencyPhaseMapper emergencyPhaseMapper = mock(FacEmergencyPhaseMapper.class);
@@ -98,7 +103,8 @@ class EmergencyServiceTest {
             alarmMapper, assistStatMapper, strengthMapper,
             rescuePersonnelMapper, rescueEquipmentMapper, rescueVehicleMapper, brigadeTeamMapper,
             phoneMapper, knowledgeMapper, dutyMapper,
-            dispatchPersonnelMapper, cmdMapper, nodePhaseConfigMapper, emergencyPhaseMapper,
+            dispatchPersonnelMapper, cmdMapper, commandRecordMapper, nodePhaseConfigMapper,
+            emergencyPhaseMapper,
             responseModeMapper, processStageMapper, nodeGuidanceMapper, guidanceRosterMapper,
             objectMapper);
 
@@ -248,6 +254,82 @@ class EmergencyServiceTest {
         assertEquals(1, groups.get(0).getItems().size());
         assertEquals("n1", groups.get(0).getItems().get(0).getId());
         assertEquals("待处置", groups.get(0).getItems().get(0).getStatus());
+    }
+
+    @Test
+    void commandGroups_issuedRecordAppendedAsNewCard() {
+        // 模板表为空，仅有一条管理端自由编码下发的留痕记录
+        when(cmdMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(commandRecordMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(record("CMD-20260918-001", "罐区泡沫联锁", "应急调度", "已下发")));
+
+        List<EmergencyCommandGroup> groups = service.commandGroups("fixed");
+        assertEquals(1, groups.size());
+        assertEquals("issued", groups.get(0).getId());
+        assertEquals("下发指令", groups.get(0).getLabel());
+        assertEquals(1, groups.get(0).getItems().size());
+        var it = groups.get(0).getItems().get(0);
+        assertEquals("CMD-20260918-001", it.getId());
+        assertEquals("罐区泡沫联锁", it.getName());
+        // 已下发 → 契约枚举「待处置」（已发出、待处置推进）
+        assertEquals("待处置", it.getStatus());
+        assertFalse(it.getDone());
+    }
+
+    @Test
+    void commandGroups_recordOverlayUpdatesTemplateStatus() {
+        FacEmergencyCmd r1 = new FacEmergencyCmd();
+        r1.setId("d1");
+        r1.setGrpId("dispatch");
+        r1.setGrpLabel("一键调度");
+        r1.setGrpTab("fixed");
+        r1.setInstructionType("任务");
+        r1.setName("调度消防一队");
+        r1.setLocation("中海壳牌石油化工有限公司");
+        r1.setStatus("待处置");
+        r1.setActionLabel("一键派发");
+        r1.setDone(false);
+        when(cmdMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(r1));
+        when(commandRecordMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(record("d1", "调度消防一队", "任务", "已完成")));
+
+        List<EmergencyCommandGroup> groups = service.commandGroups("fixed");
+        assertEquals(1, groups.size());
+        // 命中模板：覆写状态而非新增「下发指令」组
+        assertEquals("已处置", groups.get(0).getItems().get(0).getStatus());
+        assertTrue(groups.get(0).getItems().get(0).getDone());
+    }
+
+    @Test
+    void commandGroups_latestRecordWinsForSameCode() {
+        when(cmdMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(commandRecordMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(
+                        record("CMD-002", "通知消防队伍", "通知", "待下发"),
+                        record("CMD-002", "通知消防队伍", "通知", "已完成")));
+
+        List<EmergencyCommandGroup> groups = service.commandGroups("temp");
+        assertEquals(1, groups.size());
+        assertEquals(1, groups.get(0).getItems().size());
+        var it = groups.get(0).getItems().get(0);
+        // 同码多条：最新一条（id 更大）生效
+        assertEquals("已处置", it.getStatus());
+        assertTrue(it.getDone());
+    }
+
+    private static long recordIdSeq = 0;
+
+    private static FacEmergencyCommandRecord record(String code, String name, String kind,
+            String currStatus) {
+        FacEmergencyCommandRecord r = new FacEmergencyCommandRecord();
+        r.setId(++recordIdSeq);
+        r.setCommandCode(code);
+        r.setCommandName(name);
+        r.setCommandKind(kind);
+        r.setCurrStatus(currStatus);
+        r.setTarget("中海壳牌石油化工有限公司");
+        r.setDeleted(0);
+        return r;
     }
 
     @Test

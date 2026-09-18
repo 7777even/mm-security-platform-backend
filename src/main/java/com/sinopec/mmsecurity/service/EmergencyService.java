@@ -34,6 +34,7 @@ import com.sinopec.mmsecurity.dto.ResponseModeOption;
 import com.sinopec.mmsecurity.entity.FacAlarm;
 import com.sinopec.mmsecurity.entity.FacDispatchPersonnel;
 import com.sinopec.mmsecurity.entity.FacEmergencyCmd;
+import com.sinopec.mmsecurity.entity.FacEmergencyCommandRecord;
 import com.sinopec.mmsecurity.entity.FacEmergencyGuidanceRoster;
 import com.sinopec.mmsecurity.entity.FacEmergencyNodeGuidance;
 import com.sinopec.mmsecurity.entity.FacEmergencyPhase;
@@ -49,6 +50,7 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyAssistStatMapper;
 import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCmdMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyCommandRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyGuidanceRosterMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyNodeGuidanceMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyPhaseMapper;
@@ -65,6 +67,7 @@ import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -105,6 +108,7 @@ public class EmergencyService {
     private final SysDutyMemberMapper dutyMapper;
     private final FacDispatchPersonnelMapper dispatchPersonnelMapper;
     private final FacEmergencyCmdMapper cmdMapper;
+    private final FacEmergencyCommandRecordMapper commandRecordMapper;
     private final FacNodePhaseConfigMapper nodePhaseConfigMapper;
     private final FacEmergencyPhaseMapper emergencyPhaseMapper;
     private final FacEmergencyResponseModeMapper responseModeMapper;
@@ -316,12 +320,22 @@ public class EmergencyService {
         });
     }
 
-    /** 应急指挥指令分组（固定/临时），按 tab 过滤。来自 fac_emergency_cmd 参考表。 */
+    /**
+     * 应急指挥指令分组（固定/临时），按 tab 过滤。
+     *
+     * <p>两路数据同源合并（修复「管理端下发的指令在大屏不可见」缺口）：
+     * ① fac_emergency_cmd 参考表——指令模板，构成固定/临时分组卡片；
+     * ② fac_emergency_command_record 留痕表——管理端「应急指令管理」下发的记录。
+     * 记录 commandCode 命中模板 id 时覆写该卡片最新状态；未命中（管理端自由编码，
+     * 如 CMD-2026xxxx-001）时追加为「下发指令」分组卡片。留痕记录无 tab 维度，
+     * 故「下发指令」组对 fixed/temp/缺省均返回。</p>
+     */
     public List<EmergencyCommandGroup> commandGroups(String tab) {
         List<FacEmergencyCmd> rows = cmdMapper.selectList(
                 new LambdaQueryWrapper<FacEmergencyCmd>().eq(FacEmergencyCmd::getGrpTab, tab)
                         .orderByAsc(FacEmergencyCmd::getGrpId));
         Map<String, EmergencyCommandGroup> groups = new LinkedHashMap<>();
+        Map<String, EmergencyCommandInstruction> templateItems = new LinkedHashMap<>();
         for (FacEmergencyCmd r : rows) {
             EmergencyCommandGroup g = groups.computeIfAbsent(r.getGrpId(), k -> {
                 EmergencyCommandGroup ng = new EmergencyCommandGroup();
@@ -339,14 +353,97 @@ public class EmergencyService {
             it.setActionLabel(r.getActionLabel());
             it.setDone(r.getDone());
             g.getItems().add(it);
+            templateItems.put(r.getId(), it);
         }
+        mergeCommandRecords(templateItems, groups);
         return new ArrayList<>(groups.values());
     }
 
-    /** 应急指挥指令行动详情：detail_json 反序列化为 CommandActionDetail 后补全标量字段。 */
+    /**
+     * 把留痕记录合并进指令分组：命中模板的覆写最新状态，未命中的追加为「下发指令」组。
+     * 同一 commandCode 多条记录按 id 升序遍历、后写覆盖，最终保留最新一条。
+     */
+    private void mergeCommandRecords(Map<String, EmergencyCommandInstruction> templateItems,
+            Map<String, EmergencyCommandGroup> groups) {
+        List<FacEmergencyCommandRecord> records = commandRecordMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyCommandRecord>()
+                        .eq(FacEmergencyCommandRecord::getDeleted, 0)
+                        .orderByAsc(FacEmergencyCommandRecord::getId));
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        Map<String, FacEmergencyCommandRecord> latest = new LinkedHashMap<>();
+        for (FacEmergencyCommandRecord rec : records) {
+            if (rec == null || !StringUtils.hasText(rec.getCommandCode())) {
+                continue;
+            }
+            latest.put(rec.getCommandCode().trim(), rec);
+        }
+        List<EmergencyCommandInstruction> issued = new ArrayList<>();
+        for (Map.Entry<String, FacEmergencyCommandRecord> e : latest.entrySet()) {
+            String code = e.getKey();
+            FacEmergencyCommandRecord rec = e.getValue();
+            EmergencyCommandInstruction tpl = templateItems.get(code);
+            if (tpl != null) {
+                tpl.setStatus(normalizeCommandStatus(rec.getCurrStatus()));
+                tpl.setDone(isCommandDone(rec.getCurrStatus()));
+                continue;
+            }
+            EmergencyCommandInstruction it = new EmergencyCommandInstruction();
+            it.setId(code);
+            it.setType(normalizeCommandKind(rec.getCommandKind()));
+            it.setName(StringUtils.hasText(rec.getCommandName()) ? rec.getCommandName() : code);
+            it.setLocation(StringUtils.hasText(rec.getTarget()) ? rec.getTarget() : "—");
+            it.setStatus(normalizeCommandStatus(rec.getCurrStatus()));
+            it.setActionLabel(null);
+            it.setDone(isCommandDone(rec.getCurrStatus()));
+            issued.add(it);
+        }
+        if (issued.isEmpty()) {
+            return;
+        }
+        EmergencyCommandGroup g = new EmergencyCommandGroup();
+        g.setId("issued");
+        g.setLabel("下发指令");
+        g.setItems(issued);
+        groups.put("issued", g);
+    }
+
+    /** 留痕状态（待下发/已下发/执行中/已完成，自由文本）→ 卡片契约枚举（待派发/待处置/已处置）。 */
+    private String normalizeCommandStatus(String currStatus) {
+        if (!StringUtils.hasText(currStatus)) {
+            return "待处置";
+        }
+        return switch (currStatus.trim()) {
+            case "待下发" -> "待派发";
+            case "已完成" -> "已处置";
+            // 已下发 / 执行中 / 其他自由文本均归入「待处置」（已发出、待处置推进）
+            default -> "待处置";
+        };
+    }
+
+    private boolean isCommandDone(String currStatus) {
+        return currStatus != null && "已完成".equals(currStatus.trim());
+    }
+
+    /** 留痕类别（自由文本，如「应急调度」）→ 契约枚举（通知/任务）。 */
+    private String normalizeCommandKind(String commandKind) {
+        if (commandKind != null && commandKind.contains("通知")) {
+            return "通知";
+        }
+        return "任务";
+    }
+
+    /**
+     * 应急指挥指令行动详情：detail_json 反序列化为 CommandActionDetail 后补全标量字段。
+     * 模板未命中时回查留痕表兜底（管理端自由编码下发的指令，如 CMD-2026xxxx-001），
+     * 由最新一条记录拼装详情；两处皆无则返回 null（前端归一为空态）。
+     */
     public CommandActionDetail commandDetail(String commandId) {
         FacEmergencyCmd row = cmdMapper.selectById(commandId);
-        if (row == null) return null;
+        if (row == null) {
+            return commandDetailFromRecord(commandId);
+        }
         CommandActionDetail d;
         try {
             d = objectMapper.readValue(row.getDetailJson(), CommandActionDetail.class);
@@ -361,6 +458,32 @@ public class EmergencyService {
         d.setType(row.getInstructionType());
         d.setStatus(row.getStatus());
         d.setLocation(row.getLocation());
+        return d;
+    }
+
+    /** 留痕兜底详情：取该 commandCode 最新一条记录拼装（无 recipients/dynamics 明细源，给空列表）。 */
+    private CommandActionDetail commandDetailFromRecord(String commandCode) {
+        List<FacEmergencyCommandRecord> records = commandRecordMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyCommandRecord>()
+                        .eq(FacEmergencyCommandRecord::getCommandCode, commandCode)
+                        .eq(FacEmergencyCommandRecord::getDeleted, 0)
+                        .orderByDesc(FacEmergencyCommandRecord::getId));
+        if (records == null || records.isEmpty()) {
+            return null;
+        }
+        FacEmergencyCommandRecord rec = records.get(0);
+        CommandActionDetail d = new CommandActionDetail();
+        d.setId(commandCode);
+        d.setName(StringUtils.hasText(rec.getCommandName()) ? rec.getCommandName() : commandCode);
+        d.setType(normalizeCommandKind(rec.getCommandKind()));
+        d.setStatus(normalizeCommandStatus(rec.getCurrStatus()));
+        d.setLocation(StringUtils.hasText(rec.getTarget()) ? rec.getTarget() : "—");
+        d.setNotifyChannels(List.of("app"));
+        d.setDispatchMode(StringUtils.hasText(rec.getDispatchMode()) ? rec.getDispatchMode() : "—");
+        d.setDescription(StringUtils.hasText(rec.getRemark()) ? rec.getRemark() : "—");
+        d.setAddressBookRecipients(new ArrayList<>());
+        d.setDutyRecipients(new ArrayList<>());
+        d.setDynamics(new ArrayList<>());
         return d;
     }
 
