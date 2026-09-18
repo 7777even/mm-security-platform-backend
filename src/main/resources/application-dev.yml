@@ -41,3 +41,11 @@ signature:
 logging:
   level:
     com.sinopec.mmsecurity: TRACE
+
+# 开发期关闭 OpenTelemetry OTLP 导出：本机无 OTel Collector(:4317)，
+# 若不关闭会每 ~10s 刷一批 "Failed to export spans ... Connection refused" 噪声（非致命，但刷屏）。
+# 仅作用于 dev profile；生产(prod/dm)仍走 application.yml 的 OTLP 导出，
+# 部署时须将 application.yml 的 http://localhost:4317 改为真实 Collector 内网地址。
+management:
+  tracing:
+    enabled: false
