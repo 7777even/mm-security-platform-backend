@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.annotation;
 
+import com.sinopec.mmsecurity.security.ZoneMappingResolver;
 import com.sinopec.mmsecurity.websocket.EntityChangedEvent;
 import com.sinopec.mmsecurity.websocket.ZoneAware;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +18,9 @@ import java.util.Set;
  * {@link EntityChangedEvent}。动作类型由方法名推断（create/save/add/insert→CREATED；
  * delete/remove/cancel→DELETED；其余→UPDATED）。
  *
- * <p>防区过滤扩展点：若写方法返回值实现 {@link ZoneAware}，切面自动把该实体所属防区注入事件
- * （{@code zones}），后端据此按 {@code zone_codes} 过滤推送目标；否则 {@code zones=null}
+ * <p>防区过滤扩展点：若写方法返回值实现 {@link ZoneAware}，切面据其 {@code getZoneName()}（直接防区名）
+ * 或 {@code getLocation()}（经 {@link ZoneMappingResolver} 映射）解析出防区集合注入事件（{@code zones}），
+ * 后端据此按 {@code zone_codes} 过滤推送目标；映射未命中（null）则 {@code zones=null}
  * （该域未做防区映射，fail-open 推给全部已认证会话，待产品定 location→防区 规则）。</p>
  */
 @Slf4j
@@ -28,6 +30,7 @@ import java.util.Set;
 public class RealtimeSyncAspect {
 
     private final ApplicationEventPublisher eventPublisher;
+    private final ZoneMappingResolver zoneMappingResolver;
 
     @AfterReturning(pointcut = "@annotation(realtimeSync)", returning = "ret")
     public void afterWrite(JoinPoint joinPoint, RealtimeSync realtimeSync, Object ret) {
@@ -44,9 +47,22 @@ public class RealtimeSyncAspect {
         }
     }
 
-    private Set<String> extractZones(Object ret) {
-        if (ret instanceof ZoneAware z && z.getZoneName() != null && !z.getZoneName().isBlank()) {
-            return Set.of(z.getZoneName().trim());
+    /**
+     * 从写方法返回值解析防区集合：优先 {@code getZoneName()}（直接防区名），否则 {@code getLocation()}
+     * 经 {@link ZoneMappingResolver} 映射；映射未命中/空白返回 null（fail-open，与现状一致）。
+     * 包可见以便单测直接校验解析逻辑。
+     */
+    Set<String> extractZones(Object ret) {
+        if (!(ret instanceof ZoneAware z)) {
+            return null;
+        }
+        String zoneName = z.getZoneName();
+        if (zoneName != null && !zoneName.isBlank()) {
+            return Set.of(zoneName.trim());
+        }
+        String location = z.getLocation();
+        if (location != null && !location.isBlank()) {
+            return zoneMappingResolver.resolveZonesByLocation(location.trim());
         }
         return null;
     }
