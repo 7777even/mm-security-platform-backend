@@ -32,15 +32,14 @@
 
 ## 4. 当前活跃工作（每次会话先读这里）
 
-> 阶段 1–5 已全绿归档。下一处真实推进落在阶段 6（业务域纵深）。
+> 阶段 1–5 已全绿归档。阶段 6（业务域纵深）所列 Change 截至 2026-09-18 **已全部归档**——前端 `openspec/changes/` 为空，`mgmt-redesign-migration` / `mgmt-tabstrip-style-align` / `remaining-modules-inline-closed-loop` / `screen-mock-to-service` / `wujie-subapp-fullscreen` / `wujie-subapp-switch-race` 等均落在 `openspec/archive/`。→ 阶段 6 主体已闭环，下一处真实推进落在阶段 7 与下列已知债务 / 阻塞项。
 
-- **进行中（前端库 `openspec/changes/`，跨库归属）**：
-  - `mgmt-redesign-migration` / `mgmt-tabstrip-style-align` / `remaining-modules-inline-closed-loop` — 系统管理域 mgmt 子应用闭环
-  - `screen-mock-to-service` — 大屏从 mock 切真实后端服务
-  - `wujie-subapp-fullscreen` / `wujie-subapp-switch-race` — wujie 微前端子应用体验
-- **未开始（阶段 7）**：达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核（依赖达梦环境与 release 窗口）。
-- **后端 `openspec/changes/` 当前无进行中 Change**（仅 `README.md` 归档纪律说明）；后端下一工作须先经 L3/L4 新建 Change 并回填 `tasks.md`，再据此实施。
-- **已知债务**（不阻塞阶段 6，但新 Change 须顺带清）：
-  - ✅ 认证/RBAC 域独立 capability spec 已补：`openspec/specs/auth-rbac/spec.md`（从 `auth-design.md` 抽取，与 `backend-security-baseline` 互补，不重复）。
+- **未开始（阶段 7 · 生产就绪）**：达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核（依赖达梦环境与 release 窗口）。
+- **真正未闭环的已知债务 / 阻塞项（按性质）**：
+  - ⬜ **P0 · ABAC zone 注入收紧**：WS 鉴权 + 三态 fail-open 骨架 09-17 已落地（`ZoneAware` 标记接口 + `RealtimeBroadcastService` 按 `zone_codes` 三态过滤）。**待产品定 `location → 防区` 映射规则**后方可收紧；当前 fail-open = 不过滤，等同全量广播。
+  - ⬜ **P1 · Testcontainers 方言 IT**：本机无 Docker，目前仅 H2 单测 IT（`DbLayerIntegrationIT`）；PG / 达梦真实容器 IT 未落地。
+  - ⬜ **需求追溯列**：`docs/requirement/scope-inventory.md` 待甲方《功能项清单》输入回填（阻塞中）。
+- **后端 `openspec/changes/` 当前无进行中 Change**（仅 `README.md` 归档纪律说明）；前端 `openspec/changes/` 同样为空。任何新的 L3/L4 工作须先经 openspec 新建 Change 并回填 `tasks.md`，再据此实施（双库各自归属）。
+- **已补（不再阻塞）**：
+  - ✅ 认证/RBAC 域独立 capability spec：`openspec/specs/auth-rbac/spec.md`（从 `auth-design.md` 抽取，与 `backend-security-baseline` 互补，不重复）。
   - ✅ prometheus 指标端点已入 `observability-probes` spec（`### Requirement: Prometheus 指标端点`）。
-  - ⬜ 若甲方提供《功能项清单》，回填 `docs/requirement/scope-inventory.md` 的需求追溯列（依赖甲方输入，当前阻塞）。
