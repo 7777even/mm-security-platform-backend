@@ -7,6 +7,6 @@
 - [x] `EmergencyEventControllerTest` 补 POST 用例（成功 + 校验失败；5 例全绿）
 - [x] `check-api-contract.mjs --strict` 通过（路由 0 差异 / schema 0 漂移）
 - [x] 回写 `docs/system-facts.md`
-- [ ] 实链路冒烟（`SERVER__PORT=8899`：401 负例 + 新建事件按 `event_id` 命中）
-- [ ] 按 scope 提交推送后端实现
+- [x] 实链路冒烟（`SERVER__PORT=8899`：401 负例 + 新建事件按 `event_id` 命中）
+- [x] 按 scope 提交推送后端实现
 - [ ] 归档（回填 `openspec/specs/` 并 `git mv` 到 `openspec/archive/<YYYY-MM-DD>-emergency-event-create`）
