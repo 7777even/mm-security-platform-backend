@@ -2,6 +2,9 @@ package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import com.sinopec.mmsecurity.dto.PersonnelMarker;
 import com.sinopec.mmsecurity.dto.ProductionAlarmItem;
 import com.sinopec.mmsecurity.dto.ProductionAreaDetail;
@@ -27,6 +30,7 @@ import com.sinopec.mmsecurity.mapper.FacProductionPersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacProductionRiskWarningMapper;
 import com.sinopec.mmsecurity.mapper.FacProductionStatMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -70,6 +74,18 @@ class ProductionServiceTest {
 
     @InjectMocks
     private ProductionService service;
+
+    /**
+     * 纯 Mockito 不起 Spring，MyBatis-Plus 的 TableInfo 缓存未初始化，
+     * 导致 LambdaQueryWrapper.getTargetSql() 解析 lambda 列时报 "can not find lambda cache"。
+     * 此处手动为涉及实体注入缓存，使过滤下推断言可跑通。
+     */
+    @BeforeAll
+    static void initTableInfoCache() {
+        MapperBuilderAssistant assistant = new MapperBuilderAssistant(new MybatisConfiguration(), "test");
+        TableInfoHelper.initTableInfo(assistant, FacProductionAlarm.class);
+        TableInfoHelper.initTableInfo(assistant, FacProductionDevice.class);
+    }
 
     /** 捕获最近一次查询条件，用于断言过滤参数是否下推到 SQL（Mockito 无法直接断言 SQL 文本）。 */
     @SuppressWarnings({"unchecked", "rawtypes"})
