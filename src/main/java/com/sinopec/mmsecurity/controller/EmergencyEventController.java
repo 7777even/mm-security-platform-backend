@@ -1,18 +1,24 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
+import com.sinopec.mmsecurity.dto.EmergencyEventItem;
 import com.sinopec.mmsecurity.dto.EvacuationPerson;
+import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.EmergencyEventService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** 应急事件大屏只读接口，数据源为 V17 fac_emergency_event / fac_evacuation_person 真实表。 */
+/** 应急事件大屏只读 + 创建接口，数据源为 V17 fac_emergency_event / fac_evacuation_person 真实表。 */
 @RestController
 @RequestMapping("/api/v1/emergency-events")
 @RequiredArgsConstructor
@@ -37,5 +43,15 @@ public class EmergencyEventController {
     public Result<List<EvacuationPerson>> evacuationPeople(
             @RequestParam(defaultValue = "20") Integer count) {
         return Result.ok(emergencyEventService.evacuationPeople(count));
+    }
+
+    /**
+     * 新增应急事件（仅登录态）。后端同事务写入 fac_emergency_event 与 fac_accident_incident，
+     * 返回后端生成的真实事件 id，供「去处置」直接按 event_id 定位（不再回退默认事件）。
+     */
+    @PostMapping
+    @RequireAuth
+    public Result<EmergencyEventItem> create(@Valid @RequestBody EmergencyEventCreateRequest payload) {
+        return Result.ok(emergencyEventService.create(payload));
     }
 }

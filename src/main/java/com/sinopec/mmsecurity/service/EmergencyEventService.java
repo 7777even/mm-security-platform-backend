@@ -1,16 +1,20 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
 import com.sinopec.mmsecurity.dto.EmergencyEventWeatherMeta;
 import com.sinopec.mmsecurity.dto.EvacuationPerson;
+import com.sinopec.mmsecurity.entity.FacAccidentIncident;
 import com.sinopec.mmsecurity.entity.FacEmergencyEvent;
 import com.sinopec.mmsecurity.entity.FacEvacuationPerson;
+import com.sinopec.mmsecurity.mapper.FacAccidentIncidentMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyEventMapper;
 import com.sinopec.mmsecurity.mapper.FacEvacuationPersonMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -33,6 +37,7 @@ public class EmergencyEventService {
 
     private final FacEmergencyEventMapper emergencyEventMapper;
     private final FacEvacuationPersonMapper evacuationPersonMapper;
+    private final FacAccidentIncidentMapper accidentIncidentMapper;
 
     /**
      * 按场景查询应急事件分组。
@@ -74,6 +79,69 @@ public class EmergencyEventService {
                 new LambdaQueryWrapper<FacEvacuationPerson>().orderByAsc(FacEvacuationPerson::getSortNo));
         int limit = Math.min(Math.max(count == null ? DEFAULT_PERSON_COUNT : count, 0), rows.size());
         return rows.subList(0, limit).stream().map(this::toPerson).collect(Collectors.toList());
+    }
+
+    /**
+     * 新增应急事件，并同事务写入事故救援事件表，使「去处置」可按 event_id 定位到该事件。
+     *
+     * <p>分组固定为 manual-* 前缀（manual-event / manual-weather / manual-drill），与前端手动新增分组
+     * id 对齐；kind 落库统一转大写（EVENT/DRILL）。返回映射后的事件项（含后端生成的真实 id）。</p>
+     *
+     * @param req 新增入参（前端 EmergencyEventCreateRequest）
+     * @return 已落库的事件项
+     */
+    @Transactional
+    public EmergencyEventItem create(EmergencyEventCreateRequest req) {
+        boolean isDrill = "drill".equalsIgnoreCase(req.getKind());
+        boolean isWeather = !isDrill && "extremeWeather".equalsIgnoreCase(req.getEventCategory());
+
+        FacEmergencyEvent event = new FacEmergencyEvent();
+        event.setScene(req.getScene() == null ? "FIRE" : req.getScene().trim().toUpperCase(Locale.ROOT));
+        event.setGroupCode(isDrill ? "manual-drill" : isWeather ? "manual-weather" : "manual-event");
+        event.setGroupLabel(isDrill ? "手动新增演练" : isWeather ? "极端天气" : "手动新增");
+        event.setKind((req.getKind() == null ? "event" : req.getKind()).toUpperCase(Locale.ROOT));
+        event.setEventCategory(req.getEventCategory() == null ? "default" : req.getEventCategory());
+        event.setTitle(req.getTitle());
+        event.setLocation(req.getLocation());
+        event.setDescription(req.getDescription());
+        event.setEventTime(req.getEventTime());
+        event.setReported(false);
+        event.setStatus("pending");
+        event.setStatusLabel("未处置");
+        event.setLeftPercent(req.getLeftPercent());
+        event.setTopPercent(req.getTopPercent());
+        event.setLongitude(req.getLongitude());
+        event.setLatitude(req.getLatitude());
+        event.setAreaCode(req.getAreaCode() == null ? "refinery" : req.getAreaCode());
+        event.setHazardSourceLevel(req.getHazardSourceLevel());
+        if (isWeather) {
+            event.setWeatherType(req.getWeatherType());
+            event.setWarningLevel(req.getWarningLevel());
+            event.setAffectedArea(req.getAffectedArea());
+            event.setMonitoringPeriod(req.getMonitoringPeriod());
+            event.setWeatherSource(req.getWeatherSource());
+            event.setMeasures(req.getMeasures());
+        }
+        event.setSortNo(0);
+        emergencyEventMapper.insert(event);
+
+        FacAccidentIncident incident = new FacAccidentIncident();
+        incident.setEventId(event.getId());
+        incident.setTitle(req.getTitle());
+        incident.setLocation(req.getLocation());
+        incident.setLongitude(req.getLongitude());
+        incident.setLatitude(req.getLatitude());
+        incident.setHazardSourceLevel(req.getHazardSourceLevel());
+        incident.setMapStatus("pending");
+        incident.setStartedAt(req.getEventTime());
+        incident.setEndedAt(null);
+        incident.setStatusName("未处置");
+        incident.setReported(false);
+        incident.setFacilityName(req.getAreaCode() == null ? "refinery" : req.getAreaCode());
+        incident.setIsDefault(false);
+        accidentIncidentMapper.insert(incident);
+
+        return toItem(event);
     }
 
     private EmergencyEventItem toItem(FacEmergencyEvent row) {

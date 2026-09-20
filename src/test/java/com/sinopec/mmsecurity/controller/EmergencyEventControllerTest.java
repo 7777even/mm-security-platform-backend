@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
 import com.sinopec.mmsecurity.dto.EmergencyEventWeatherMeta;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -18,8 +20,12 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -121,5 +127,42 @@ class EmergencyEventControllerTest {
                 .andExpect(jsonPath("$.data[0].org").value("生产管理部"))
                 .andExpect(jsonPath("$.data[0].job").value("班长"))
                 .andExpect(jsonPath("$.data[0].routeProgress").value(0.047619));
+    }
+
+    /**
+     * 新增事件成功路径：合法入参 → 200 且返回后端生成的真实 id。鉴权（@RequireAuth）由独立拦截器
+     * RequireAuthInterceptor 负责，standalone MockMvc 不加载拦截器，故此处不校验 401（由
+     * RequireAuthInterceptorTest 覆盖；真实链路 401 在实服冒烟中验证）。
+     */
+    @Test
+    void create_persistsAndReturnsEventWithId() throws Exception {
+        EmergencyEventItem saved = new EmergencyEventItem();
+        saved.setId(42L);
+        when(service.create(any(EmergencyEventCreateRequest.class))).thenReturn(saved);
+
+        mvc().perform(post("/api/v1/emergency-events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {"scene":"FIRE","kind":"event","eventCategory":"default",\
+                            "title":"催化裂化装置新增泄漏","location":"炼油一部 1#催化装置",\
+                            "description":"现场人员上报，联系电话 138xxxx，暂无伤亡。",\
+                            "eventTime":"2026-09-20 14:00:00","leftPercent":"48.3%","topPercent":"36.1%",\
+                            "longitude":110.123456,"latitude":21.654321}
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(42));
+        verify(service).create(any(EmergencyEventCreateRequest.class));
+    }
+
+    /** 新增事件参数校验失败：缺必填字段 → B3 包络 code!=0（HTTP 仍 200，由 GlobalExceptionHandler 收敛），且 service.create 不被调用。 */
+    @Test
+    void create_validationFailure_missingRequiredField_returnsErrorEnvelope() throws Exception {
+        mvc().perform(post("/api/v1/emergency-events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(not(0)));
+        verify(service, never()).create(any());
     }
 }
