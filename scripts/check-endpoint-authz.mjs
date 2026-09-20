@@ -49,6 +49,12 @@ const ALLOWLIST = new Map([
     '⚠️待安全确认：前端上报自身操作审计（POST /audit/log）。现状登录即可提交，'
     + '意味着任意登录账号可伪造审计记录。若产品/安全认为需要约束，应改为「仅允许上报与自己相关的动作」'
     + '或在 Service 侧校验，而不是简单加 role=ADMIN（那会挡死普通用户的审计上报）。'],
+
+  // —— 大屏自助操作（值守/指挥人员非 ADMIN，卡管理权限会挡死一线使用）——
+  ['EmergencyEvent#create',
+    '大屏应急指挥页「新增事件/演练/极端天气」（POST /emergency-events）：由登录态的值守/指挥人员自助创建，'
+    + '按变更决策取「仅登录态」（非 ADMIN）；Service 同事务写 fac_emergency_event + fac_accident_incident。'
+    + '若后续要收紧，应引入 emergency:event:write 之类 perm 码，而非简单 role=ADMIN。'],
 ]);
 
 /** 去掉块注释与行注释，避免把注释里的注解当成真注解 */
