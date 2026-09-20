@@ -27,6 +27,13 @@ public class EmergencyEventCreateRequest {
     @NotBlank(message = "eventCategory 必填")
     private String eventCategory;
 
+    /** 落库分组编码（可选，缺省按 kind/eventCategory 推导 manual-*）。
+     * 与 V17 种子分组同码（phone/tank/facility/video/extreme-weather）时并入同一侧栏分组。 */
+    private String groupCode;
+
+    /** 落库分组标签（可选，缺省取 groupCode）；作为大屏侧栏分组标题。 */
+    private String groupLabel;
+
     /** 事件标题 */
     @NotBlank(message = "title 必填")
     private String title;

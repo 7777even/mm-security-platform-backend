@@ -1,10 +1,13 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
 import com.sinopec.mmsecurity.dto.EvacuationPerson;
+import com.sinopec.mmsecurity.entity.FacAccidentIncident;
 import com.sinopec.mmsecurity.entity.FacEmergencyEvent;
 import com.sinopec.mmsecurity.entity.FacEvacuationPerson;
+import com.sinopec.mmsecurity.mapper.FacAccidentIncidentMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyEventMapper;
 import com.sinopec.mmsecurity.mapper.FacEvacuationPersonMapper;
 import org.junit.jupiter.api.Test;
@@ -28,9 +31,29 @@ class EmergencyEventServiceTest {
     private FacEmergencyEventMapper emergencyEventMapper;
     @Mock
     private FacEvacuationPersonMapper evacuationPersonMapper;
+    @Mock
+    private FacAccidentIncidentMapper accidentIncidentMapper;
 
     @InjectMocks
     private EmergencyEventService service;
+
+    private static EmergencyEventCreateRequest createReq() {
+        EmergencyEventCreateRequest req = new EmergencyEventCreateRequest();
+        req.setScene("FIRE");
+        req.setKind("event");
+        req.setEventCategory("default");
+        req.setTitle("催化裂化装置新增泄漏");
+        req.setLocation("炼油一部 1#催化装置");
+        req.setDescription("现场人员上报，联系电话 138xxxx，暂无伤亡。");
+        req.setEventTime("2026-09-20 14:00:00");
+        req.setAreaCode("refinery");
+        req.setHazardSourceLevel("重大");
+        req.setLeftPercent("48.3%");
+        req.setTopPercent("36.1%");
+        req.setLongitude(110.123456);
+        req.setLatitude(21.654321);
+        return req;
+    }
 
     private static FacEmergencyEvent event(String scene, String groupCode, String groupLabel,
                                           String kind, String title, int sortNo) {
@@ -156,5 +179,53 @@ class EmergencyEventServiceTest {
         assertEquals(1, service.evacuationPeople(20).size());
         assertEquals(0, service.evacuationPeople(0).size());
         assertEquals(1, service.evacuationPeople(null).size());
+    }
+
+    @Test
+    void create_honorsExplicitGroupCodeAndLabel() {
+        EmergencyEventCreateRequest req = createReq();
+        req.setGroupCode("phone");
+        req.setGroupLabel("消防电话报警");
+
+        EmergencyEventItem item = service.create(req);
+
+        // 分组编码/标签须按前端传入的「事件类型」登记表值落库。
+        assertEquals("phone", capturedRow().getGroupCode());
+        assertEquals("消防电话报警", capturedRow().getGroupLabel());
+        assertEquals("event", item.getKind());
+    }
+
+    @Test
+    void create_rejectsDisallowedGroupCodeAndFallsBack() {
+        EmergencyEventCreateRequest req = createReq();
+        req.setGroupCode("hacked-group");
+        req.setGroupLabel("恶意分组");
+
+        EmergencyEventItem item = service.create(req);
+
+        assertEquals("manual-event", capturedRow().getGroupCode());
+        assertEquals("突发应急事件", capturedRow().getGroupLabel());
+        assertEquals("event", item.getKind());
+    }
+
+    @Test
+    void create_drillFallsBackToManualDrillGroup() {
+        EmergencyEventCreateRequest req = createReq();
+        req.setKind("drill");
+        req.setEventCategory("default");
+
+        EmergencyEventItem item = service.create(req);
+
+        assertEquals("manual-drill", capturedRow().getGroupCode());
+        assertEquals("演练事件", capturedRow().getGroupLabel());
+        assertEquals("drill", item.getKind());
+    }
+
+    /** 捕获 create 内部生成的事件行（mock insert 不回填 id，仅记录入参对象）。 */
+    private FacEmergencyEvent capturedRow() {
+        org.mockito.ArgumentCaptor<FacEmergencyEvent> cap =
+                org.mockito.ArgumentCaptor.forClass(FacEmergencyEvent.class);
+        org.mockito.Mockito.verify(emergencyEventMapper).insert(cap.capture());
+        return cap.getValue();
     }
 }

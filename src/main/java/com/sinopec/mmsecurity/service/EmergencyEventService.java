@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +35,24 @@ import java.util.stream.Collectors;
 public class EmergencyEventService {
 
     private static final int DEFAULT_PERSON_COUNT = 20;
+
+    /** 允许前端显式指定的分组编码白名单：与 V17 种子分组对齐（phone/tank/facility/video/extreme-weather）
+     * 及手动新增/预警/演练兜底分组（manual-*）。白名单外的取值一律回落兜底，避免写入游离分组。 */
+    private static final Set<String> ALLOWED_GROUP_CODES = Set.of(
+            "manual-event", "manual-warning", "manual-drill", "manual-weather",
+            "extreme-weather", "phone", "tank", "facility", "video");
+
+    /** 白名单分组编码 → 规范标签（与种子 group_label 一致）；编码合法但前端未给标签时据此推导。 */
+    private static final Map<String, String> GROUP_CODE_LABELS = Map.of(
+            "manual-event", "突发应急事件",
+            "manual-warning", "预警事件",
+            "manual-drill", "演练事件",
+            "manual-weather", "极端天气",
+            "extreme-weather", "极端天气",
+            "phone", "消防电话报警",
+            "tank", "储罐消防报警",
+            "facility", "消防设施异常",
+            "video", "视频烟火联动");
 
     private final FacEmergencyEventMapper emergencyEventMapper;
     private final FacEvacuationPersonMapper evacuationPersonMapper;
@@ -84,8 +103,9 @@ public class EmergencyEventService {
     /**
      * 新增应急事件，并同事务写入事故救援事件表，使「去处置」可按 event_id 定位到该事件。
      *
-     * <p>分组固定为 manual-* 前缀（manual-event / manual-weather / manual-drill），与前端手动新增分组
-     * id 对齐；kind 落库统一转大写（EVENT/DRILL）。返回映射后的事件项（含后端生成的真实 id）。</p>
+     * <p>分组由前端按「事件类型」给出（groupCode/groupLabel，白名单校验）；缺省或非法时回落
+     * manual-* 兜底分组（manual-event / manual-weather / manual-drill），与前端口径对齐。
+     * kind 落库统一转大写（EVENT/DRILL）。返回映射后的事件项（含后端生成的真实 id）。</p>
      *
      * @param req 新增入参（前端 EmergencyEventCreateRequest）
      * @return 已落库的事件项
@@ -95,10 +115,24 @@ public class EmergencyEventService {
         boolean isDrill = "drill".equalsIgnoreCase(req.getKind());
         boolean isWeather = !isDrill && "extremeWeather".equalsIgnoreCase(req.getEventCategory());
 
+        String groupCode = req.getGroupCode();
+        String groupLabel = req.getGroupLabel();
+        boolean groupCodeValid =
+                groupCode != null && !groupCode.isBlank() && ALLOWED_GROUP_CODES.contains(groupCode);
+        if (!groupCodeValid) {
+            // 编码非法或缺失：整体回落到兜底分组，编码与标签一同取自 kind/eventCategory，
+            // 杜绝写入游离分组或因只回落编码而残留外部传入标签导致的「编码-标签」错位。
+            groupCode = isDrill ? "manual-drill" : isWeather ? "manual-weather" : "manual-event";
+            groupLabel = isDrill ? "演练事件" : isWeather ? "极端天气" : "突发应急事件";
+        } else if (groupLabel == null || groupLabel.isBlank()) {
+            // 编码合法但未给标签：按白名单编码推导固定规范标签。
+            groupLabel = GROUP_CODE_LABELS.getOrDefault(groupCode, "突发应急事件");
+        }
+
         FacEmergencyEvent event = new FacEmergencyEvent();
         event.setScene(req.getScene() == null ? "FIRE" : req.getScene().trim().toUpperCase(Locale.ROOT));
-        event.setGroupCode(isDrill ? "manual-drill" : isWeather ? "manual-weather" : "manual-event");
-        event.setGroupLabel(isDrill ? "手动新增演练" : isWeather ? "极端天气" : "手动新增");
+        event.setGroupCode(groupCode);
+        event.setGroupLabel(groupLabel);
         event.setKind((req.getKind() == null ? "event" : req.getKind()).toUpperCase(Locale.ROOT));
         event.setEventCategory(req.getEventCategory() == null ? "default" : req.getEventCategory());
         event.setTitle(req.getTitle());
