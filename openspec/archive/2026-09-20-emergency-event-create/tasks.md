@@ -9,4 +9,4 @@
 - [x] 回写 `docs/system-facts.md`
 - [x] 实链路冒烟（`SERVER__PORT=8899`：401 负例 + 新建事件按 `event_id` 命中）
 - [x] 按 scope 提交推送后端实现
-- [ ] 归档（回填 `openspec/specs/` 并 `git mv` 到 `openspec/archive/<YYYY-MM-DD>-emergency-event-create`）
+- [x] 归档（回填 `openspec/specs/emergency-event/spec.md` 并 `git mv` 到 `openspec/archive/2026-09-20-emergency-event-create`）
