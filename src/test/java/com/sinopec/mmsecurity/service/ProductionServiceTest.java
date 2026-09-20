@@ -172,11 +172,19 @@ class ProductionServiceTest {
         when(statMapper.selectList(any())).thenReturn(List.of(stat()));
         when(riskWarningMapper.selectList(any())).thenReturn(List.of(
                 warning(1L, "red"), warning(2L, "red"), warning(3L, "orange"), warning(4L, "yellow")));
+        // 装置区指标：设施「生产装置」(id=2) 存在同名指标 label=生产装置，value=567
+        FacProductionAreaMetric metric = new FacProductionAreaMetric();
+        metric.setId(1L);
+        metric.setFacilityId(2L);
+        metric.setLabel("生产装置");
+        metric.setValueText("567");
+        when(areaMetricMapper.selectList(any())).thenReturn(List.of(metric));
 
         ProductionOverview out = service.overview();
         assertEquals(1, out.getFacilities().size());
         assertEquals("生产装置", out.getFacilities().get(0).getName());
-        assertEquals(596, out.getFacilities().get(0).getCount(), "facilities 暂无对应明细表，沿用字典值");
+        assertEquals(567, out.getFacilities().get(0).getCount(),
+                "设施数量改由同名装置区指标实时取数，与详情页指标卡一致（取代占位 596）");
         assertEquals("监测点", out.getDevices().get(0).getName());
         assertEquals(2, out.getDevices().get(0).getCount(), "设备分类数量改由 fac_production_device 明细聚合");
         assertEquals("未处置告警", out.getStats().get(0).getLabel());

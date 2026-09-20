@@ -73,10 +73,27 @@ public class ProductionService {
     /** 首屏总览：设施卡片 + 设备分类卡片 + 统计概览条 + 风险汇总。 */
     public ProductionOverview overview() {
         ProductionOverview dto = new ProductionOverview();
+
+        // 设施卡片数量：改由装置区指标表 fac_production_area_metric 按「设施名 == 指标 label」实时取数，
+        // 与详情页（ProductionAreaView 指标卡）同源，取代原先手填 item_count（596×5，与详情指标对不上）。
+        // 例：设施「储罐」取指标 label=储罐 的 value_text(606)，点进详情即见同一数值；无同名指标（如「厂区」）记 0。
+        Map<Long, Map<String, Integer>> metricValueByFacility = areaMetricMapper.selectList(null).stream()
+                .filter(m -> m.getFacilityId() != null && m.getLabel() != null && m.getValueText() != null)
+                .collect(Collectors.groupingBy(
+                        FacProductionAreaMetric::getFacilityId,
+                        Collectors.toMap(
+                                FacProductionAreaMetric::getLabel,
+                                m -> parseMetricInt(m.getValueText()),
+                                (a, b) -> a)));
         dto.setFacilities(facilityMapper.selectList(
                 new LambdaQueryWrapper<FacProductionFacility>()
                         .orderByAsc(FacProductionFacility::getSortNo)).stream()
-                .map(this::toGridItem).collect(Collectors.toList()));
+                .map(f -> {
+                    OverviewGridItem g = toGridItem(f);
+                    Map<String, Integer> byLabel = metricValueByFacility.get(f.getId());
+                    g.setCount(byLabel != null ? byLabel.getOrDefault(f.getName(), 0) : 0);
+                    return g;
+                }).collect(Collectors.toList()));
 
         // 设备分类数量：改由明细表 fac_production_device 按 category 实时聚合（分类表降级为「名称/图标/顺序字典」），
         // 取代原先手填 item_count（596×7，与明细 35 台完全脱节）。
@@ -247,6 +264,13 @@ public class ProductionService {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** 指标 value_text 取首个整数段（「537」→537；「18分32秒」→18；无数字→0），避免非纯数字字段 parseInt 崩。 */
+    private static int parseMetricInt(String text) {
+        if (text == null) return 0;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\d+").matcher(text);
+        return m.find() ? Integer.parseInt(m.group()) : 0;
     }
 
     private OverviewGridItem toGridItem(FacProductionFacility e) {
