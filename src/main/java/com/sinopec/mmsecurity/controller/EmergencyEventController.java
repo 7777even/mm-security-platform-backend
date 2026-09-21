@@ -66,4 +66,14 @@ public class EmergencyEventController {
     public Result<EmergencyEventItem> report(@PathVariable("id") Long id) {
         return Result.ok(emergencyEventService.report(id));
     }
+
+    /**
+     * 启动应急响应。将事件状态推进为「处置中」（processing），并同步关联事故救援事件。
+     * 仅登录态（值守/指挥人员自助）；事件不存在返回 404。与 report/create 同源的自助写入场景。
+     */
+    @PostMapping("/{id}/start-response")
+    @RequireAuth
+    public Result<EmergencyEventItem> startResponse(@PathVariable("id") Long id) {
+        return Result.ok(emergencyEventService.startResponse(id));
+    }
 }

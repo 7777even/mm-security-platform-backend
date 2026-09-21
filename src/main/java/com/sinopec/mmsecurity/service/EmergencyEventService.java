@@ -207,15 +207,49 @@ public class EmergencyEventService {
         event.setReported(true);
         emergencyEventMapper.updateById(event);
 
-        FacAccidentIncident incident = accidentIncidentMapper.selectOne(
-                new LambdaQueryWrapper<FacAccidentIncident>()
-                        .eq(FacAccidentIncident::getEventId, eventId)
-                        .last("LIMIT 1"));
+        FacAccidentIncident incident = firstIncidentByEventId(eventId);
         if (incident != null) {
             incident.setReported(true);
             accidentIncidentMapper.updateById(incident);
         }
         return toItem(event);
+    }
+
+    /**
+     * 启动应急响应：将事件状态推进为「处置中」，并同步关联事故救援事件。
+     *
+     * <p>在同一事务内把 {@code fac_emergency_event} 的 status 置为 {@code processing}、status_label 置为「处置中」，
+     * 并把关联 {@code fac_accident_incident} 的 status_name 置为 {@code processing}、map_status 置为「处置中」
+     * （与 V12 种子口径一致：status_name 存枚举、map_status 存中文态势文案）。事件不存在时抛 NOT_FOUND。
+     * 返回更新后的事件项，供前端刷新状态与按钮。
+     *
+     * @param eventId 应急事件 id
+     * @return 已更新事件项
+     */
+    @Transactional
+    public EmergencyEventItem startResponse(Long eventId) {
+        FacEmergencyEvent event = emergencyEventMapper.selectById(eventId);
+        if (event == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急事件不存在");
+        }
+        event.setStatus("processing");
+        event.setStatusLabel("处置中");
+        emergencyEventMapper.updateById(event);
+
+        FacAccidentIncident incident = firstIncidentByEventId(eventId);
+        if (incident != null) {
+            incident.setStatusName("processing");
+            incident.setMapStatus("处置中");
+            accidentIncidentMapper.updateById(incident);
+        }
+        return toItem(event);
+    }
+
+    /** 按 event_id 取关联事故救援行（可能不存在，如演练/未落库事件）。 */
+    private FacAccidentIncident firstIncidentByEventId(Long eventId) {
+        return accidentIncidentMapper.selectOne(new LambdaQueryWrapper<FacAccidentIncident>()
+                .eq(FacAccidentIncident::getEventId, eventId)
+                .last("LIMIT 1"));
     }
 
     /**

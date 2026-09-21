@@ -59,6 +59,10 @@ const ALLOWLIST = new Map([
     '大屏事故救援页「事件预警」（POST /emergency-events/{id}/report）：由登录态的值守/指挥人员自助报送，'
     + '仅置 fac_emergency_event + fac_accident_incident 的 reported 标志；与 create 同源的「仅登录态」自助场景，'
     + '若后续要收紧，应引入 emergency:event:report 之类 perm 码。'],
+  ['EmergencyEvent#startResponse',
+    '大屏事故救援页「启动应急响应」（POST /emergency-events/{id}/start-response）：由登录态的值守/指挥人员自助启动，'
+    + '仅把 fac_emergency_event + fac_accident_incident 的状态推进为 processing/处置中；与 create/report 同源的'
+    + '「仅登录态」自助场景，若后续要收紧，应引入 emergency:event:write 之类 perm 码。'],
 ]);
 
 /** 去掉块注释与行注释，避免把注释里的注解当成真注解 */

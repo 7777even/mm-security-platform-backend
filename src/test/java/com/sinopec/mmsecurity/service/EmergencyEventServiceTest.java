@@ -259,6 +259,43 @@ class EmergencyEventServiceTest {
         assertEquals(ResultCode.NOT_FOUND, ex.getCode());
     }
 
+    @Test
+    void startResponse_advancesEventAndIncidentToProcessing() {
+        FacEmergencyEvent existing = event("FIRE", "phone", "消防电话报警", "EVENT", "乙烯裂解炉泄漏", 1);
+        existing.setStatus("pending");
+        existing.setStatusLabel("未处置");
+        when(emergencyEventMapper.selectById(26L)).thenReturn(existing);
+
+        FacAccidentIncident incident = new FacAccidentIncident();
+        incident.setId(1L);
+        incident.setEventId(26L);
+        incident.setStatusName("pending");
+        incident.setMapStatus("未处置");
+        when(accidentIncidentMapper.selectOne(any())).thenReturn(incident);
+
+        EmergencyEventItem item = service.startResponse(26L);
+
+        assertEquals("processing", item.getStatus());
+        assertEquals("处置中", item.getStatusLabel());
+        ArgumentCaptor<FacEmergencyEvent> evCap = ArgumentCaptor.forClass(FacEmergencyEvent.class);
+        verify(emergencyEventMapper).updateById(evCap.capture());
+        assertEquals("processing", evCap.getValue().getStatus());
+        assertEquals("处置中", evCap.getValue().getStatusLabel());
+        ArgumentCaptor<FacAccidentIncident> incCap = ArgumentCaptor.forClass(FacAccidentIncident.class);
+        verify(accidentIncidentMapper).updateById(incCap.capture());
+        assertEquals("processing", incCap.getValue().getStatusName());
+        assertEquals("处置中", incCap.getValue().getMapStatus());
+    }
+
+    @Test
+    void startResponse_eventNotFoundThrowsNotFound() {
+        when(emergencyEventMapper.selectById(999L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.startResponse(999L));
+
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+    }
+
     /** 捕获 create 内部生成的事件行（mock insert 不回填 id，仅记录入参对象）。 */
     private FacEmergencyEvent capturedRow() {
         org.mockito.ArgumentCaptor<FacEmergencyEvent> cap =
