@@ -10,6 +10,7 @@ import com.sinopec.mmsecurity.service.EmergencyEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,5 +54,16 @@ public class EmergencyEventController {
     @RequireAuth
     public Result<EmergencyEventItem> create(@Valid @RequestBody EmergencyEventCreateRequest payload) {
         return Result.ok(emergencyEventService.create(payload));
+    }
+
+    /**
+     * 事件预警（报送）。标记应急事件已预警（reported=true），并同步关联事故救援事件
+     * （fac_accident_incident）的 reported 标志。仅登录态（值守/指挥人员自助），按变更决策取
+     * 「仅登录态」（非 ADMIN）；事件不存在返回 404。与 create 同源的自助写入场景。
+     */
+    @PostMapping("/{id}/report")
+    @RequireAuth
+    public Result<EmergencyEventItem> report(@PathVariable("id") Long id) {
+        return Result.ok(emergencyEventService.report(id));
     }
 }

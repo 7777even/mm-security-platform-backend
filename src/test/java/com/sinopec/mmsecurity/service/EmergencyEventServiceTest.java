@@ -1,5 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
@@ -12,6 +14,7 @@ import com.sinopec.mmsecurity.mapper.FacEmergencyEventMapper;
 import com.sinopec.mmsecurity.mapper.FacEvacuationPersonMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,7 +23,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** 应急事件服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
@@ -219,6 +225,38 @@ class EmergencyEventServiceTest {
         assertEquals("manual-drill", capturedRow().getGroupCode());
         assertEquals("演练事件", capturedRow().getGroupLabel());
         assertEquals("drill", item.getKind());
+    }
+
+    @Test
+    void report_marksEventAndIncidentReported() {
+        FacEmergencyEvent existing = event("FIRE", "phone", "消防电话报警", "EVENT", "乙烯裂解炉泄漏", 1);
+        existing.setReported(false);
+        when(emergencyEventMapper.selectById(26L)).thenReturn(existing);
+
+        FacAccidentIncident incident = new FacAccidentIncident();
+        incident.setId(1L);
+        incident.setEventId(26L);
+        incident.setReported(false);
+        when(accidentIncidentMapper.selectOne(any())).thenReturn(incident);
+
+        EmergencyEventItem item = service.report(26L);
+
+        assertTrue(item.getReported());
+        ArgumentCaptor<FacEmergencyEvent> evCap = ArgumentCaptor.forClass(FacEmergencyEvent.class);
+        verify(emergencyEventMapper).updateById(evCap.capture());
+        assertTrue(evCap.getValue().getReported());
+        ArgumentCaptor<FacAccidentIncident> incCap = ArgumentCaptor.forClass(FacAccidentIncident.class);
+        verify(accidentIncidentMapper).updateById(incCap.capture());
+        assertTrue(incCap.getValue().getReported());
+    }
+
+    @Test
+    void report_eventNotFoundThrowsNotFound() {
+        when(emergencyEventMapper.selectById(999L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.report(999L));
+
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
     }
 
     /** 捕获 create 内部生成的事件行（mock insert 不回填 id，仅记录入参对象）。 */

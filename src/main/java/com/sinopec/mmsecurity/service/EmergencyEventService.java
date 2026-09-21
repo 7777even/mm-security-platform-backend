@@ -1,6 +1,8 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
@@ -184,6 +186,35 @@ public class EmergencyEventService {
             accidentDetailFieldMapper.insert(field);
         }
 
+        return toItem(event);
+    }
+
+    /**
+     * 事件预警（报送）：标记事件已预警，并同步关联事故救援事件（fac_accident_incident）的 reported 标志。
+     *
+     * <p>仅置 reported 标志，不改动其他字段；事件不存在时抛 NOT_FOUND。返回更新后的事件项，
+     * 供前端刷新「事件基础信息 / 状态」面板，使「事件预警」状态可持久化、可跨刷新保留。
+     *
+     * @param eventId 应急事件 id
+     * @return 已更新事件项
+     */
+    @Transactional
+    public EmergencyEventItem report(Long eventId) {
+        FacEmergencyEvent event = emergencyEventMapper.selectById(eventId);
+        if (event == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急事件不存在");
+        }
+        event.setReported(true);
+        emergencyEventMapper.updateById(event);
+
+        FacAccidentIncident incident = accidentIncidentMapper.selectOne(
+                new LambdaQueryWrapper<FacAccidentIncident>()
+                        .eq(FacAccidentIncident::getEventId, eventId)
+                        .last("LIMIT 1"));
+        if (incident != null) {
+            incident.setReported(true);
+            accidentIncidentMapper.updateById(incident);
+        }
         return toItem(event);
     }
 
