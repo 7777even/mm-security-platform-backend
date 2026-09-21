@@ -17,10 +17,7 @@ import com.sinopec.mmsecurity.dto.RescueVehicleCrewMember;
 import com.sinopec.mmsecurity.dto.RescueVehicleItem;
 import com.sinopec.mmsecurity.dto.RescueVehicleList;
 import com.sinopec.mmsecurity.dto.RescueVehicleOnboardEquipment;
-import com.sinopec.mmsecurity.entity.FacBrigadeEquipment;
-import com.sinopec.mmsecurity.entity.FacBrigadePerson;
 import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
-import com.sinopec.mmsecurity.entity.FacBrigadeVehicle;
 import com.sinopec.mmsecurity.entity.FacRescueEquipment;
 import com.sinopec.mmsecurity.entity.FacRescueOption;
 import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
@@ -28,10 +25,7 @@ import com.sinopec.mmsecurity.entity.FacRescueVehicle;
 import com.sinopec.mmsecurity.entity.FacRescueVehicleCrew;
 import com.sinopec.mmsecurity.entity.FacRescueVehicleEquipment;
 import com.sinopec.mmsecurity.entity.FacRescueVehicleKv;
-import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
 import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
@@ -55,9 +49,11 @@ import java.util.stream.Collectors;
 /**
  * 应急救援资源域服务（救援装备 / 救援人员 / 救援车辆 / 消防队伍）。
  *
- * <p>数据来源为 V19 落地的 fac_rescue_* 与 fac_brigade_* 真实表，取代前端硬编码的
- * rescueEquipmentMock / rescuePersonnelMock / rescueVehicleMock / fireBrigadeMock 业务数据。
- * 列表与详情返回同一批对象（含子集合），前端详情可直接按 id 取。
+ * <p><b>救援力量唯一真源（V62 起）</b>：装备 / 人员 / 车辆一律取扁平资源台账
+ * {@code fac_rescue_equipment / personnel / vehicle}；{@code fac_brigade_team} 仅保留为「中队主表」。
+ * 「消防队伍详情」的队伍车辆 / 人员 / 装备改为按中队名从上述扁平表归组
+ * （原 {@code fac_brigade_{vehicle,person,equipment}} 子表已退役）。
+ * 由此队伍详情、管理端列表、消防大屏「消防救援力量」三者数字天然一致。
  */
 @Service
 @RequiredArgsConstructor
@@ -69,9 +65,6 @@ public class RescueResourceService {
     private static final String KIND_BRIGADE_AREA = "BRIGADE_AREA";
     private static final String KV_CONSUMABLE = "CONSUMABLE";
     private static final String KV_DISPATCH_SUMMARY = "DISPATCH_SUMMARY";
-    /** mock 中的业务总量（列表仅分页展示条目，总量为独立常量）。 */
-    private static final int EQUIPMENT_TOTAL_SETS = 375;
-    private static final int PERSONNEL_TOTAL_COUNT = 375;
 
     private final FacRescueEquipmentMapper equipmentMapper;
     private final FacRescuePersonnelMapper personnelMapper;
@@ -81,9 +74,6 @@ public class RescueResourceService {
     private final FacRescueVehicleEquipmentMapper vehicleEquipmentMapper;
     private final FacRescueVehicleKvMapper vehicleKvMapper;
     private final FacBrigadeTeamMapper brigadeTeamMapper;
-    private final FacBrigadeVehicleMapper brigadeVehicleMapper;
-    private final FacBrigadePersonMapper brigadePersonMapper;
-    private final FacBrigadeEquipmentMapper brigadeEquipmentMapper;
     private final DataScopeResolver dataScopeResolver;
 
     /** 救援装备列表：按中队过滤（null 或“全部中队”表示全部）。 */
@@ -94,7 +84,8 @@ public class RescueResourceService {
                         .orderByAsc(FacRescueEquipment::getId));
         RescueEquipmentList result = new RescueEquipmentList();
         result.setSquadrons(options(KIND_SQUADRON));
-        result.setTotalSets(EQUIPMENT_TOTAL_SETS);
+        // 业务总量 = 台账真实条数（唯一真源），与消防大屏「救援装备」/ 应急面板卡片同源
+        result.setTotalSets(Math.toIntExact(equipmentMapper.selectCount(null)));
         result.setItems(rows.stream().map(this::toEquipmentItem).collect(Collectors.toList()));
         return result;
     }
@@ -120,7 +111,8 @@ public class RescueResourceService {
         RescuePersonnelList result = new RescuePersonnelList();
         result.setSquadrons(options(KIND_SQUADRON));
         result.setRoles(options(KIND_PERSONNEL_ROLE));
-        result.setTotalCount(PERSONNEL_TOTAL_COUNT);
+        // 业务总量 = 台账真实条数（唯一真源），与消防大屏「救援人员」同源
+        result.setTotalCount(Math.toIntExact(personnelMapper.selectCount(null)));
         result.setItems(rows.stream().map(this::toPersonnelItem).collect(Collectors.toList()));
         return result;
     }
@@ -311,25 +303,28 @@ public class RescueResourceService {
         return item;
     }
 
-    /** 批量装配消防队伍及其子集合（一次查询子表后按 team_id 归组）。 */
+    /**
+     * 批量装配消防队伍及其子集合：队伍车辆 / 人员 / 装备一律由「扁平资源台账」按中队名归组
+     * （唯一真源，V62 起），一次查询后按 squadron 归组，避免逐队查询。
+     */
     private List<FireBrigadeTeam> toBrigadeTeams(List<FacBrigadeTeam> rows) {
-        List<Long> ids = rows.stream().map(FacBrigadeTeam::getId).collect(Collectors.toList());
-        Map<Long, List<FacBrigadeVehicle>> vehicleMap = new HashMap<>();
-        Map<Long, List<FacBrigadePerson>> personMap = new HashMap<>();
-        Map<Long, List<FacBrigadeEquipment>> equipmentMap = new HashMap<>();
-        if (!ids.isEmpty()) {
-            vehicleMap = brigadeVehicleMapper.selectList(new LambdaQueryWrapper<FacBrigadeVehicle>()
-                            .in(FacBrigadeVehicle::getTeamId, ids)
-                            .orderByAsc(FacBrigadeVehicle::getSortNo))
-                    .stream().collect(Collectors.groupingBy(FacBrigadeVehicle::getTeamId));
-            personMap = brigadePersonMapper.selectList(new LambdaQueryWrapper<FacBrigadePerson>()
-                            .in(FacBrigadePerson::getTeamId, ids)
-                            .orderByAsc(FacBrigadePerson::getSortNo))
-                    .stream().collect(Collectors.groupingBy(FacBrigadePerson::getTeamId));
-            equipmentMap = brigadeEquipmentMapper.selectList(new LambdaQueryWrapper<FacBrigadeEquipment>()
-                            .in(FacBrigadeEquipment::getTeamId, ids)
-                            .orderByAsc(FacBrigadeEquipment::getSortNo))
-                    .stream().collect(Collectors.groupingBy(FacBrigadeEquipment::getTeamId));
+        List<String> names = rows.stream().map(FacBrigadeTeam::getTeamName).collect(Collectors.toList());
+        Map<String, List<FacRescueVehicle>> vehicleMap = new HashMap<>();
+        Map<String, List<FacRescuePersonnel>> personMap = new HashMap<>();
+        Map<String, List<FacRescueEquipment>> equipmentMap = new HashMap<>();
+        if (!names.isEmpty()) {
+            vehicleMap = vehicleMapper.selectList(new LambdaQueryWrapper<FacRescueVehicle>()
+                            .in(FacRescueVehicle::getSquadron, names)
+                            .orderByAsc(FacRescueVehicle::getId))
+                    .stream().collect(Collectors.groupingBy(FacRescueVehicle::getSquadron));
+            personMap = personnelMapper.selectList(new LambdaQueryWrapper<FacRescuePersonnel>()
+                            .in(FacRescuePersonnel::getSquadron, names)
+                            .orderByAsc(FacRescuePersonnel::getId))
+                    .stream().collect(Collectors.groupingBy(FacRescuePersonnel::getSquadron));
+            equipmentMap = equipmentMapper.selectList(new LambdaQueryWrapper<FacRescueEquipment>()
+                            .in(FacRescueEquipment::getSquadron, names)
+                            .orderByAsc(FacRescueEquipment::getId))
+                    .stream().collect(Collectors.groupingBy(FacRescueEquipment::getSquadron));
         }
         List<FireBrigadeTeam> teams = new ArrayList<>();
         for (FacBrigadeTeam row : rows) {
@@ -346,18 +341,19 @@ public class RescueResourceService {
             team.setDescription(row.getDescription());
             team.setRescuePersonnel(row.getRescuePersonnel());
             team.setRescueVehicles(row.getRescueVehicles());
-            team.setVehicles(vehicleMap.getOrDefault(row.getId(), Collections.emptyList()).stream()
+            String key = row.getTeamName();
+            team.setVehicles(vehicleMap.getOrDefault(key, Collections.emptyList()).stream()
                     .map(this::toBrigadeVehicle).collect(Collectors.toList()));
-            team.setPersonnel(personMap.getOrDefault(row.getId(), Collections.emptyList()).stream()
+            team.setPersonnel(personMap.getOrDefault(key, Collections.emptyList()).stream()
                     .map(this::toBrigadePerson).collect(Collectors.toList()));
-            team.setEquipment(equipmentMap.getOrDefault(row.getId(), Collections.emptyList()).stream()
+            team.setEquipment(equipmentMap.getOrDefault(key, Collections.emptyList()).stream()
                     .map(this::toBrigadeEquipment).collect(Collectors.toList()));
             teams.add(team);
         }
         return teams;
     }
 
-    private FireBrigadeVehicle toBrigadeVehicle(FacBrigadeVehicle row) {
+    private FireBrigadeVehicle toBrigadeVehicle(FacRescueVehicle row) {
         FireBrigadeVehicle vehicle = new FireBrigadeVehicle();
         vehicle.setId(row.getId());
         vehicle.setPlate(row.getPlate());
@@ -367,7 +363,7 @@ public class RescueResourceService {
         return vehicle;
     }
 
-    private FireBrigadePerson toBrigadePerson(FacBrigadePerson row) {
+    private FireBrigadePerson toBrigadePerson(FacRescuePersonnel row) {
         FireBrigadePerson person = new FireBrigadePerson();
         person.setId(row.getId());
         person.setName(row.getPersonName());
@@ -378,14 +374,14 @@ public class RescueResourceService {
         return person;
     }
 
-    private FireBrigadeEquipment toBrigadeEquipment(FacBrigadeEquipment row) {
+    private FireBrigadeEquipment toBrigadeEquipment(FacRescueEquipment row) {
         FireBrigadeEquipment equipment = new FireBrigadeEquipment();
         equipment.setId(row.getId());
         equipment.setName(row.getEquipName());
         equipment.setCategory(row.getCategory());
-        equipment.setCount(row.getItemCount());
+        equipment.setCount(row.getQuantity());
         equipment.setUnit(row.getUnit());
-        equipment.setStatus(row.getEquipStatus());
+        equipment.setStatus(row.getEquipmentStatus());
         equipment.setStorageLocation(row.getStorageLocation());
         return equipment;
     }

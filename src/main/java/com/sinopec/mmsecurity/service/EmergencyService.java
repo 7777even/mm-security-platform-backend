@@ -45,7 +45,9 @@ import com.sinopec.mmsecurity.entity.FacNodePhaseConfig;
 import com.sinopec.mmsecurity.entity.SysDutyMember;
 import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
+import com.sinopec.mmsecurity.entity.SysEmergencyStrengthItem;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
+import com.sinopec.mmsecurity.entity.FacFireFacilityLedger;
 import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
 import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
 import com.sinopec.mmsecurity.entity.FacRescueEquipment;
@@ -69,6 +71,8 @@ import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
+import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthItemMapper;
+import com.sinopec.mmsecurity.mapper.FacFireFacilityLedgerMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -104,6 +108,10 @@ public class EmergencyService {
     private final AlarmMapper alarmMapper;
     private final FacEmergencyAssistStatMapper assistStatMapper;
     private final SysEmergencyStrengthMapper strengthMapper;
+    /** 应急力量明细参考表（应急场所/医疗机构等无真实台账类别的运营可维护名单）。 */
+    private final SysEmergencyStrengthItemMapper strengthItemMapper;
+    /** 消防设施真实台账（V20 种子），复用为「消防设施」类别明细与计数真源。 */
+    private final FacFireFacilityLedgerMapper fireFacilityLedgerMapper;
     /** 应急力量台账（与 GET /rescue-resources/* 同源）——可聚合项的真源，保证两端同名项数字一致。 */
     private final FacRescuePersonnelMapper rescuePersonnelMapper;
     private final FacRescueEquipmentMapper rescueEquipmentMapper;
@@ -159,11 +167,12 @@ public class EmergencyService {
             EmergencyResource res = new EmergencyResource();
             res.setKind(r.getKind());
             // 可聚合项由管理端台账（GET /rescue-resources/*）实时计数覆盖，避免同一概念两套数字；
-            // 无明细源的项（装备车辆/应急场所/医疗机构/消防设施）沿用 sys_emergency_strength 人工维护值。
+            // ledger 源（应急专家/救援装备/应急车辆/救援队伍/消防设施）与参考表源（应急场所/医疗机构：
+            // sys_emergency_strength_item）均实时覆盖；仅 应急物资 为统计口径、沿用 sys_emergency_strength 人工维护值。
             Integer ledgerCount = strengthCountFromLedger(r.getKind());
             res.setCount(ledgerCount != null ? ledgerCount : r.getCount());
             res.setIcon(r.getIcon());
-            // 仅 ledger 源类别带真实明细预览（应急专家/物资/车辆/救援队伍），其余为 null。
+            // 明细：除 应急物资（统计口径）外均返回全量条目（前端按 20/页分页展示）。
             res.setItems(strengthItemsFromLedger(r.getKind()));
             resources.add(res);
         }
@@ -186,30 +195,40 @@ public class EmergencyService {
         switch (kind) {
             case "应急专家":
                 return rescuePersonnelMapper.selectList(null).size();
-            case "应急物资":
+            case "救援装备":
                 return rescueEquipmentMapper.selectList(null).size();
             case "应急车辆":
                 return rescueVehicleMapper.selectList(null).size();
             case "救援队伍":
                 return brigadeTeamMapper.selectList(null).size();
+            case "消防设施":
+                return fireFacilityLedgerMapper.selectList(null).size();
+            case "应急场所":
+            case "医疗机构":
+                // 与明细同源（sys_emergency_strength_item），计数随参考表行数实时一致，避免两套数字漂移
+                return strengthItemMapper
+                        .selectList(new LambdaQueryWrapper<SysEmergencyStrengthItem>()
+                                .eq(SysEmergencyStrengthItem::getKind, kind))
+                        .size();
             default:
                 return null;
         }
     }
 
     /**
-     * 应急力量各项的真实明细预览（取各台账前 {@code LIMIT} 条），供大屏点击资源类别就地展示。
-     * 仅 ledger 源类别有明细（应急专家/物资/车辆/救援队伍）；无明细源类别返回 {@code null}。
+     * 应急力量各项的真实明细（取各源全量条目，前端按 20/页分页），供大屏点击资源类别就地展示。
+     * ledger 源类别（应急专家/救援装备/应急车辆/救援队伍）取对应台账；
+     * 应急场所/医疗机构 取运营参考表 {@code sys_emergency_strength_item}；
+     * 消防设施 取真实台账 {@code fac_fire_facility_ledger}。应急物资（统计口径）仍返回 {@code null}。
      */
     private List<StrengthItem> strengthItemsFromLedger(String kind) {
         if (kind == null) {
             return null;
         }
-        final int LIMIT = 20;
         switch (kind) {
             case "应急专家":
                 return rescuePersonnelMapper
-                        .selectList(new LambdaQueryWrapper<FacRescuePersonnel>().last("LIMIT " + LIMIT))
+                        .selectList(null)
                         .stream()
                         .map(p -> {
                             StrengthItem it = new StrengthItem();
@@ -218,9 +237,9 @@ public class EmergencyService {
                             return it;
                         })
                         .collect(Collectors.toList());
-            case "应急物资":
+            case "救援装备":
                 return rescueEquipmentMapper
-                        .selectList(new LambdaQueryWrapper<FacRescueEquipment>().last("LIMIT " + LIMIT))
+                        .selectList(null)
                         .stream()
                         .map(e -> {
                             StrengthItem it = new StrengthItem();
@@ -231,7 +250,7 @@ public class EmergencyService {
                         .collect(Collectors.toList());
             case "应急车辆":
                 return rescueVehicleMapper
-                        .selectList(new LambdaQueryWrapper<FacRescueVehicle>().last("LIMIT " + LIMIT))
+                        .selectList(null)
                         .stream()
                         .map(v -> {
                             StrengthItem it = new StrengthItem();
@@ -242,12 +261,38 @@ public class EmergencyService {
                         .collect(Collectors.toList());
             case "救援队伍":
                 return brigadeTeamMapper
-                        .selectList(new LambdaQueryWrapper<FacBrigadeTeam>().last("LIMIT " + LIMIT))
+                        .selectList(null)
                         .stream()
                         .map(b -> {
                             StrengthItem it = new StrengthItem();
                             it.setName(b.getTeamName());
                             it.setMeta(b.getArea());
+                            return it;
+                        })
+                        .collect(Collectors.toList());
+            case "应急场所":
+            case "医疗机构":
+                return strengthItemMapper
+                        .selectList(new LambdaQueryWrapper<SysEmergencyStrengthItem>()
+                                .eq(SysEmergencyStrengthItem::getKind, kind)
+                                .orderByAsc(SysEmergencyStrengthItem::getSortNo))
+                        .stream()
+                        .map(row -> {
+                            StrengthItem it = new StrengthItem();
+                            it.setName(row.getName());
+                            it.setMeta(row.getMeta());
+                            return it;
+                        })
+                        .collect(Collectors.toList());
+            case "消防设施":
+                return fireFacilityLedgerMapper
+                        .selectList(new LambdaQueryWrapper<FacFireFacilityLedger>()
+                                .orderByAsc(FacFireFacilityLedger::getSortNo))
+                        .stream()
+                        .map(f -> {
+                            StrengthItem it = new StrengthItem();
+                            it.setName(f.getFacilityName());
+                            it.setMeta(joinMeta(f.getLocationName(), f.getFacilityType()));
                             return it;
                         })
                         .collect(Collectors.toList());

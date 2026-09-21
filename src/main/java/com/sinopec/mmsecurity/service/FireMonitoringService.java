@@ -13,10 +13,10 @@ import com.sinopec.mmsecurity.entity.FacFirePatrolItemDef;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemResult;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationStat;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationTicket;
-import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
 import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
+import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacFireFacilityMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemDefMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
@@ -61,11 +61,15 @@ public class FireMonitoringService {
     private final FacSpecialOperationTicketMapper specialOperationTicketMapper;
     /** 消防设施监测（与 GET /fire-facility/monitors 同源）——消防设备分类与状态的唯一数据源。 */
     private final FacFireFacilityMonitorMapper fireFacilityMonitorMapper;
-    /** 消防救援力量（与 GET /rescue-resources/brigades 同源的队伍体系）：队伍 + 各队人员/装备/车辆明细。 */
+    /**
+     * 消防救援力量（V62 起唯一真源）：队伍数取「中队主表」fac_brigade_team，
+     * 人员/装备/车辆取扁平资源台账 fac_rescue_{personnel,equipment,vehicle} —— 与
+     * GET /rescue-resources/brigades、应急面板「应急救援力量」同源。
+     */
     private final FacBrigadeTeamMapper brigadeTeamMapper;
-    private final FacBrigadePersonMapper brigadePersonMapper;
-    private final FacBrigadeEquipmentMapper brigadeEquipmentMapper;
-    private final FacBrigadeVehicleMapper brigadeVehicleMapper;
+    private final FacRescuePersonnelMapper rescuePersonnelMapper;
+    private final FacRescueEquipmentMapper rescueEquipmentMapper;
+    private final FacRescueVehicleMapper rescueVehicleMapper;
     private final FacFirePatrolMapper firePatrolMapper;
     private final FacFirePatrolItemDefMapper patrolItemDefMapper;
     private final FacFirePatrolItemResultMapper patrolItemResultMapper;
@@ -79,16 +83,17 @@ public class FireMonitoringService {
             Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).maximumSize(1).build();
 
     /**
-     * 消防救援力量：真源统一为「队伍体系」fac_brigade_*（与管理端 GET /rescue-resources/brigades 同源）——
-     * 队伍数取队伍表条数，人员/装备/车辆取各队明细表条数；取代原先手填的 fac_rescue_force_stat
-     * （10 支 / 398 人 / 123 套 / 83 台 与实际队伍编制完全脱节）。
+     * 消防救援力量（V62 唯一真源）：队伍数取「中队主表」fac_brigade_team，人员/装备/车辆取
+     * 扁平资源台账 fac_rescue_{personnel,equipment,vehicle} —— 与管理端 GET /rescue-resources/*
+     * 及应急面板「应急救援力量」同源（取代原先手填的 fac_rescue_force_stat 10/398/123/83，
+     * 也取代曾并存的「队伍子表」71/110/39）。
      */
     public List<RescueForceStat> rescueForces() {
         List<RescueForceStat> out = new ArrayList<>();
         out.add(forceStat("消防队伍", brigadeTeamMapper.selectCount(null), "支", "squad"));
-        out.add(forceStat("救援人员", brigadePersonMapper.selectCount(null), "人", "person"));
-        out.add(forceStat("救援装备", brigadeEquipmentMapper.selectCount(null), "套", "equipment"));
-        out.add(forceStat("救援车辆", brigadeVehicleMapper.selectCount(null), "台", "vehicle"));
+        out.add(forceStat("救援人员", rescuePersonnelMapper.selectCount(null), "人", "person"));
+        out.add(forceStat("救援装备", rescueEquipmentMapper.selectCount(null), "套", "equipment"));
+        out.add(forceStat("救援车辆", rescueVehicleMapper.selectCount(null), "台", "vehicle"));
         return out;
     }
 
