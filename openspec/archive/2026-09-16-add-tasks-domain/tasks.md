@@ -8,4 +8,4 @@
 - [x] 前端 `npm run gen:api-types` 生成 `src/types/generated/tasks.ts`
 - [x] 移动端 `tasks.vue` / `task-detail.vue` / `path-nav.vue` 接 `@/services/task`
 - [x] `docs/frozen-prototype.md` 解除 `/tasks`、`/tasks/:id`、`/path` 冻结
-- [ ] 达梦 / PostgreSQL 方言 V54 实跑校验（待 DM8/PG 实例 `flyway migrate`）
+- [x] 达梦 / PostgreSQL 方言 V54 实跑校验（PG V1–V57 `flyway migrate` 通过；DM8 disql 全量重跑 0 错误，2026-09-17）

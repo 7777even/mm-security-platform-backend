@@ -8,4 +8,4 @@
 - [x] `check-api-contract.mjs --strict` 通过（路由 0 差异 / schema 0 漂移）
 - [x] H2 实跑 E2E（`GET /api/v1/communication/records` 全量 + `?type=` 过滤）
 - [x] 回写 `docs/system-facts.md`
-- [ ] 达梦 / PostgreSQL 方言 V57 实跑校验（待 DM8/PG 实例 `flyway migrate`）
+- [x] 达梦 / PostgreSQL 方言 V57 实跑校验（PG V1–V57 `flyway migrate` 通过；DM8 disql 全量重跑 0 错误，`fac_comm_record` 15 行种子落库，2026-09-17）
