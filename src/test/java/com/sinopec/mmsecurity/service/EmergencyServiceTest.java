@@ -5,6 +5,7 @@ import com.sinopec.mmsecurity.dto.ClosedCase;
 import com.sinopec.mmsecurity.dto.ClosedCaseList;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
+import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
@@ -57,6 +58,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -156,12 +158,25 @@ class EmergencyServiceTest {
                 strength("装备车辆", 28, "Van"),
                 strength("应急场所", 6, "LocationFilled"),
                 strength("应急车辆", 18, "Truck")));
-        when(rescuePersonnelMapper.selectList(null)).thenReturn(List.of(
-                new FacRescuePersonnel(), new FacRescuePersonnel(), new FacRescuePersonnel()));
-        when(rescueEquipmentMapper.selectList(null)).thenReturn(List.of(new FacRescueEquipment()));
-        when(rescueVehicleMapper.selectList(null)).thenReturn(List.of(
-                new FacRescueVehicle(), new FacRescueVehicle()));
-        when(brigadeTeamMapper.selectList(null)).thenReturn(List.of(new FacBrigadeTeam()));
+        FacRescuePersonnel p1 = new FacRescuePersonnel();
+        p1.setPersonName("张伟");
+        p1.setPersonRole("救援专家");
+        p1.setSquadron("一中队");
+        when(rescuePersonnelMapper.selectList(any())).thenReturn(List.of(
+                p1, new FacRescuePersonnel(), new FacRescuePersonnel()));
+        FacRescueEquipment eq = new FacRescueEquipment();
+        eq.setEquipName("正压式空气呼吸器");
+        eq.setEquipModel("RHZK6.8");
+        when(rescueEquipmentMapper.selectList(any())).thenReturn(List.of(eq));
+        FacRescueVehicle v1 = new FacRescueVehicle();
+        v1.setPlate("粤KX1234");
+        v1.setVehicleType("泡沫消防车");
+        when(rescueVehicleMapper.selectList(any())).thenReturn(List.of(
+                v1, new FacRescueVehicle()));
+        FacBrigadeTeam team = new FacBrigadeTeam();
+        team.setTeamName("一中队");
+        team.setArea("炼油区");
+        when(brigadeTeamMapper.selectList(any())).thenReturn(List.of(team));
 
         EmergencyStrength s = service.strength();
 
@@ -173,6 +188,17 @@ class EmergencyServiceTest {
         assertEquals(28, s.getResources().get(3).getCount(), "装备车辆无明细源，保留手填值");
         assertEquals(6, s.getResources().get(4).getCount(), "应急场所无明细源，保留手填值");
         assertEquals(2, s.getResources().get(5).getCount(), "应急车辆取车辆台账计数，覆盖手填 18");
+
+        // 明细预览：ledger 源类别填充真实项（name + 拼接 meta），无明细源类别为 null。
+        EmergencyResource expert = s.getResources().get(0);
+        assertEquals(3, expert.getItems().size());
+        assertEquals("张伟", expert.getItems().get(0).getName());
+        assertEquals("救援专家 · 一中队", expert.getItems().get(0).getMeta(), "meta 由岗位/中队拼接");
+        assertEquals("正压式空气呼吸器", s.getResources().get(1).getItems().get(0).getName());
+        assertEquals("粤KX1234", s.getResources().get(5).getItems().get(0).getName());
+        assertEquals("炼油区", s.getResources().get(2).getItems().get(0).getMeta());
+        assertNull(s.getResources().get(3).getItems(), "装备车辆无明细源，items 为 null");
+        assertNull(s.getResources().get(4).getItems(), "应急场所无明细源，items 为 null");
     }
 
     @Test
@@ -216,11 +242,16 @@ class EmergencyServiceTest {
 
     @Test
     void knowledge_readsFromReferenceTable() {
+        SysKnowledgeItem k1 = knowledge("岗位应急处置卡", 158, "Document");
+        k1.setDescription("岗位员工应掌握的应急处置卡片要点。");
         when(knowledgeMapper.selectList(null)).thenReturn(List.of(
-                knowledge("岗位应急处置卡", 158, "Document"),
+                k1,
                 knowledge("火灾爆炸应急预案", 42, "Files"),
                 knowledge("气体泄漏处置", 67, "Warning")));
-        assertEquals(3, service.knowledge().getItems().size());
+        var items = service.knowledge().getItems();
+        assertEquals(3, items.size());
+        assertEquals("岗位员工应掌握的应急处置卡片要点。", items.get(0).getDescription(),
+                "透传 sys_knowledge_item.description 作为真实分类说明");
     }
 
     @Test

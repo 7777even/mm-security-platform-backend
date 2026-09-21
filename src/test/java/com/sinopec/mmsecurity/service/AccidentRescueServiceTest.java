@@ -93,7 +93,7 @@ class AccidentRescueServiceTest {
     }
 
     @Test
-    void incident_emptyReferenceTables_ok() {
+    void incident_emptyDetailTable_fallsBackToBaseColumns() {
         when(incidentMapper.selectOne(any())).thenReturn(inc(1L, 4L));
         when(detailFieldMapper.selectList(any())).thenReturn(List.of());
         when(dispatchResourceMapper.selectList(any())).thenReturn(List.of());
@@ -103,7 +103,11 @@ class AccidentRescueServiceTest {
 
         AccidentRescueIncident dto = service.incident(1L);
         assertNotNull(dto);
-        assertTrue(dto.getDetailFields().isEmpty());
+        // 详情表为空时由事件基础列兜底派生核心字段（防「事件基础信息」空白），非空即预期行为。
+        assertFalse(dto.getDetailFields().isEmpty());
+        assertEquals("事件标题", dto.getDetailFields().get(0).getLabel());
+        assertEquals("事件", dto.getDetailFields().get(0).getValue());
+        assertEquals("事发地点", dto.getDetailFields().get(1).getLabel());
         assertTrue(dto.getDispatchResources().isEmpty());
     }
 }
