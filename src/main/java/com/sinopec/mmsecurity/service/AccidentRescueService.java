@@ -23,6 +23,7 @@ import com.sinopec.mmsecurity.mapper.FacAccidentIncidentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,8 +74,15 @@ public class AccidentRescueService {
 
         // detail_field 与事件一一对应（含 incident_id）；其余四张表为事故救援域的全局参考主数据
         // （调度资源/值班/辅助统计/动态快讯），不按事件拆分，直接全量按 sort_no 返回，与前端契约一致。
-        dto.setDetailFields(detailFieldMapper.selectList(byIncident(id)).stream()
-                .map(this::toDetailField).collect(Collectors.toList()));
+        List<IncidentDetailField> detailFields = detailFieldMapper.selectList(byIncident(id)).stream()
+                .map(this::toDetailField).collect(Collectors.toList());
+        // 兜底（防处置页「事件基础信息」空白）：事件未走写路径落 fac_accident_detail_field
+        // （历史/种子事件、或 create 未写详情字段）时，从 fac_accident_incident 基础列派生核心字段，
+        // 保证大屏处置页该区块始终有内容。仅在确实无详情字段时才兜底，避免与真实详情字段重复。
+        if (detailFields.isEmpty()) {
+            detailFields = deriveFallbackDetailFields(row);
+        }
+        dto.setDetailFields(detailFields);
         dto.setDispatchResources(dispatchResourceMapper.selectList(allSorted()).stream()
                 .map(this::toDispatchResource).collect(Collectors.toList()));
         dto.setDutyPersons(dutyPersonMapper.selectList(allSorted()).stream()
@@ -111,6 +119,29 @@ public class AccidentRescueService {
         d.setLabel(e.getFieldLabel());
         d.setValue(e.getFieldValue());
         return d;
+    }
+
+    /**
+     * 详情字段缺失时的兜底派生：从事故事件基础列抽取核心「事件基础信息」。
+     * 仅填充非空字段（标题/地点/级别/事发时间/关联设施），避免与处置页头部状态徽标（处置中/已预警）重复。
+     */
+    private List<IncidentDetailField> deriveFallbackDetailFields(FacAccidentIncident row) {
+        List<IncidentDetailField> fields = new ArrayList<>();
+        addFieldIfPresent(fields, "事件标题", row.getTitle());
+        addFieldIfPresent(fields, "事发地点", row.getLocation());
+        addFieldIfPresent(fields, "事件级别", row.getHazardSourceLevel());
+        addFieldIfPresent(fields, "事发时间", row.getStartedAt());
+        addFieldIfPresent(fields, "关联设施", row.getFacilityName());
+        return fields;
+    }
+
+    private static void addFieldIfPresent(List<IncidentDetailField> fields, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            IncidentDetailField f = new IncidentDetailField();
+            f.setLabel(label);
+            f.setValue(value);
+            fields.add(f);
+        }
     }
 
     private EmergencyDispatchResource toDispatchResource(FacAccidentDispatchResource e) {
