@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -34,6 +35,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @SpringBootTest
 @ActiveProfiles("dev")
+// 钉回内存 H2：dev profile 已改文件库持久化，但集成测试须保持隔离（不碰/不锁 dev 文件库，
+// 每次运行都拿到全新 Flyway 种子库，且不与正在运行的 dev 服务争锁）。
+@TestPropertySource(properties = {
+    "spring.datasource.url=jdbc:h2:mem:mm_security_test;DB_CLOSE_DELAY=-1",
+    "spring.datasource.driver-class-name=org.h2.Driver"
+})
 class DbLayerIntegrationIT {
 
     @Autowired
