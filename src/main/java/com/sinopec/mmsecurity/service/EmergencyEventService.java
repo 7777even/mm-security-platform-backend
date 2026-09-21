@@ -6,9 +6,11 @@ import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
 import com.sinopec.mmsecurity.dto.EmergencyEventWeatherMeta;
 import com.sinopec.mmsecurity.dto.EvacuationPerson;
+import com.sinopec.mmsecurity.entity.FacAccidentDetailField;
 import com.sinopec.mmsecurity.entity.FacAccidentIncident;
 import com.sinopec.mmsecurity.entity.FacEmergencyEvent;
 import com.sinopec.mmsecurity.entity.FacEvacuationPerson;
+import com.sinopec.mmsecurity.mapper.FacAccidentDetailFieldMapper;
 import com.sinopec.mmsecurity.mapper.FacAccidentIncidentMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyEventMapper;
 import com.sinopec.mmsecurity.mapper.FacEvacuationPersonMapper;
@@ -57,6 +59,7 @@ public class EmergencyEventService {
     private final FacEmergencyEventMapper emergencyEventMapper;
     private final FacEvacuationPersonMapper evacuationPersonMapper;
     private final FacAccidentIncidentMapper accidentIncidentMapper;
+    private final FacAccidentDetailFieldMapper accidentDetailFieldMapper;
 
     /**
      * 按场景查询应急事件分组。
@@ -175,7 +178,61 @@ public class EmergencyEventService {
         incident.setIsDefault(false);
         accidentIncidentMapper.insert(incident);
 
+        // 同步写入事故救援详情字段，保证新事件进入 /accident/rescue-incident 聚合时“事件基础信息”不空白。
+        List<FacAccidentDetailField> detailFields = buildAccidentDetailFields(incident, req, groupLabel);
+        for (FacAccidentDetailField field : detailFields) {
+            accidentDetailFieldMapper.insert(field);
+        }
+
         return toItem(event);
+    }
+
+    /**
+     * 按新增请求构建事故救援详情字段（label/value）。
+     * 字段顺序与 V12 seed 对齐：事故时间、事件分类、事件级别、事发地点、事件描述、事件名称；
+     * 天气类事件追加天气相关字段。空值字段写空字符串占位，避免面板渲染时缺行错位。
+     */
+    private List<FacAccidentDetailField> buildAccidentDetailFields(
+            FacAccidentIncident incident,
+            EmergencyEventCreateRequest req,
+            String groupLabel) {
+        List<FacAccidentDetailField> fields = new ArrayList<>();
+        Long incidentId = incident.getId();
+        // mock 单测中 mapper.insert 不会回填 id；真实 MyBatis-Plus 运行时会回填，正常写入详情字段。
+        if (incidentId == null) {
+            return fields;
+        }
+        int sortNo = 1;
+
+        fields.add(detailField(incidentId, "事故时间", orBlank(req.getEventTime()), sortNo++));
+        fields.add(detailField(incidentId, "事件分类", orBlank(groupLabel), sortNo++));
+        fields.add(detailField(incidentId, "事件级别", orBlank(req.getHazardSourceLevel()), sortNo++));
+        fields.add(detailField(incidentId, "事发地点", orBlank(req.getLocation()), sortNo++));
+        fields.add(detailField(incidentId, "事件描述", orBlank(req.getDescription()), sortNo++));
+        fields.add(detailField(incidentId, "事件名称", orBlank(req.getTitle()), sortNo++));
+        fields.add(detailField(incidentId, "涉事区域", orBlank(req.getAreaCode()), sortNo++));
+
+        if ("extreme-weather".equals(req.getEventCategory()) || req.getWeatherType() != null) {
+            fields.add(detailField(incidentId, "天气类型", orBlank(req.getWeatherType()), sortNo++));
+            fields.add(detailField(incidentId, "预警等级", orBlank(req.getWarningLevel()), sortNo++));
+            fields.add(detailField(incidentId, "影响范围", orBlank(req.getAffectedArea()), sortNo++));
+            fields.add(detailField(incidentId, "监测时段", orBlank(req.getMonitoringPeriod()), sortNo++));
+            fields.add(detailField(incidentId, "已采取措施", orBlank(req.getMeasures()), sortNo++));
+        }
+        return fields;
+    }
+
+    private static FacAccidentDetailField detailField(Long incidentId, String label, String value, int sortNo) {
+        FacAccidentDetailField field = new FacAccidentDetailField();
+        field.setIncidentId(incidentId);
+        field.setFieldLabel(label);
+        field.setFieldValue(value);
+        field.setSortNo(sortNo);
+        return field;
+    }
+
+    private static String orBlank(String value) {
+        return value == null ? "" : value;
     }
 
     private EmergencyEventItem toItem(FacEmergencyEvent row) {
