@@ -1,7 +1,7 @@
 # 前后端联调运行手册
 
 本手册面向需要在本地把 `backend-scaffold`（后端）与 `frontend-scaffold`（前端）跑通联调的开发者。
-**目标定位**：dev 级 —— 后端以 `dev` profile（H2 内存库 + Flyway 自动建表/种子）离线即起，为前端脚手架提供真实接口；生产库（达梦 DM8 / PostgreSQL）迁移 hardening 不在 dev 目标内。
+**目标定位**：dev 级 —— 后端以 `dev` profile（H2 **文件库** `./data/mm_security_dev.mv.db` + Flyway 自动建表/种子，重启保留数据）离线即起，为前端脚手架提供真实接口；生产库（达梦 DM8 / PostgreSQL）迁移 hardening 不在 dev 目标内。集成测试 `EndToEndFlowTest`/`DbLayerIntegrationIT` 经 `@TestPropertySource` 钉回内存 H2 以保持隔离。
 
 ---
 

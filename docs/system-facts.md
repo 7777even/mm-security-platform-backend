@@ -46,7 +46,7 @@
 
 ## 5. 数据库策略
 
-- dev 唯一可实跑：H2 内存 + Flyway（`src/main/resources/db/migration/h2`），`spring.sql.init.enabled=false`。
+- dev 唯一可实跑：H2 **文件库** `jdbc:h2:file:./data/mm_security_dev;AUTO_SERVER=TRUE`（库文件 `data/mm_security_dev.mv.db`，已 gitignore）+ Flyway（`src/main/resources/db/migration/h2`），`spring.sql.init.enabled=false`。**重启保留数据**（2026-09-21 由内存库 `jdbc:h2:mem:mm_security` 改造）。
 - **Flyway 版本纪律**：已进入共享环境的 V-file **禁改/删**，新增只加 V17+。已落地：
   V6 `fac_field_report`；V7 `sys_menu` 加 `allowed_roles` + 重种 5 个 fm-* 顶部菜单；
   V8 应急力量/通讯录/知识库/值班表（硬编码迁 DB）；V13 production 域；V14 fac_video_*；V26 fac_video_camera 加 snapshot_bytes BLOB + GET /video/cameras/{id}/snapshot（dev VideoSnapshotSeeder 生成占位 JPEG）。
@@ -108,7 +108,7 @@
 - **强制首登改密（服务端兜底）**：`PasswordLifecycleInterceptor` 对**变更类请求**（非 GET/HEAD/OPTIONS）校验
   `must_change_pwd`，命中则 403；豁免 `/api/v1/auth/**`（否则改密路径自身被堵死）与 `/api/v1/uplink/audit`（审计旁路）。
   状态缓存 `PasswordStateCache`（TTL 5min + 改密/重置时 evict）。
-  **dev 关闭种子标记**（`app.password.force-change-default-admin=false`，因 H2 内存库每次重启重建，强制改密会反复阻断联调）；
+  **dev 关闭种子标记**（`app.password.force-change-default-admin=false`：避免强制改密反复阻断联调；dev 现为 H2 文件库，重启保留数据故更无重建之虞）；
   **生产默认 true**（`admin@2026` 属已知弱口令）。
 - **系统管理域硬防护**（服务端强制，不依赖前端禁用按钮）：禁删/禁停用/禁改自己角色（403）；
   **保护最后一个启用 ADMIN**（409）；内置角色与内置字典禁删禁停（403）；角色被用户引用、字典有字典项、

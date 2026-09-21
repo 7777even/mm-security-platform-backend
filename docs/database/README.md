@@ -6,7 +6,7 @@
 
 | profile | 数据源 | 状态 | 说明 |
 | ------- | ------ | ---- | ---- |
-| `dev` | H2 内存库 `jdbc:h2:mem:mm_security` | ✅ 唯一可实跑 | `application-dev.yml` 覆盖；Flyway 走 `db/migration/h2`（V1 快照 + V2 种子） |
+| `dev` | H2 文件库 `jdbc:h2:file:./data/mm_security_dev;AUTO_SERVER=TRUE`（库文件 `data/mm_security_dev.mv.db`，已 gitignore）| ✅ 唯一可实跑，重启保留数据 | `application-dev.yml` 覆盖；Flyway 走 `db/migration/h2`（V1 快照 + V2 种子） |
 | `dm` | 达梦 DM8 | ⏸️ 暂缓 | 本机无实例/驱动/Docker；`application-dm.yml` + `db/migration/dameng` 保留作迁移资产 |
 | `prod` | PostgreSQL | ⏸️ 回退 | 本机未装；`db/migration/postgresql` 存在 |
 

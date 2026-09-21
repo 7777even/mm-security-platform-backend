@@ -50,7 +50,7 @@ docker compose up --build
 
 默认账号：**`admin` / `admin@2026`**（后端 `AuthService.ensureAdmin()` 种子写入）。
 
-> 注意：dev 用 H2 内存库，**重启即丢数据**，仅适合演示/联调。
+> 注意：dev 自 2026-09-21 起改用 **H2 文件库**（`data/mm_security_dev.mv.db`，已 gitignore），**重启保留数据**，适合演示/联调与跨天联调；库文件勿入库。
 
 ### 常见操作
 

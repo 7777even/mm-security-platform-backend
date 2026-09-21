@@ -8,7 +8,7 @@
 | ---------- | ----------------------------------------------------------------------------------------------- |
 | 框架       | Spring Boot 3.2.5（Java 17）                                                                    |
 | 持久层     | MyBatis-Plus 3.5.5（`map-underscore-to-camel-case`、逻辑删除 `deleted`）                        |
-| 数据库     | **dev=H2 内存库 + Flyway（本地唯一可实跑）**；达梦 DM8（信创生产目标，暂缓未实证）；PostgreSQL（回退 profile，本机未装） |
+| 数据库     | **dev=H2 文件库（`./data/mm_security_dev.mv.db`，重启保留数据）+ Flyway（本地唯一可实跑）**；达梦 DM8（信创生产目标，暂缓未实证）；PostgreSQL（回退 profile，本机未装） |
 | 认证       | JJWT 0.12.5，无状态；access 2h、refresh 7d（refresh 经 **HttpOnly Cookie** 下发，前端 JS 不可读） |
 | 实时通道   | Spring WebSocket，`/ws/alarm` 告警推送（包络 `{topic, payload}` + 15s ping 心跳）                |
 | 端口 / 前缀| dev 启动端口 **8787**（application.yml 默认 `8080` 被 `-Dserver.port=8787` 覆盖）/ 前缀 `/api/v1` |
@@ -67,7 +67,7 @@ HTTP 请求
 ## 5. 数据层与迁移
 
 - 迁移由 **Flyway** 接管（`spring.sql.init.enabled=false`，`spring.flyway.enabled=true`）。三套方言位于 `src/main/resources/db/migration/{h2,postgresql,dameng}/`，按 profile 由 `spring.flyway.locations` 指向：
-  - `dev` → `h2`（H2 内存库，本地可实跑：V1 全量快照 ＋ V2 种子）。
+  - `dev` → `h2`（H2 文件库 `./data/mm_security_dev.mv.db`，本地可实跑：V1 全量快照 ＋ V2 种子，重启保留数据）。
   - `prod` → `postgresql`（回退 profile）。
   - `dm` → `dameng`（达梦 DM8 信创目标，**暂缓启用**：本机无 DM8 实例 / 驱动 / Docker，仅保留脚本与 `application-dm.yml` 作迁移资产）。
 - `AuthService.ensureAdmin()` 在 Flyway 建好的 `sys_user` 上写默认账号 `admin` / `admin@2026`（不进种子脚本，避免重复）。
