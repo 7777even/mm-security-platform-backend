@@ -16,4 +16,5 @@ public class SysKnowledgeItem {
     private String title;
     private Integer count;
     private String icon;
+    private String description;
 }

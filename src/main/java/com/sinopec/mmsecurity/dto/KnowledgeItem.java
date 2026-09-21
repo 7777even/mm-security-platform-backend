@@ -18,4 +18,6 @@ public class KnowledgeItem implements Serializable {
     private Integer count;
     /** 图标名（Element Plus icon 名） */
     private String icon;
+    /** 知识分类说明（真实可编辑文案，来自 sys_knowledge_item.description） */
+    private String description;
 }

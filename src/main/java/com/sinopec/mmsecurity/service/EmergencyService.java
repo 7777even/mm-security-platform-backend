@@ -22,6 +22,7 @@ import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStat;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
+import com.sinopec.mmsecurity.dto.StrengthItem;
 import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
@@ -46,6 +47,10 @@ import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
+import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
+import com.sinopec.mmsecurity.entity.FacRescueEquipment;
+import com.sinopec.mmsecurity.entity.FacRescueVehicle;
+import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyAssistStatMapper;
 import com.sinopec.mmsecurity.mapper.FacDispatchPersonnelMapper;
@@ -76,6 +81,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 应急资源服务。
@@ -157,6 +163,8 @@ public class EmergencyService {
             Integer ledgerCount = strengthCountFromLedger(r.getKind());
             res.setCount(ledgerCount != null ? ledgerCount : r.getCount());
             res.setIcon(r.getIcon());
+            // 仅 ledger 源类别带真实明细预览（应急专家/物资/车辆/救援队伍），其余为 null。
+            res.setItems(strengthItemsFromLedger(r.getKind()));
             resources.add(res);
         }
         s.setResources(resources);
@@ -187,6 +195,75 @@ public class EmergencyService {
             default:
                 return null;
         }
+    }
+
+    /**
+     * 应急力量各项的真实明细预览（取各台账前 {@code LIMIT} 条），供大屏点击资源类别就地展示。
+     * 仅 ledger 源类别有明细（应急专家/物资/车辆/救援队伍）；无明细源类别返回 {@code null}。
+     */
+    private List<StrengthItem> strengthItemsFromLedger(String kind) {
+        if (kind == null) {
+            return null;
+        }
+        final int LIMIT = 20;
+        switch (kind) {
+            case "应急专家":
+                return rescuePersonnelMapper
+                        .selectList(new LambdaQueryWrapper<FacRescuePersonnel>().last("LIMIT " + LIMIT))
+                        .stream()
+                        .map(p -> {
+                            StrengthItem it = new StrengthItem();
+                            it.setName(p.getPersonName());
+                            it.setMeta(joinMeta(p.getPersonRole(), p.getSquadron()));
+                            return it;
+                        })
+                        .collect(Collectors.toList());
+            case "应急物资":
+                return rescueEquipmentMapper
+                        .selectList(new LambdaQueryWrapper<FacRescueEquipment>().last("LIMIT " + LIMIT))
+                        .stream()
+                        .map(e -> {
+                            StrengthItem it = new StrengthItem();
+                            it.setName(e.getEquipName());
+                            it.setMeta(joinMeta(e.getEquipModel(), e.getStorageLocation()));
+                            return it;
+                        })
+                        .collect(Collectors.toList());
+            case "应急车辆":
+                return rescueVehicleMapper
+                        .selectList(new LambdaQueryWrapper<FacRescueVehicle>().last("LIMIT " + LIMIT))
+                        .stream()
+                        .map(v -> {
+                            StrengthItem it = new StrengthItem();
+                            it.setName(v.getPlate());
+                            it.setMeta(joinMeta(v.getVehicleType(), v.getSquadron()));
+                            return it;
+                        })
+                        .collect(Collectors.toList());
+            case "救援队伍":
+                return brigadeTeamMapper
+                        .selectList(new LambdaQueryWrapper<FacBrigadeTeam>().last("LIMIT " + LIMIT))
+                        .stream()
+                        .map(b -> {
+                            StrengthItem it = new StrengthItem();
+                            it.setName(b.getTeamName());
+                            it.setMeta(b.getArea());
+                            return it;
+                        })
+                        .collect(Collectors.toList());
+            default:
+                return null;
+        }
+    }
+
+    /** 拼接明细辅助说明，空片段忽略；全空返回 null。 */
+    private String joinMeta(String a, String b) {
+        String s = Stream.of(a, b)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(t -> !t.isEmpty())
+                .collect(Collectors.joining(" · "));
+        return s.isEmpty() ? null : s;
     }
 
     /**
@@ -313,6 +390,7 @@ public class EmergencyService {
             it.setTitle(r.getTitle());
             it.setCount(r.getCount());
             it.setIcon(r.getIcon());
+            it.setDescription(r.getDescription());
             items.add(it);
         }
         k.setItems(items);
