@@ -5,7 +5,11 @@ server:
   port: 8787
 spring:
   datasource:
-    url: jdbc:h2:mem:mm_security;DB_CLOSE_DELAY=-1
+    # dev 由「内存库」改为「文件库」：新增的业务数据（如应急事件）随进程重启保留，
+    # 不再每次启动清零。库文件位置 backend-scaffold/data/mm_security_dev.mv.db（已 gitignore）。
+    # AUTO_SERVER=TRUE 允许多进程（dev 服务 + H2 Console + 外部工具）共享同一份物理库，
+    # 避免「database already in use」锁错；库文件由 Flyway 在首次启动时建表并灌种子。
+    url: jdbc:h2:file:./data/mm_security_dev;AUTO_SERVER=TRUE
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -24,8 +28,8 @@ app:
   cors:
     allowed-origins: "*"
   password:
-    # dev 用 H2 内存库，每次重启数据清空重建；若种子默认管理员置 must_change_pwd=1，
-    # 则每次启动都必须先改密才能进行任何写操作，会反复阻断演示与联调。
+    # dev 用 H2 文件库（重启保留数据，不再每次清空重建）；若种子默认管理员置 must_change_pwd=1，
+    # 则启动后首次必须改密才能进行任何写操作，会反复阻断演示与联调。
     # 故 dev 不置该标记；生产（prod/dm）沿用 base 默认 true，由 PasswordLifecycleInterceptor
     # 在业务写端点强制拦截未改密账号。拦截器本身在任何 profile 都启用。
     force-change-default-admin: false

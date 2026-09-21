@@ -29,3 +29,8 @@ application-*.local.yml
 
 # 本机 Maven 构建配置（含硬编码 localRepository 路径，机器相关，禁止入库）
 ci-settings.xml
+
+# 本地 H2 文件库（dev profile 持久化用，禁止入库；库文件由 Flyway 自动建表灌种）
+data/mm_security_dev.mv.db
+data/mm_security_dev.trace.db
+data/mm_security_dev.lock.db
