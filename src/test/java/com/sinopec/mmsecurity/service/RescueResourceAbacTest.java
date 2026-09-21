@@ -3,11 +3,11 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.FireBrigadeList;
 import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
-import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
 import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueOptionMapper;
+import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.security.DataScopeResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,11 +35,11 @@ class RescueResourceAbacTest {
     @Mock
     private FacBrigadeTeamMapper brigadeTeamMapper;
     @Mock
-    private FacBrigadeVehicleMapper brigadeVehicleMapper;
+    private FacRescueVehicleMapper vehicleMapper;
     @Mock
-    private FacBrigadePersonMapper brigadePersonMapper;
+    private FacRescuePersonnelMapper personnelMapper;
     @Mock
-    private FacBrigadeEquipmentMapper brigadeEquipmentMapper;
+    private FacRescueEquipmentMapper equipmentMapper;
     @Mock
     private FacRescueOptionMapper optionMapper;
     @Mock
@@ -60,9 +60,9 @@ class RescueResourceAbacTest {
     void allScope_noExtraFilter() {
         when(dataScopeResolver.resolveZones()).thenReturn(null);
         when(brigadeTeamMapper.selectList(any())).thenReturn(List.of(team("乙烯区")));
-        when(brigadeVehicleMapper.selectList(any())).thenReturn(List.of());
-        when(brigadePersonMapper.selectList(any())).thenReturn(List.of());
-        when(brigadeEquipmentMapper.selectList(any())).thenReturn(List.of());
+        when(vehicleMapper.selectList(any())).thenReturn(List.of());
+        when(personnelMapper.selectList(any())).thenReturn(List.of());
+        when(equipmentMapper.selectList(any())).thenReturn(List.of());
         when(optionMapper.selectList(any())).thenReturn(List.of());
 
         FireBrigadeList list = service.brigades(null);
@@ -78,9 +78,9 @@ class RescueResourceAbacTest {
         Set<String> zones = Set.of("乙烯区", "罐区");
         when(dataScopeResolver.resolveZones()).thenReturn(zones);
         when(brigadeTeamMapper.selectList(any())).thenReturn(List.of(team("乙烯区"), team("罐区"), team("仓储区")));
-        when(brigadeVehicleMapper.selectList(any())).thenReturn(List.of());
-        when(brigadePersonMapper.selectList(any())).thenReturn(List.of());
-        when(brigadeEquipmentMapper.selectList(any())).thenReturn(List.of());
+        when(vehicleMapper.selectList(any())).thenReturn(List.of());
+        when(personnelMapper.selectList(any())).thenReturn(List.of());
+        when(equipmentMapper.selectList(any())).thenReturn(List.of());
         when(optionMapper.selectList(any())).thenReturn(List.of());
 
         service.brigades(null);

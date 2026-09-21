@@ -9,10 +9,7 @@ import com.sinopec.mmsecurity.dto.RescuePersonnelItem;
 import com.sinopec.mmsecurity.dto.RescuePersonnelList;
 import com.sinopec.mmsecurity.dto.RescueVehicleItem;
 import com.sinopec.mmsecurity.dto.RescueVehicleList;
-import com.sinopec.mmsecurity.entity.FacBrigadeEquipment;
-import com.sinopec.mmsecurity.entity.FacBrigadePerson;
 import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
-import com.sinopec.mmsecurity.entity.FacBrigadeVehicle;
 import com.sinopec.mmsecurity.entity.FacRescueEquipment;
 import com.sinopec.mmsecurity.entity.FacRescueOption;
 import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
@@ -20,10 +17,7 @@ import com.sinopec.mmsecurity.entity.FacRescueVehicle;
 import com.sinopec.mmsecurity.entity.FacRescueVehicleCrew;
 import com.sinopec.mmsecurity.entity.FacRescueVehicleEquipment;
 import com.sinopec.mmsecurity.entity.FacRescueVehicleKv;
-import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
 import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
@@ -69,12 +63,6 @@ class RescueResourceServiceTest {
     @Mock
     private FacBrigadeTeamMapper brigadeTeamMapper;
     @Mock
-    private FacBrigadeVehicleMapper brigadeVehicleMapper;
-    @Mock
-    private FacBrigadePersonMapper brigadePersonMapper;
-    @Mock
-    private FacBrigadeEquipmentMapper brigadeEquipmentMapper;
-    @Mock
     private DataScopeResolver dataScopeResolver;
 
     @InjectMocks
@@ -93,6 +81,8 @@ class RescueResourceServiceTest {
         row.setId(id);
         row.setEquipName(name);
         row.setSquadron(squadron);
+        row.setCategory("防护装备");
+        row.setUnit("套");
         row.setQuantity(38);
         row.setLeaderName("张建");
         row.setLeaderPhone("17846865588");
@@ -132,13 +122,14 @@ class RescueResourceServiceTest {
     @Test
     void equipment_mapsItemsOptionsAndTotalSets() {
         when(equipmentMapper.selectList(any())).thenReturn(List.of(equipment(1L, "防毒面罩", "乙烯中队")));
+        when(equipmentMapper.selectCount(any())).thenReturn(1L);
         when(optionMapper.selectList(any())).thenReturn(List.of(
                 option("SQUADRON", "全部中队", 0), option("SQUADRON", "乙烯中队", 1)));
 
         RescueEquipmentList list = service.equipment(null);
 
         assertEquals(List.of("全部中队", "乙烯中队"), list.getSquadrons());
-        assertEquals(375, list.getTotalSets());
+        assertEquals(1, list.getTotalSets(), "业务总量取台账真实条数，不再是写死的 375");
         RescueEquipmentItem item = list.getItems().get(0);
         assertEquals(1L, item.getId());
         assertEquals("防毒面罩", item.getName());
@@ -151,6 +142,7 @@ class RescueResourceServiceTest {
     @Test
     void equipment_allSquadronMeansNoFilter() {
         when(equipmentMapper.selectList(any())).thenReturn(List.of(equipment(1L, "防毒面罩", "乙烯中队")));
+        when(equipmentMapper.selectCount(any())).thenReturn(1L);
 
         RescueEquipmentList list = service.equipment("全部中队");
 
@@ -175,12 +167,13 @@ class RescueResourceServiceTest {
         row.setSquadron("乙烯中队");
         row.setPersonRole("副班长");
         when(personnelMapper.selectList(any())).thenReturn(List.of(row));
+        when(personnelMapper.selectCount(any())).thenReturn(1L);
         when(optionMapper.selectList(any())).thenReturn(List.of(option("PERSONNEL_ROLE", "全部岗位", 0)));
 
         RescuePersonnelList list = service.personnel("乙烯中队", "全部岗位");
 
         assertEquals(List.of("全部岗位"), list.getRoles());
-        assertEquals(375, list.getTotalCount());
+        assertEquals(1, list.getTotalCount(), "业务总量取台账真实条数，不再是写死的 375");
         RescuePersonnelItem item = list.getItems().get(0);
         assertEquals("周杰", item.getName());
         assertEquals("乙烯中队", item.getSquadron());
@@ -252,7 +245,7 @@ class RescueResourceServiceTest {
     }
 
     @Test
-    void brigades_assemblesVehiclesPersonnelAndEquipment() {
+    void brigades_assemblesChildrenFromFlatLedgerBySquadron() {
         FacBrigadeTeam team = new FacBrigadeTeam();
         team.setId(1L);
         team.setTeamName("乙烯中队");
@@ -265,26 +258,18 @@ class RescueResourceServiceTest {
         team.setRescuePersonnel(12);
         team.setRescueVehicles(4);
         when(brigadeTeamMapper.selectList(any())).thenReturn(List.of(team));
-        FacBrigadeVehicle bVehicle = new FacBrigadeVehicle();
-        bVehicle.setTeamId(1L);
-        bVehicle.setPlate("粤K·X101");
-        bVehicle.setVehicleType("水罐消防车");
-        bVehicle.setVehicleStatus("待命");
-        when(brigadeVehicleMapper.selectList(any())).thenReturn(List.of(bVehicle));
-        FacBrigadePerson bPerson = new FacBrigadePerson();
-        bPerson.setTeamId(1L);
-        bPerson.setPersonName("陈建");
-        bPerson.setPersonRole("队长");
-        bPerson.setPersonGroup("指挥");
-        bPerson.setDutyStatus("在岗");
-        when(brigadePersonMapper.selectList(any())).thenReturn(List.of(bPerson));
-        FacBrigadeEquipment bEquipment = new FacBrigadeEquipment();
-        bEquipment.setTeamId(1L);
-        bEquipment.setEquipName("空气呼吸器");
-        bEquipment.setCategory("防护装备");
-        bEquipment.setItemCount(24);
-        bEquipment.setEquipStatus("完好");
-        when(brigadeEquipmentMapper.selectList(any())).thenReturn(List.of(bEquipment));
+        // 队伍详情子集合统一来自扁平台账（按中队名归组，V62 起唯一真源）
+        when(vehicleMapper.selectList(any())).thenReturn(List.of(vehicle(1L, "粤K-1231", "泡沫车", "乙烯中队")));
+        FacRescuePersonnel person = new FacRescuePersonnel();
+        person.setId(9L);
+        person.setPersonName("周杰");
+        person.setSquadron("乙烯中队");
+        person.setPersonRole("副班长");
+        person.setPersonGroup("指挥");
+        person.setPhone("13700000009");
+        person.setDutyStatus("在岗");
+        when(personnelMapper.selectList(any())).thenReturn(List.of(person));
+        when(equipmentMapper.selectList(any())).thenReturn(List.of(equipment(1L, "防毒面罩", "乙烯中队")));
         when(dataScopeResolver.resolveZones()).thenReturn(null);
 
         FireBrigadeList list = service.brigades("乙烯区");
@@ -292,13 +277,15 @@ class RescueResourceServiceTest {
         FireBrigadeTeam result = list.getItems().get(0);
         assertEquals("乙烯中队", result.getName());
         assertEquals(1, result.getVehicles().size());
-        assertEquals("粤K·X101", result.getVehicles().get(0).getPlate());
-        assertEquals("待命", result.getVehicles().get(0).getStatus());
+        assertEquals("粤K-1231", result.getVehicles().get(0).getPlate());
+        assertEquals("出动", result.getVehicles().get(0).getStatus());
         assertEquals(1, result.getPersonnel().size());
         assertEquals("指挥", result.getPersonnel().get(0).getGroup());
+        assertEquals("在岗", result.getPersonnel().get(0).getDutyStatus());
         assertEquals(1, result.getEquipment().size());
-        assertEquals(24, result.getEquipment().get(0).getCount());
-        assertEquals("完好", result.getEquipment().get(0).getStatus());
+        assertEquals("防护装备", result.getEquipment().get(0).getCategory());
+        assertEquals(38, result.getEquipment().get(0).getCount());
+        assertEquals("正常可用", result.getEquipment().get(0).getStatus());
     }
 
     @Test

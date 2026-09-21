@@ -11,11 +11,11 @@ import com.sinopec.mmsecurity.entity.FacFirePatrolItemDef;
 import com.sinopec.mmsecurity.entity.FacFirePatrolItemResult;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationStat;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationTicket;
-import com.sinopec.mmsecurity.mapper.FacBrigadeEquipmentMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadePersonMapper;
 import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
-import com.sinopec.mmsecurity.mapper.FacBrigadeVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacFireFacilityMonitorMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueEquipmentMapper;
+import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
+import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemDefMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolItemResultMapper;
 import com.sinopec.mmsecurity.mapper.FacFirePatrolMapper;
@@ -44,9 +44,9 @@ class FireMonitoringServiceTest {
     private final FacFireFacilityMonitorMapper fireFacilityMonitorMapper =
             Mockito.mock(FacFireFacilityMonitorMapper.class);
     private final FacBrigadeTeamMapper brigadeTeamMapper = Mockito.mock(FacBrigadeTeamMapper.class);
-    private final FacBrigadePersonMapper brigadePersonMapper = Mockito.mock(FacBrigadePersonMapper.class);
-    private final FacBrigadeEquipmentMapper brigadeEquipmentMapper = Mockito.mock(FacBrigadeEquipmentMapper.class);
-    private final FacBrigadeVehicleMapper brigadeVehicleMapper = Mockito.mock(FacBrigadeVehicleMapper.class);
+    private final FacRescuePersonnelMapper rescuePersonnelMapper = Mockito.mock(FacRescuePersonnelMapper.class);
+    private final FacRescueEquipmentMapper rescueEquipmentMapper = Mockito.mock(FacRescueEquipmentMapper.class);
+    private final FacRescueVehicleMapper rescueVehicleMapper = Mockito.mock(FacRescueVehicleMapper.class);
     private final FacFirePatrolMapper firePatrolMapper = Mockito.mock(FacFirePatrolMapper.class);
     private final FacFirePatrolItemDefMapper patrolItemDefMapper = Mockito.mock(FacFirePatrolItemDefMapper.class);
     private final FacFirePatrolItemResultMapper patrolItemResultMapper =
@@ -54,7 +54,7 @@ class FireMonitoringServiceTest {
 
     private final FireMonitoringService service = new FireMonitoringService(
             specialOperationStatMapper, specialOperationTicketMapper, fireFacilityMonitorMapper,
-            brigadeTeamMapper, brigadePersonMapper, brigadeEquipmentMapper, brigadeVehicleMapper,
+            brigadeTeamMapper, rescuePersonnelMapper, rescueEquipmentMapper, rescueVehicleMapper,
             firePatrolMapper, patrolItemDefMapper, patrolItemResultMapper);
 
     @BeforeEach
@@ -63,11 +63,11 @@ class FireMonitoringServiceTest {
     }
 
     @Test
-    void rescueForces_countsFromBrigadeTables() {
+    void rescueForces_countsFromFlatLedger() {
         Mockito.when(brigadeTeamMapper.selectCount(ArgumentMatchers.any())).thenReturn(8L);
-        Mockito.when(brigadePersonMapper.selectCount(ArgumentMatchers.any())).thenReturn(110L);
-        Mockito.when(brigadeEquipmentMapper.selectCount(ArgumentMatchers.any())).thenReturn(71L);
-        Mockito.when(brigadeVehicleMapper.selectCount(ArgumentMatchers.any())).thenReturn(39L);
+        Mockito.when(rescuePersonnelMapper.selectCount(ArgumentMatchers.any())).thenReturn(52L);
+        Mockito.when(rescueEquipmentMapper.selectCount(ArgumentMatchers.any())).thenReturn(35L);
+        Mockito.when(rescueVehicleMapper.selectCount(ArgumentMatchers.any())).thenReturn(12L);
 
         List<RescueForceStat> out = service.rescueForces();
         assertEquals(4, out.size());
@@ -76,11 +76,11 @@ class FireMonitoringServiceTest {
         assertEquals("支", out.get(0).getUnit());
         assertEquals("squad", out.get(0).getIconType());
         assertEquals("救援人员", out.get(1).getLabel());
-        assertEquals(110, out.get(1).getValue(), "数量改为队伍体系明细计数（与 /rescue-resources/brigades 同源）");
+        assertEquals(52, out.get(1).getValue(), "人员取扁平资源台账计数（唯一真源，V62）");
         assertEquals("救援装备", out.get(2).getLabel());
-        assertEquals(71, out.get(2).getValue());
+        assertEquals(35, out.get(2).getValue(), "装备取扁平资源台账计数");
         assertEquals("救援车辆", out.get(3).getLabel());
-        assertEquals(39, out.get(3).getValue());
+        assertEquals(12, out.get(3).getValue(), "车辆取扁平资源台账计数");
         assertEquals("台", out.get(3).getUnit());
     }
 
