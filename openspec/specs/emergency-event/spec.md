@@ -2,7 +2,7 @@
 
 ## Purpose
 
-大屏应急指挥「应急事件」域数据源（`fac_emergency_event`，配 `fac_accident_incident`）：事件分组列表（只读）、登录态新增与登录态事件预警（报送）。新增写端点由 Change `2026-09-20-emergency-event-create` 回填；事件预警端点由 Change `2026-09-21-emergency-event-report` 回填；列表端点沿用既有 `GET /emergency-events`。
+大屏应急指挥「应急事件」域数据源（`fac_emergency_event`，配 `fac_accident_incident`）：事件分组列表（只读）、登录态新增、登录态事件预警（报送）与登录态启动应急响应。新增写端点由 Change `2026-09-20-emergency-event-create` 回填；事件预警端点由 Change `2026-09-21-emergency-event-report` 回填；启动应急响应端点由 Change `2026-09-21-emergency-event-start-response` 回填；列表端点沿用既有 `GET /emergency-events`。
 
 ## Requirements
 
@@ -60,6 +60,27 @@
 #### Scenario: 未鉴权
 
 - **WHEN** 未携带有效令牌 POST `/api/v1/emergency-events/{id}/report`
+- **THEN** 返回 401（B3 包络），且不写库
+
+### Requirement: 启动应急响应
+
+系统须提供 `POST /api/v1/emergency-events/{id}/start-response`，将指定应急事件状态推进为「处置中」：在**同一事务**内把 `fac_emergency_event` 的 `status` 置为 `processing`、`status_label` 置为「处置中」，并把关联 `fac_accident_incident`（`event_id = {id}`）的 `status_name` 置为 `processing`、`map_status` 置为「处置中」（对齐 V12 种子口径：`status_name` 存枚举、`map_status` 存中文态势文案），返回 B3 包络包裹的 `EmergencyEventItem`。端点须要求登录态；事件不存在时返回 404（B3 包络）。
+
+#### Scenario: 登录态启动成功
+
+- **WHEN** 携带有效令牌 POST `/api/v1/emergency-events/26/start-response`
+- **THEN** 返回 `code=0`，`data.status=processing`、`data.statusLabel=处置中`
+- **AND** 对应 `fac_accident_incident` 的 `status_name=processing`、`map_status=处置中`
+- **AND** 后续 `GET /api/v1/accident/rescue-incident?eventId=26` 返回 `status=processing`（处置页据此显示「响应已启动 / 处置中」）
+
+#### Scenario: 事件不存在
+
+- **WHEN** 携带有效令牌 POST `/api/v1/emergency-events/<不存在 id>/start-response`
+- **THEN** 返回 404（B3 包络），且不写库
+
+#### Scenario: 未鉴权
+
+- **WHEN** 未携带有效令牌 POST `/api/v1/emergency-events/{id}/start-response`
 - **THEN** 返回 401（B3 包络），且不写库
 
 ## 约束
