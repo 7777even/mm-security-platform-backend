@@ -85,12 +85,14 @@
 
 ### Requirement: 事故救援聚合「动态快讯」按事件隔离
 
-`GET /api/v1/accident/rescue-incident` 返回的 `dynamics`（动态快讯）须按事件隔离：演练事件返回该演练事件的专属动态、真实事件返回该事件的动态，二者各自独立、不共用同一份全局参考；事件无专属动态时回退默认事件（is_default=TRUE）动态，保证大屏不空屏。隔离键为 `fac_accident_dynamic.incident_id`（V63 迁移新增，后端内部字段，不对外暴露）。
+`GET /api/v1/accident/rescue-incident` 返回的 `dynamics`（动态快讯）须按事件隔离：每个演练事件返回其各自的演练专属动态、真实事件返回该事件动态，彼此独立、不共用同一份全局参考；事件无专属动态时回退默认事件（is_default=TRUE）动态，保证大屏不空屏。隔离键为 `fac_accident_dynamic.incident_id`（V63 迁移新增，后端内部字段，不对外暴露）。全部演练事件（11–16）均已建独立 `fac_accident_incident` 行并编有演练专属动态，各自独立展示、可区分。
 
-#### Scenario: 演练事件返回演练专属动态
+#### Scenario: 演练事件返回各自独立的演练专属动态
 
 - **WHEN** `GET /api/v1/accident/rescue-incident?eventId=11`（储罐区消防演练，fac_accident_incident 有行且含 10 条演练专属动态）
 - **THEN** `dynamics` 仅含该演练事件的 10 条演练专属动态（category 含 rescue/command/brief/awareness），不含真实事件 4 的全局动态
+- **WHEN** `GET /api/v1/accident/rescue-incident?eventId=12|13|14|15|16`（其余演练事件，fac_accident_incident 各有行且各含 7 条演练专属动态）
+- **THEN** `dynamics` 仅含对应演练事件各自的 7 条演练专属动态，与事件 11 及真实事件 4 的全局动态均不混用，彼此可区分
 
 #### Scenario: 真实事件返回该事件动态
 
@@ -99,8 +101,8 @@
 
 #### Scenario: 无专属动态回退默认事件
 
-- **WHEN** `GET /api/v1/accident/rescue-incident?eventId=<fac_accident_incident 无行或 dynamics 为空 的事件>`（如演练事件 12–16 未建行）
-- **THEN** `dynamics` 回退返回默认事件动态（与改造前一致），大屏不空屏
+- **WHEN** `GET /api/v1/accident/rescue-incident?eventId=<fac_accident_incident 无行或 dynamics 为空 的事件>`（如未建行的真实事件）
+- **THEN** `dynamics` 回退返回默认事件动态，大屏不空屏（演练事件 11–16 均有专属动态，不走此分支）
 
 #### Scenario: 调度资源/值班/辅助统计仍走全局
 
@@ -111,4 +113,4 @@
 
 - 写端点 SHALL NOT 引入任何下行控制动作（零下行控制红线 `HardControlPaths` 不变）。
 - 写端点（create/report/start-response）复用既有表（V12 `fac_accident_incident` / V17 `fac_emergency_event`），SHALL NOT 新增 Flyway 迁移。
-- 「动态快讯按事件隔离」增强需 V63 迁移：`fac_accident_dynamic` 加 `incident_id` 列 + 索引 + 演练事件/动态种子（属新增迁移，不与上条冲突）。
+- 「动态快讯按事件隔离」增强：V63 迁移为 `fac_accident_dynamic` 加 `incident_id` 列 + 索引 + 演练事件 11 的种子；V64 迁移为演练事件 12–16 各补 `fac_accident_incident` 行 + 各 7 条演练专属动态（均属新增迁移，不与写端点约束冲突）。
