@@ -110,4 +110,44 @@ class AccidentRescueServiceTest {
         assertEquals("事发地点", dto.getDetailFields().get(1).getLabel());
         assertTrue(dto.getDispatchResources().isEmpty());
     }
+
+    @Test
+    void incident_dynamicsEmpty_fallsBackToDefaultIncident() {
+        // 命中事件(incidentId=7) 自身动态为空 → 回退默认事件(incidentId=1) 的动态。
+        // firstByEventId 先调一次 selectOne，firstDefault 再调一次，依次返回匹配行与默认行。
+        when(incidentMapper.selectOne(any())).thenReturn(inc(7L, 4L), inc(1L, 4L));
+        when(detailFieldMapper.selectList(any())).thenReturn(List.of());
+        when(dispatchResourceMapper.selectList(any())).thenReturn(List.of());
+        when(dutyPersonMapper.selectList(any())).thenReturn(List.of());
+        when(auxStatMapper.selectList(any())).thenReturn(List.of());
+        FacAccidentDynamic defaultDyn = new FacAccidentDynamic();
+        defaultDyn.setId(99L);
+        defaultDyn.setCategory("rescue");
+        // 第一次 selectList(byIncident(7)) 返回空；第二次 selectList(byIncident(1)) 返回默认动态
+        when(dynamicMapper.selectList(any())).thenReturn(List.of(), List.of(defaultDyn));
+
+        AccidentRescueIncident dto = service.incident(7L);
+        assertNotNull(dto);
+        assertEquals(1, dto.getDynamics().size());
+        assertEquals(99L, dto.getDynamics().get(0).getId());
+    }
+
+    @Test
+    void incident_dynamicsOwned_returnsWithoutFallback() {
+        // 命中事件自身动态非空时直接返回，不触发默认事件回退（firstDefault 不应被二次取用）。
+        when(incidentMapper.selectOne(any())).thenReturn(inc(7L, 4L));
+        when(detailFieldMapper.selectList(any())).thenReturn(List.of());
+        when(dispatchResourceMapper.selectList(any())).thenReturn(List.of());
+        when(dutyPersonMapper.selectList(any())).thenReturn(List.of());
+        when(auxStatMapper.selectList(any())).thenReturn(List.of());
+        FacAccidentDynamic owned = new FacAccidentDynamic();
+        owned.setId(55L);
+        owned.setCategory("rescue");
+        when(dynamicMapper.selectList(any())).thenReturn(List.of(owned));
+
+        AccidentRescueIncident dto = service.incident(7L);
+        assertNotNull(dto);
+        assertEquals(1, dto.getDynamics().size());
+        assertEquals(55L, dto.getDynamics().get(0).getId());
+    }
 }
