@@ -26,4 +26,12 @@ public class FireAlarmItem {
     private String onsiteMonitorId;
     private String onsiteMonitorLabel;
     private String title;
+    /** 处置情况文本（可空）。 */
+    private String handleResult;
+    /** 处置时间（格式 yyyy-MM-dd HH:mm:ss，可空）。 */
+    private String handleTime;
+    /** 派单人员（多个以英文逗号分隔，可空）。 */
+    private String dispatchPersonnel;
+    /** 通知方式（APP/SMS，多个以英文逗号分隔，可空）。 */
+    private String notifyMethod;
 }

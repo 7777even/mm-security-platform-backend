@@ -1,5 +1,6 @@
 package com.sinopec.mmsecurity.entity;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
@@ -11,6 +12,7 @@ import lombok.Data;
 @Data
 @TableName("fac_fire_alarm")
 public class FacFireAlarm {
+    @TableId("alarm_id")
     private String alarmId;
 
     /** 乐观锁版本号：MyBatis-Plus @Version，在 update 时自动比对并自增。 */
@@ -33,4 +35,13 @@ public class FacFireAlarm {
     private String onsiteMonitorId;
     private String onsiteMonitorLabel;
     private String title;
+
+    /** 处置情况文本（可空）。 */
+    private String handleResult;
+    /** 处置时间（格式 yyyy-MM-dd HH:mm:ss，可空）。 */
+    private String handleTime;
+    /** 派单人员（多个以英文逗号分隔，可空）。 */
+    private String dispatchPersonnel;
+    /** 通知方式（APP/SMS，多个以英文逗号分隔，如 APP,SMS，可空）。 */
+    private String notifyMethod;
 }
