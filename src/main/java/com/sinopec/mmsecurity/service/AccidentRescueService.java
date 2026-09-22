@@ -72,8 +72,8 @@ public class AccidentRescueService {
         dto.setReported(row.getReported());
         dto.setFacilityName(row.getFacilityName());
 
-        // detail_field 与事件一一对应（含 incident_id）；其余四张表为事故救援域的全局参考主数据
-        // （调度资源/值班/辅助统计/动态快讯），不按事件拆分，直接全量按 sort_no 返回，与前端契约一致。
+        // detail_field 与事件一一对应（含 incident_id）；调度资源/值班/辅助统计为事故救援域的全局参考主数据，
+        // 不按事件拆分，直接全量按 sort_no 返回；动态快讯按事件隔离（incident_id），与前端契约一致。
         List<IncidentDetailField> detailFields = detailFieldMapper.selectList(byIncident(id)).stream()
                 .map(this::toDetailField).collect(Collectors.toList());
         // 兜底（防处置页「事件基础信息」空白）：事件未走写路径落 fac_accident_detail_field
@@ -89,8 +89,15 @@ public class AccidentRescueService {
                 .map(this::toDutyPerson).collect(Collectors.toList()));
         dto.setAuxiliaryStats(auxStatMapper.selectList(allSorted()).stream()
                 .map(this::toAuxStat).collect(Collectors.toList()));
-        dto.setDynamics(dynamicMapper.selectList(allSorted()).stream()
-                .map(this::toDynamic).collect(Collectors.toList()));
+        // 动态快讯按事件隔离：优先取本事件动态；为空时回退默认事件动态，防空屏（与 detail_field 同款兜底）。
+        List<RescueDynamicEntry> dynamics = loadDynamicsByIncident(id);
+        if (dynamics.isEmpty()) {
+            FacAccidentIncident def = firstDefault();
+            if (def != null && !def.getId().equals(id)) {
+                dynamics = loadDynamicsByIncident(def.getId());
+            }
+        }
+        dto.setDynamics(dynamics);
         return dto;
     }
 
@@ -112,6 +119,12 @@ public class AccidentRescueService {
 
     private static <T> QueryWrapper<T> allSorted() {
         return new QueryWrapper<T>().orderByAsc("sort_no");
+    }
+
+    /** 动态快讯按事件隔离：取指定 incident_id 下的动态，按 sort_no 升序。 */
+    private List<RescueDynamicEntry> loadDynamicsByIncident(Long incidentId) {
+        return dynamicMapper.selectList(byIncident(incidentId)).stream()
+                .map(this::toDynamic).collect(Collectors.toList());
     }
 
     private IncidentDetailField toDetailField(FacAccidentDetailField e) {

@@ -19,6 +19,9 @@ public class FacAccidentDynamic implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    @TableField("incident_id")
+    private Long incidentId;
+
     private String category;
 
     private String title;
