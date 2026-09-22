@@ -8,4 +8,4 @@
 - [x] 写方法加 `@RealtimeSync(domain="fire-alarm.alarm")`。
 - [x] 同步 `frontend-scaffold/docs/api/fire-alarm.openapi.json`（新增 path + `FireAlarmUpdateRequest` + 修正 status 描述）。
 - [x] 跑 `scripts/check-api-contract.mjs`（路由+schema 双层级，期望漂移 0）与 `check-endpoint-authz.mjs`。
-- [ ] 推送后：真实 8787 实例 curl 对拍 `PUT /fire-alarms/FA-...` 后回读 `GET /fire-alarms` 验证 status 已变更。
+- [x] 推送后：真实 8787 实例 curl 对拍 `PUT /fire-alarms/FA-...` 后回读 `GET /fire-alarms` 验证 status 已变更（已验证：status/falseAlarm 落库）。

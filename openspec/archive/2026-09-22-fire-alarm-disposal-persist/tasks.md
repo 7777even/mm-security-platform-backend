@@ -7,4 +7,4 @@
 - [x] `FireAlarmService.update`：4 字段非空时 `set`（read-modify-write + @Version 乐观锁）。
 - [x] 同步前端契约 `docs/api/fire-alarm.openapi.json`（`FireAlarmUpdateRequest` / `FireAlarmItem` 各加 4 字段）。
 - [x] `FireAlarmServiceTest` 补 4 字段读写用例；跑 `check-api-contract.mjs --strict`（漂移 0）+ `check-endpoint-authz.mjs`（0 违规）。
-- [ ] 推送后：真实 8787 实例 curl `PUT /fire-alarms/FA-...` 带 4 字段，回读 `GET /fire-alarms` 验证已落库。
+- [x] 推送后：真实 8787 实例 curl `PUT /fire-alarms/FA-...` 带 4 字段，回读 `GET /fire-alarms` 验证已落库（已验证：4 字段均落库、部分更新不覆盖既存）。
