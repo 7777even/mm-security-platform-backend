@@ -113,6 +113,95 @@ public class FireFacilityService {
         return result;
     }
 
+    /** 监测状态合法值（与 fac_fire_facility_monitor.monitor_status 取值对齐）。 */
+    private static final Set<String> VALID_MONITOR_STATUS = Set.of("正常", "告警", "离线", "在线");
+
+    /** 上报时间格式（与库表 last_report_time 一致）。 */
+    private static final DateTimeFormatter REPORT_TS_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * 消防设施监测运行数据上报（落库）：设备/采集/模拟上报 → 按 key_code upsert
+     * fac_fire_facility_monitor（计数/状态/最近上报时间）+ 整体替换 fac_fire_facility_param，
+     * 返回刷新后的全量监测概览。
+     *
+     * <p>校验：items 非空；每项 key 必填；status ∈ {正常,告警,离线,在线}；计数非负；
+     * 新建项 facilityType 必填。命中即局部更新（不传不覆盖），未命中则插入（sort_no=max+1，
+     * 计数缺省 0，状态缺省 正常）。每次上报刷新 last_report_time（未显式提供则用当前时间）。
+     * 标记 {@code @RealtimeSync(domain="fire-facility.monitor")}，触发大屏实时刷新。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.monitor")
+    public FireFacilityMonitorResult reportMonitors(FireFacilityMonitorReportRequest req) {
+        if (req == null || req.getItems() == null || req.getItems().isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "上报数据为空");
+        }
+        for (FireFacilityMonitorReportItem it : req.getItems()) {
+            if (it.getKey() == null || it.getKey().isBlank()) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "分项 key 不能为空");
+            }
+            if (it.getStatus() != null && !VALID_MONITOR_STATUS.contains(it.getStatus())) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "非法监测状态：" + it.getStatus());
+            }
+            for (Integer v : new Integer[] {it.getTotal(), it.getOnline(), it.getOffline(), it.getFault()}) {
+                if (v != null && v < 0) {
+                    throw new BusinessException(ResultCode.PARAM_INVALID, "计数不能为负：" + it.getKey());
+                }
+            }
+        }
+
+        String now = LocalDateTime.now().format(REPORT_TS_FMT);
+        for (FireFacilityMonitorReportItem it : req.getItems()) {
+            String key = it.getKey().trim();
+            FacFireFacilityMonitor row = monitorMapper.selectOne(new LambdaQueryWrapper<FacFireFacilityMonitor>()
+                    .eq(FacFireFacilityMonitor::getKeyCode, key));
+            if (row == null) {
+                if (it.getFacilityType() == null || it.getFacilityType().isBlank()) {
+                    throw new BusinessException(
+                            ResultCode.PARAM_INVALID, "新增分项需提供 facilityType：" + key);
+                }
+                row = new FacFireFacilityMonitor();
+                row.setKeyCode(key);
+                row.setFacilityType(it.getFacilityType().trim());
+                row.setTotalCount(it.getTotal() == null ? 0 : it.getTotal());
+                row.setOnlineCount(it.getOnline() == null ? 0 : it.getOnline());
+                row.setOfflineCount(it.getOffline() == null ? 0 : it.getOffline());
+                row.setFaultCount(it.getFault() == null ? 0 : it.getFault());
+                row.setMonitorStatus(it.getStatus() == null ? "正常" : it.getStatus());
+                row.setLastReportTime(it.getLastReportTime() == null ? now : it.getLastReportTime());
+                int maxSort = monitorMapper.selectList(new LambdaQueryWrapper<FacFireFacilityMonitor>())
+                        .stream().mapToInt(r -> r.getSortNo() == null ? 0 : r.getSortNo()).max().orElse(0);
+                row.setSortNo(maxSort + 1);
+                monitorMapper.insert(row);
+            } else {
+                if (it.getFacilityType() != null) row.setFacilityType(it.getFacilityType().trim());
+                if (it.getTotal() != null) row.setTotalCount(it.getTotal());
+                if (it.getOnline() != null) row.setOnlineCount(it.getOnline());
+                if (it.getOffline() != null) row.setOfflineCount(it.getOffline());
+                if (it.getFault() != null) row.setFaultCount(it.getFault());
+                if (it.getStatus() != null) row.setMonitorStatus(it.getStatus());
+                row.setLastReportTime(it.getLastReportTime() == null ? now : it.getLastReportTime());
+                monitorMapper.updateById(row);
+            }
+
+            if (it.getParams() != null) {
+                paramMapper.delete(new LambdaQueryWrapper<FacFireFacilityParam>()
+                        .eq(FacFireFacilityParam::getMonitorId, row.getId()));
+                int sort = 0;
+                for (FireFacilityMonitorReportParam p : it.getParams()) {
+                    sort++;
+                    FacFireFacilityParam pe = new FacFireFacilityParam();
+                    pe.setMonitorId(row.getId());
+                    pe.setLabel(p.getLabel() == null ? "" : p.getLabel());
+                    pe.setValueText(p.getValue() == null ? "" : p.getValue());
+                    pe.setTone(p.getTone() == null ? "normal" : p.getTone());
+                    pe.setSortNo(sort);
+                    paramMapper.insert(pe);
+                }
+            }
+        }
+        return monitors(null);
+    }
+
     /**
      * 设施台账：按设施类型过滤，空值或「全部类型」返回全部台账。
      * 维保记录按 ledger_id 归并到各自台账条目。

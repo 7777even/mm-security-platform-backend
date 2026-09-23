@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -29,6 +30,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -202,5 +205,57 @@ class FireFacilityControllerTest {
                 .andExpect(jsonPath("$.data.items[0].status").value("已派发"))
                 .andExpect(jsonPath("$.data.items[0].dispatchTime").value("2026-08-19 08:42:31"))
                 .andExpect(jsonPath("$.data.items[0].repairPerson").value("李维修"));
+    }
+
+    @Test
+    void updateFault_returnsUpdatedItemWithTimeline() throws Exception {
+        FireFacilityFaultTimeline timeline = new FireFacilityFaultTimeline();
+        timeline.setTime("2026-09-22 10:00:00");
+        timeline.setOperator("值班员");
+        timeline.setAction("确认故障");
+        timeline.setDetail("确认为故障，待派单");
+        FireFacilityFaultItem item = new FireFacilityFaultItem();
+        item.setId(4L);
+        item.setFaultCode("FLT-20260819-004");
+        item.setStatus("已确认");
+        item.setTimeline(List.of(timeline));
+        when(service.updateFault(eq("4"), any())).thenReturn(item);
+
+        mvc().perform(put("/api/v1/fire-facility/faults/4")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"faultStatus\":\"已确认\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(4))
+                .andExpect(jsonPath("$.data.faultCode").value("FLT-20260819-004"))
+                .andExpect(jsonPath("$.data.status").value("已确认"))
+                .andExpect(jsonPath("$.data.timeline[0].action").value("确认故障"));
+    }
+
+    @Test
+    void reportMonitors_returnsRefreshedResult() throws Exception {
+        FireFacilityMonitorResult result = new FireFacilityMonitorResult();
+        result.setTypeOptions(List.of("全部类型"));
+        FireFacilityMonitorSummary summary = new FireFacilityMonitorSummary();
+        summary.setKey("water");
+        summary.setFacilityType("消防水源");
+        summary.setTotal(46);
+        summary.setOnline(44);
+        summary.setOffline(1);
+        summary.setFault(1);
+        summary.setStatus("告警");
+        summary.setLastReportTime("2026-09-23 08:50:00");
+        result.setItems(List.of(summary));
+        when(service.reportMonitors(any())).thenReturn(result);
+
+        mvc().perform(post("/api/v1/fire-facility/monitors/report")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"key\":\"water\",\"total\":46,\"online\":44,"
+                                + "\"offline\":1,\"fault\":1,\"status\":\"告警\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.items[0].key").value("water"))
+                .andExpect(jsonPath("$.data.items[0].total").value(46))
+                .andExpect(jsonPath("$.data.items[0].status").value("告警"));
     }
 }

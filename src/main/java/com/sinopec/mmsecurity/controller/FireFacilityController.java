@@ -36,6 +36,18 @@ public class FireFacilityController {
         return Result.ok(fireFacilityService.monitors(facilityType));
     }
 
+    /**
+     * 消防设施监测运行数据上报（落库）：按 key upsert 监控卡片计数/状态 + 整体替换监控参数，
+     * 返回刷新后的全量监测概览。需权限码 fire-facility:handle（V68）。
+     * 成功触发 fire-facility.monitor 实时广播，供大屏即时刷新。
+     */
+    @PostMapping("/monitors/report")
+    @RequireAuth(perm = "fire-facility:handle")
+    public Result<FireFacilityMonitorResult> reportMonitors(
+            @RequestBody FireFacilityMonitorReportRequest req) {
+        return Result.ok(fireFacilityService.reportMonitors(req));
+    }
+
     /** 设施台账：设施类型下拉 + 台账条目（含维护保养记录）。facilityType 为空或「全部类型」返回全部。 */
     @GetMapping("/ledger")
     public Result<FireFacilityLedgerResult> ledger(
