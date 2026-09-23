@@ -10,4 +10,4 @@
 - [x] 跑 mvn test 全量回归（40/40 类绿，含 V69/V70 迁移在 H2 文件库下无破坏）
 - [x] 跑 check-api-contract.mjs --strict（0 漂移）与 check-endpoint-authz.mjs（写端点带 perm，不进 ALLOWLIST；仅 1 处预存 FormRecordController 无关）
 - [x] 同步前端契约 + gen:api-types + 按 scope 拆分双仓提交
-- [ ] 归档至 openspec/archive/（全勾后按纪律归档，需补 spec-delta 并回填 openspec/specs/）
+- [x] 归档至 openspec/archive/（全勾后按纪律归档，补 spec-delta 并回填 openspec/specs/）
