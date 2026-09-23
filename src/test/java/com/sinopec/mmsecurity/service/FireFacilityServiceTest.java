@@ -1,8 +1,12 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultTimelineCreate;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorResult;
 import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderResult;
@@ -22,6 +26,7 @@ import com.sinopec.mmsecurity.mapper.FacFireFacilityOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacFireFacilityParamMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,8 +36,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** 消防设施监测服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
@@ -288,5 +296,108 @@ class FireFacilityServiceTest {
         assertEquals("", result.getItems().get(4).getRepairPerson());
         assertEquals("", result.getItems().get(4).getEstimatedFinish());
         assertNull(result.getItems().get(4).getActualFinish());
+    }
+
+    /* ==================== 写回 updateFault ==================== */
+
+    @Test
+    void updateFault_statusOnly_persistsAndReturnsItem() {
+        when(faultMapper.selectById(1L)).thenReturn(fault(1L, "FLT-1", "硬件故障", "紧急", "待确认", null));
+        when(timelineMapper.selectList(any())).thenReturn(List.of());
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+
+        FireFacilityFaultItem item = service.updateFault("1", req);
+
+        ArgumentCaptor<FacFireFacilityFault> captor = ArgumentCaptor.forClass(FacFireFacilityFault.class);
+        verify(faultMapper).updateById(captor.capture());
+        assertEquals("已确认", captor.getValue().getFaultStatus());
+        assertEquals("已确认", item.getStatus());
+        assertEquals("FLT-1", item.getFaultCode());
+    }
+
+    @Test
+    void updateFault_fieldsAndTimeline_appendAndPersist() {
+        when(faultMapper.selectById(2L)).thenReturn(fault(2L, "FLT-2", "硬件故障", "紧急", "已确认", null));
+        when(timelineMapper.selectList(any())).thenReturn(List.of(timeline(2L, "发现故障", "2026-08-19 08:30:05")));
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已派单");
+        req.setWorkOrderNo("WO-20260922-001");
+        req.setRepairPerson("李维修");
+        req.setEstimatedFinish("2026-09-24 18:00:00");
+        FireFacilityFaultTimelineCreate tc = new FireFacilityFaultTimelineCreate();
+        tc.setTime("2026-09-22 10:00:00");
+        tc.setOperator("值班员");
+        tc.setAction("生成工单并派发");
+        tc.setDetail("派发至 李维修");
+        req.setTimelines(List.of(tc));
+
+        service.updateFault("2", req);
+
+        ArgumentCaptor<FacFireFacilityFault> captor = ArgumentCaptor.forClass(FacFireFacilityFault.class);
+        verify(faultMapper).updateById(captor.capture());
+        assertEquals("已派单", captor.getValue().getFaultStatus());
+        assertEquals("WO-20260922-001", captor.getValue().getWorkOrderNo());
+        assertEquals("李维修", captor.getValue().getRepairPerson());
+        assertEquals("2026-09-24 18:00:00", captor.getValue().getEstimatedFinish());
+
+        ArgumentCaptor<FacFireFacilityFaultTimeline> tcap =
+                ArgumentCaptor.forClass(FacFireFacilityFaultTimeline.class);
+        verify(timelineMapper).insert(tcap.capture());
+        assertEquals(2L, tcap.getValue().getFaultId());
+        assertEquals(2, tcap.getValue().getSortNo());
+        assertEquals("生成工单并派发", tcap.getValue().getActionName());
+        assertEquals("值班员", tcap.getValue().getOperatorName());
+        assertEquals("2026-09-22 10:00:00", tcap.getValue().getEventTime());
+    }
+
+    @Test
+    void updateFault_nullFields_keepExistingValues() {
+        FacFireFacilityFault e = fault(3L, "FLT-3", "硬件故障", "紧急", "已确认", "WO-EXIST");
+        e.setRepairPerson("老维修");
+        when(faultMapper.selectById(3L)).thenReturn(e);
+        when(timelineMapper.selectList(any())).thenReturn(List.of());
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已派单");
+
+        service.updateFault("3", req);
+
+        ArgumentCaptor<FacFireFacilityFault> captor = ArgumentCaptor.forClass(FacFireFacilityFault.class);
+        verify(faultMapper).updateById(captor.capture());
+        assertEquals("已派单", captor.getValue().getFaultStatus());
+        assertEquals("WO-EXIST", captor.getValue().getWorkOrderNo());
+        assertEquals("老维修", captor.getValue().getRepairPerson());
+    }
+
+    @Test
+    void updateFault_invalidStatus_throwsParamInvalid() {
+        when(faultMapper.selectById(4L)).thenReturn(fault(4L, "FLT-4", "硬件故障", "紧急", "待确认", null));
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("不存在的状态");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateFault("4", req));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(faultMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateFault_nonNumericId_throwsParamInvalid() {
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateFault("abc", req));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(faultMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateFault_notFound_throwsNotFound() {
+        when(faultMapper.selectById(999L)).thenReturn(null);
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateFault("999", req));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(faultMapper, never()).updateById(any());
     }
 }

@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -56,4 +57,11 @@ public class FacFireFacilityFault implements Serializable {
     private String acceptanceResult;
 
     private Integer sortNo;
+
+    /**
+     * 乐观锁版本号：MyBatis-Plus @Version，在 update 时自动比对并自增，
+     * 支撑故障状态流转写回（确认/派单/维修/验收）的并发防护，对齐 fac_fire_alarm 的做法。
+     */
+    @Version
+    private Long version;
 }

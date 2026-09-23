@@ -3,12 +3,20 @@ package com.sinopec.mmsecurity.controller;
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
+import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorResult;
 import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderResult;
+import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.FireFacilityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,5 +64,18 @@ public class FireFacilityController {
     public Result<FireFacilityWorkOrderResult> workOrders(
             @RequestParam(value = "status", required = false) String status) {
         return Result.ok(fireFacilityService.workOrders(status));
+    }
+
+    /**
+     * 消防故障写回：确认/派单/维修/验收状态流转 + 派单/维修/验收字段局部更新 + 时间线追加。
+     * 需权限码 {@code fire-facility:handle}（V68 已登记并授权 ADMIN 及岗位角色）。
+     * 成功返回更新后的 FireFacilityFaultItem（B3 包络），供前端即时回填并触发 fire-facility.fault 实时广播。
+     */
+    @PutMapping("/faults/{faultId}")
+    @RequireAuth(perm = "fire-facility:handle")
+    public Result<FireFacilityFaultItem> updateFault(
+            @PathVariable String faultId,
+            @RequestBody FireFacilityFaultUpdateRequest req) {
+        return Result.ok(fireFacilityService.updateFault(faultId, req));
     }
 }

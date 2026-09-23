@@ -1,15 +1,23 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmItem;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultTimeline;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultTimelineCreate;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerItem;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
 import com.sinopec.mmsecurity.dto.FireFacilityMaintenanceRecord;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorParam;
+import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportItem;
+import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportParam;
+import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorResult;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorSummary;
 import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderItem;
@@ -35,6 +43,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 /**
@@ -173,6 +184,79 @@ public class FireFacilityService {
         FireFacilityWorkOrderResult result = new FireFacilityWorkOrderResult();
         result.setItems(items);
         return result;
+    }
+
+    /** 故障状态枚举（与 sys_dict_item 字典 fire_facility_fault_status 对齐）。 */
+    private static final Set<String> VALID_FAULT_STATUS =
+            Set.of("待确认", "已确认", "已派单", "维修中", "待验收", "已闭环");
+
+    /**
+     * 消防故障写回：确认/派单/维修/验收状态流转 + 字段局部更新 + 时间线追加。
+     *
+     * <p>read-modify-write：先按 id 取当前记录（实体 @Version 乐观锁），仅在传入字段非空时覆盖，
+     * updateById 自动携带 version 做并发防护；记录不存在返回 B3 NOT_FOUND，非法状态返回 B3 PARAM_INVALID。
+     * 若请求携带 timelines，按其提供的顺序追加到 fac_fire_facility_fault_timeline（sort_no 接续现有最大值）。
+     * 成功返回带完整时间线的 FireFacilityFaultItem 供前端即时回填，并触发 fire-facility.fault 实时广播。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.fault")
+    public FireFacilityFaultItem updateFault(String faultId, FireFacilityFaultUpdateRequest req) {
+        Long id;
+        try {
+            id = Long.valueOf(faultId.trim());
+        } catch (NumberFormatException ex) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "非法故障 id：" + faultId);
+        }
+        FacFireFacilityFault e = faultMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "消防故障不存在：" + faultId);
+        }
+        if (req.getFaultStatus() != null) {
+            if (!VALID_FAULT_STATUS.contains(req.getFaultStatus())) {
+                throw new BusinessException(
+                        ResultCode.PARAM_INVALID, "非法故障状态：" + req.getFaultStatus());
+            }
+            e.setFaultStatus(req.getFaultStatus());
+        }
+        // 派单/维修/验收字段：仅在传入非空时覆盖（局部更新）。
+        if (req.getWorkOrderNo() != null) e.setWorkOrderNo(req.getWorkOrderNo());
+        if (req.getRepairPerson() != null) e.setRepairPerson(req.getRepairPerson());
+        if (req.getEstimatedFinish() != null) e.setEstimatedFinish(req.getEstimatedFinish());
+        if (req.getActualFinish() != null) e.setActualFinish(req.getActualFinish());
+        if (req.getRepairMeasures() != null) e.setRepairMeasures(req.getRepairMeasures());
+        if (req.getAcceptancePerson() != null) e.setAcceptancePerson(req.getAcceptancePerson());
+        if (req.getAcceptanceResult() != null) e.setAcceptanceResult(req.getAcceptanceResult());
+
+        faultMapper.updateById(e);
+
+        // 追加时间线（如有）：sort_no 接续现有最大值，避免与既有节点冲突。
+        if (req.getTimelines() != null && !req.getTimelines().isEmpty()) {
+            int maxSort = timelineMapper.selectList(new LambdaQueryWrapper<FacFireFacilityFaultTimeline>()
+                            .eq(FacFireFacilityFaultTimeline::getFaultId, e.getId()))
+                    .stream().mapToInt(t -> t.getSortNo() == null ? 0 : t.getSortNo())
+                    .max().orElse(0);
+            int sort = maxSort;
+            for (FireFacilityFaultTimelineCreate t : req.getTimelines()) {
+                sort++;
+                FacFireFacilityFaultTimeline row = new FacFireFacilityFaultTimeline();
+                row.setFaultId(e.getId());
+                row.setEventTime(t.getTime());
+                row.setOperatorName(t.getOperator());
+                row.setActionName(t.getAction());
+                row.setDetailText(t.getDetail());
+                row.setSortNo(sort);
+                timelineMapper.insert(row);
+            }
+        }
+
+        // 返回带完整时间线的条目
+        FireFacilityFaultItem item = toFault(e);
+        List<FireFacilityFaultTimeline> tl = timelineMapper.selectList(
+                        new LambdaQueryWrapper<FacFireFacilityFaultTimeline>()
+                                .eq(FacFireFacilityFaultTimeline::getFaultId, e.getId())
+                                .orderByAsc(FacFireFacilityFaultTimeline::getSortNo))
+                .stream().map(this::toTimeline).collect(Collectors.toList());
+        item.setTimeline(tl);
+        return item;
     }
 
     /** 设施类型下拉：取自 fac_fire_facility_option（kind=FACILITY_TYPE）。 */
