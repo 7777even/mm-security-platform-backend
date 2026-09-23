@@ -3,9 +3,11 @@ package com.sinopec.mmsecurity.service;
 import com.sinopec.mmsecurity.dto.FireMonitorAreaSummary;
 import com.sinopec.mmsecurity.dto.FireMonitoredObjectSummary;
 import com.sinopec.mmsecurity.dto.FireSituationMarkerSummary;
+import com.sinopec.mmsecurity.entity.FacFireFacilityMonitor;
 import com.sinopec.mmsecurity.entity.FacFireMonitorArea;
 import com.sinopec.mmsecurity.entity.FacFireMonitoredObject;
 import com.sinopec.mmsecurity.entity.FacFireSituationMarker;
+import com.sinopec.mmsecurity.mapper.FacFireFacilityMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacFireMonitorAreaMapper;
 import com.sinopec.mmsecurity.mapper.FacFireMonitoredObjectMapper;
 import com.sinopec.mmsecurity.mapper.FacFireSituationMarkerMapper;
@@ -36,6 +38,9 @@ class FireSituationServiceTest {
 
     @Mock
     private FacFireMonitoredObjectMapper fireMonitoredObjectMapper;
+
+    @Mock
+    private FacFireFacilityMonitorMapper fireFacilityMonitorMapper;
 
     @InjectMocks
     private FireSituationService service;
@@ -123,12 +128,23 @@ class FireSituationServiceTest {
         return row;
     }
 
+    private static FacFireFacilityMonitor monitor(String zoneCode, int total) {
+        FacFireFacilityMonitor m = new FacFireFacilityMonitor();
+        m.setId(1L);
+        m.setZoneCode(zoneCode);
+        m.setTotalCount(total);
+        return m;
+    }
+
     @Test
     void areaSummary_mapsAllFieldsAndSortsBySortNo() {
         // 纯 Mockito：ORDER BY 由 DB 执行，mock 按已排序顺序返回（与 DB 行为一致）
         when(fireMonitorAreaMapper.selectList(any())).thenReturn(List.of(
                 area("refinery-1", "refinery", "炼油一部装置区", "normal", "运行正常", 128, 24, 16, 1),
                 area("refinery-2", "refinery", "储运罐区", "attention", "2台设备离线", 96, 18, 9, 2)));
+        // 真源归一：设备数按区聚合自监测表（此处 mock 两区合计 92/68，Σ=983 的子集）
+        when(fireFacilityMonitorMapper.selectList(any())).thenReturn(List.of(
+                monitor("refinery-1", 92), monitor("refinery-2", 68)));
 
         FireMonitorAreaSummary summary = service.areaSummary();
 
@@ -138,16 +154,19 @@ class FireSituationServiceTest {
         assertEquals("炼油一部装置区", summary.getItems().get(0).getName());
         assertEquals("normal", summary.getItems().get(0).getStatus());
         assertEquals("运行正常", summary.getItems().get(0).getStatusLabel());
-        assertEquals(128, summary.getItems().get(0).getEquipment());
+        // 设备数来自监测表按区聚合（不再是 fac_fire_monitor_area.equipment 的 128）
+        assertEquals(92, summary.getItems().get(0).getEquipment());
         assertEquals(24, summary.getItems().get(0).getCameras());
         assertEquals(16, summary.getItems().get(0).getPersonnel());
         assertEquals("refinery-2", summary.getItems().get(1).getId());
         assertEquals("attention", summary.getItems().get(1).getStatus());
+        assertEquals(68, summary.getItems().get(1).getEquipment());
     }
 
     @Test
     void areaSummary_handlesEmptyTable() {
         when(fireMonitorAreaMapper.selectList(any())).thenReturn(List.of());
+        when(fireFacilityMonitorMapper.selectList(any())).thenReturn(List.of());
         assertEquals(0, service.areaSummary().getItems().size());
     }
 

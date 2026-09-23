@@ -75,9 +75,8 @@ class FireFacilityMonitorReportTest {
         row.setMonitorStatus("告警");
         row.setSortNo(2);
 
-        // 同一实例既用于 selectOne（命中）又用于 selectList（monitors 返回），
+        // 同一实例既用于 selectList（命中多行后逐行更新）又用于 monitors 返回，
         // 因此内存中的字段更新会直接反映到返回的 summary 上。
-        when(monitorMapper.selectOne(any())).thenReturn(row);
         when(monitorMapper.selectList(any())).thenReturn(List.of(row));
         when(paramMapper.selectList(any())).thenReturn(List.of());
         when(optionMapper.selectList(any())).thenReturn(List.of());
@@ -108,7 +107,6 @@ class FireFacilityMonitorReportTest {
 
     @Test
     void reportMonitors_insertsNewWhenKeyMissing() {
-        when(monitorMapper.selectOne(any())).thenReturn(null);
         when(monitorMapper.selectList(any())).thenReturn(List.of());
         when(paramMapper.selectList(any())).thenReturn(List.of());
         when(optionMapper.selectList(any())).thenReturn(List.of());

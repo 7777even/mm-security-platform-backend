@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -36,4 +37,12 @@ public class FacFireFacilityMonitor implements Serializable {
     private String lastReportTime;
 
     private Integer sortNo;
+
+    /** 装置区编码（refinery-1 ...），真源归一后监测表按 (区, 类型) 矩阵存储。 */
+    @TableField("zone_code")
+    private String zoneCode;
+
+    /** 装置区名称，冗余存储便于按区聚合展示。 */
+    @TableField("zone_name")
+    private String zoneName;
 }

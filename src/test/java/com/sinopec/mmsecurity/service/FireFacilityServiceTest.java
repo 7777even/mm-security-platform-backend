@@ -80,9 +80,10 @@ class FireFacilityServiceTest {
         return e;
     }
 
-    private static FacFireFacilityParam param(Long monitorId, String label, String value, String tone) {
+    private static FacFireFacilityParam param(Long monitorId, String keyCode, String label, String value, String tone) {
         FacFireFacilityParam e = new FacFireFacilityParam();
         e.setMonitorId(monitorId);
+        e.setKeyCode(keyCode);
         e.setLabel(label);
         e.setValueText(value);
         e.setTone(tone);
@@ -133,8 +134,8 @@ class FireFacilityServiceTest {
     void monitors_mergesParamsAndReturnsTypeOptions() {
         when(monitorMapper.selectList(any())).thenReturn(List.of(monitor(2L, "water", "消防水源", 46)));
         when(paramMapper.selectList(any())).thenReturn(List.of(
-                param(2L, "水泵运行", "运行", "normal"),
-                param(2L, "水位", "32%", "warning")));
+                param(2L, "water", "水泵运行", "运行", "normal"),
+                param(2L, "water", "水位", "32%", "warning")));
         when(optionMapper.selectList(any())).thenReturn(List.of(option("全部类型", 1), option("消防水源", 3)));
 
         FireFacilityMonitorResult result = service.monitors("消防水源");
@@ -153,7 +154,7 @@ class FireFacilityServiceTest {
     void monitors_returnsAllWhenTypeBlankOrAll() {
         when(monitorMapper.selectList(any())).thenReturn(List.of(
                 monitor(1L, "fas", "火灾自动报警系统", 128), monitor(2L, "water", "消防水源", 46)));
-        when(paramMapper.selectList(any())).thenReturn(List.of(param(1L, "运行状态", "报警", "danger")));
+        when(paramMapper.selectList(any())).thenReturn(List.of(param(1L, "fas", "运行状态", "报警", "danger")));
         when(optionMapper.selectList(any())).thenReturn(List.of(option("全部类型", 1)));
 
         assertEquals(2, service.monitors(null).getItems().size());

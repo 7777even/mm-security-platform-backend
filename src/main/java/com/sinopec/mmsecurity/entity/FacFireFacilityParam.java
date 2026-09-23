@@ -23,6 +23,10 @@ public class FacFireFacilityParam implements Serializable {
 
     private Long monitorId;
 
+    /** 设施类型 key（fas/water...），参数改由此关联（取代 monitor_id 的一对一绑定）。 */
+    @TableField("key_code")
+    private String keyCode;
+
     private String label;
 
     @TableField("value_text")

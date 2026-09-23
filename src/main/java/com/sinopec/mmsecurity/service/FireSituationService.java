@@ -7,9 +7,11 @@ import com.sinopec.mmsecurity.dto.FireMonitoredObject;
 import com.sinopec.mmsecurity.dto.FireMonitoredObjectSummary;
 import com.sinopec.mmsecurity.dto.FireSituationMarkerItem;
 import com.sinopec.mmsecurity.dto.FireSituationMarkerSummary;
+import com.sinopec.mmsecurity.entity.FacFireFacilityMonitor;
 import com.sinopec.mmsecurity.entity.FacFireMonitorArea;
 import com.sinopec.mmsecurity.entity.FacFireMonitoredObject;
 import com.sinopec.mmsecurity.entity.FacFireSituationMarker;
+import com.sinopec.mmsecurity.mapper.FacFireFacilityMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacFireMonitorAreaMapper;
 import com.sinopec.mmsecurity.mapper.FacFireMonitoredObjectMapper;
 import com.sinopec.mmsecurity.mapper.FacFireSituationMarkerMapper;
@@ -17,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +35,7 @@ public class FireSituationService {
     private final FacFireSituationMarkerMapper fireSituationMarkerMapper;
     private final FacFireMonitorAreaMapper fireMonitorAreaMapper;
     private final FacFireMonitoredObjectMapper fireMonitoredObjectMapper;
+    private final FacFireFacilityMonitorMapper fireFacilityMonitorMapper;
 
     /** 地图聚合点位列表（按 sort_no 升序）。 */
     public FireSituationMarkerSummary markers() {
@@ -62,19 +66,26 @@ public class FireSituationService {
     public FireMonitorAreaSummary areaSummary() {
         List<FacFireMonitorArea> rows = fireMonitorAreaMapper.selectList(
                 new LambdaQueryWrapper<FacFireMonitorArea>().orderByAsc(FacFireMonitorArea::getSortNo));
+
+        // 真源归一：每区「消防设备」数改为按区聚合监测表（fac_fire_facility_monitor 已含 zone 维度），
+        // 不再读取 fac_fire_monitor_area.equipment（旧 1399 台账口径），从而与监测总数 983 自洽。
+        Map<String, Integer> equipByZone = fireFacilityMonitorMapper.selectList(new LambdaQueryWrapper<>())
+                .stream().collect(Collectors.groupingBy(FacFireFacilityMonitor::getZoneCode,
+                        Collectors.summingInt(r -> r.getTotalCount() == null ? 0 : r.getTotalCount())));
+
         FireMonitorAreaSummary summary = new FireMonitorAreaSummary();
-        summary.setItems(rows.stream().map(this::toAreaItem).collect(Collectors.toList()));
+        summary.setItems(rows.stream().map(row -> toAreaItem(row, equipByZone)).collect(Collectors.toList()));
         return summary;
     }
 
-    private FireMonitorArea toAreaItem(FacFireMonitorArea row) {
+    private FireMonitorArea toAreaItem(FacFireMonitorArea row, Map<String, Integer> equipByZone) {
         FireMonitorArea item = new FireMonitorArea();
         item.setId(row.getAreaCode());
         item.setScope(row.getScope());
         item.setName(row.getAreaName());
         item.setStatus(row.getStatus());
         item.setStatusLabel(row.getStatusLabel());
-        item.setEquipment(row.getEquipment());
+        item.setEquipment(equipByZone.getOrDefault(row.getAreaCode(), 0));
         item.setCameras(row.getCameras());
         item.setPersonnel(row.getPersonnel());
         return item;

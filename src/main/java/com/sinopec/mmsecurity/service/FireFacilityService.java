@@ -40,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,27 +90,47 @@ public class FireFacilityService {
         qw.orderByAsc(FacFireFacilityMonitor::getSortNo);
         List<FacFireFacilityMonitor> rows = monitorMapper.selectList(qw);
 
-        Map<Long, List<FireFacilityMonitorParam>> paramMap = paramMapper.selectList(
+        Map<String, List<FireFacilityMonitorParam>> paramMap = paramMapper.selectList(
                         new LambdaQueryWrapper<FacFireFacilityParam>()
                                 .orderByAsc(FacFireFacilityParam::getSortNo))
-                .stream().collect(Collectors.groupingBy(FacFireFacilityParam::getMonitorId,
+                .stream().collect(Collectors.groupingBy(FacFireFacilityParam::getKeyCode,
                         LinkedHashMap::new, Collectors.mapping(this::toParam, Collectors.toList())));
+
+        // 监测表已矩阵化为 (装置区 x 类型)，此处按 key_code 聚合回 12 类卡片，
+        // 参数也改由 key_code 关联（一对多行）。
+        Map<String, FireFacilityMonitorSummary> agg = new LinkedHashMap<>();
+        Map<String, Integer> sortOrder = new LinkedHashMap<>();
+        for (FacFireFacilityMonitor row : rows) {
+            String k = row.getKeyCode();
+            FireFacilityMonitorSummary s = agg.get(k);
+            if (s == null) {
+                s = new FireFacilityMonitorSummary();
+                s.setKey(k);
+                s.setFacilityType(row.getFacilityType());
+                s.setStatus(row.getMonitorStatus());
+                s.setLastReportTime(row.getLastReportTime());
+                s.setTotal(0);
+                s.setOnline(0);
+                s.setOffline(0);
+                s.setFault(0);
+                agg.put(k, s);
+                sortOrder.put(k, row.getSortNo() == null ? 0 : row.getSortNo());
+            }
+            s.setTotal(s.getTotal() + (row.getTotalCount() == null ? 0 : row.getTotalCount()));
+            s.setOnline(s.getOnline() + (row.getOnlineCount() == null ? 0 : row.getOnlineCount()));
+            s.setOffline(s.getOffline() + (row.getOfflineCount() == null ? 0 : row.getOfflineCount()));
+            s.setFault(s.getFault() + (row.getFaultCount() == null ? 0 : row.getFaultCount()));
+        }
+
+        List<FireFacilityMonitorSummary> items = new ArrayList<>(agg.values());
+        items.sort(Comparator.comparingInt(i -> sortOrder.getOrDefault(i.getKey(), 0)));
+        for (FireFacilityMonitorSummary s : items) {
+            s.setParams(paramMap.getOrDefault(s.getKey(), new ArrayList<>()));
+        }
 
         FireFacilityMonitorResult result = new FireFacilityMonitorResult();
         result.setTypeOptions(typeOptions());
-        result.setItems(rows.stream().map(row -> {
-            FireFacilityMonitorSummary item = new FireFacilityMonitorSummary();
-            item.setKey(row.getKeyCode());
-            item.setFacilityType(row.getFacilityType());
-            item.setTotal(row.getTotalCount());
-            item.setOnline(row.getOnlineCount());
-            item.setOffline(row.getOfflineCount());
-            item.setFault(row.getFaultCount());
-            item.setStatus(row.getMonitorStatus());
-            item.setLastReportTime(row.getLastReportTime());
-            item.setParams(paramMap.getOrDefault(row.getId(), new ArrayList<>()));
-            return item;
-        }).collect(Collectors.toList()));
+        result.setItems(items);
         return result;
     }
 
@@ -152,16 +173,19 @@ public class FireFacilityService {
         String now = LocalDateTime.now().format(REPORT_TS_FMT);
         for (FireFacilityMonitorReportItem it : req.getItems()) {
             String key = it.getKey().trim();
-            FacFireFacilityMonitor row = monitorMapper.selectOne(new LambdaQueryWrapper<FacFireFacilityMonitor>()
-                    .eq(FacFireFacilityMonitor::getKeyCode, key));
-            if (row == null) {
+            // key_code 现在对应多行（每装置区一行），上报时对全部行广播同一份类型级计数。
+            List<FacFireFacilityMonitor> existing = monitorMapper.selectList(
+                    new LambdaQueryWrapper<FacFireFacilityMonitor>().eq(FacFireFacilityMonitor::getKeyCode, key));
+            if (existing.isEmpty()) {
                 if (it.getFacilityType() == null || it.getFacilityType().isBlank()) {
                     throw new BusinessException(
                             ResultCode.PARAM_INVALID, "新增分项需提供 facilityType：" + key);
                 }
-                row = new FacFireFacilityMonitor();
+                FacFireFacilityMonitor row = new FacFireFacilityMonitor();
                 row.setKeyCode(key);
                 row.setFacilityType(it.getFacilityType().trim());
+                row.setZoneCode("");
+                row.setZoneName("");
                 row.setTotalCount(it.getTotal() == null ? 0 : it.getTotal());
                 row.setOnlineCount(it.getOnline() == null ? 0 : it.getOnline());
                 row.setOfflineCount(it.getOffline() == null ? 0 : it.getOffline());
@@ -172,25 +196,29 @@ public class FireFacilityService {
                         .stream().mapToInt(r -> r.getSortNo() == null ? 0 : r.getSortNo()).max().orElse(0);
                 row.setSortNo(maxSort + 1);
                 monitorMapper.insert(row);
+                existing = List.of(row);
             } else {
-                if (it.getFacilityType() != null) row.setFacilityType(it.getFacilityType().trim());
-                if (it.getTotal() != null) row.setTotalCount(it.getTotal());
-                if (it.getOnline() != null) row.setOnlineCount(it.getOnline());
-                if (it.getOffline() != null) row.setOfflineCount(it.getOffline());
-                if (it.getFault() != null) row.setFaultCount(it.getFault());
-                if (it.getStatus() != null) row.setMonitorStatus(it.getStatus());
-                row.setLastReportTime(it.getLastReportTime() == null ? now : it.getLastReportTime());
-                monitorMapper.updateById(row);
+                for (FacFireFacilityMonitor row : existing) {
+                    if (it.getFacilityType() != null) row.setFacilityType(it.getFacilityType().trim());
+                    if (it.getTotal() != null) row.setTotalCount(it.getTotal());
+                    if (it.getOnline() != null) row.setOnlineCount(it.getOnline());
+                    if (it.getOffline() != null) row.setOfflineCount(it.getOffline());
+                    if (it.getFault() != null) row.setFaultCount(it.getFault());
+                    if (it.getStatus() != null) row.setMonitorStatus(it.getStatus());
+                    row.setLastReportTime(it.getLastReportTime() == null ? now : it.getLastReportTime());
+                    monitorMapper.updateById(row);
+                }
             }
 
             if (it.getParams() != null) {
+                // 参数改由 key_code 关联（取代 monitor_id）。
                 paramMapper.delete(new LambdaQueryWrapper<FacFireFacilityParam>()
-                        .eq(FacFireFacilityParam::getMonitorId, row.getId()));
+                        .eq(FacFireFacilityParam::getKeyCode, key));
                 int sort = 0;
                 for (FireFacilityMonitorReportParam p : it.getParams()) {
                     sort++;
                     FacFireFacilityParam pe = new FacFireFacilityParam();
-                    pe.setMonitorId(row.getId());
+                    pe.setKeyCode(key);
                     pe.setLabel(p.getLabel() == null ? "" : p.getLabel());
                     pe.setValueText(p.getValue() == null ? "" : p.getValue());
                     pe.setTone(p.getTone() == null ? "normal" : p.getTone());
