@@ -7,7 +7,7 @@ set -eu
 
 # scope 固定枚举（AGENTS.md §6.5）。改枚举须同步改 AGENTS.md，禁止在代码里单方面放宽。
 # 域 scope 之外，openspec（变更流程与归档）与 ci（CI 流水线）为 2026-09-14 收编的正式枚举。
-ALLOWED_SCOPES="auth device alarm dashboard security common db config docs chore openspec ci"
+ALLOWED_SCOPES="auth device alarm dashboard security fire fire-facility fire-alarm fire-monitoring security-fire common db config docs chore openspec ci"
 
 msg_file="${1:-}"
 if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then

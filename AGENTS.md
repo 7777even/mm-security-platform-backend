@@ -222,7 +222,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ### 6.5 工程约定（Git / 提交）
 
 - **提交格式 `type(scope): 描述`**，scope 固定枚举、禁止自造：
-  `auth`（认证域）、`device`（设备域）、`alarm`（告警域 + WebSocket 推送）、`dashboard`（态势总览）、`security`（JWT / HMAC / 硬控 / 鉴权横切）、`common`（Result / 异常 / DeviceCode / 工具）、`db`（schema 与迁移脚本）、`config`（配置类、`application*.yml`、构建）、`docs`、`chore`、`openspec`（openspec 变更流程与归档）、`ci`（CI 流水线与门禁配置）。
+  `auth`（认证域）、`device`（设备域）、`alarm`（告警域 + WebSocket 推送）、`dashboard`（态势总览）、`security`（JWT / HMAC / 硬控 / 鉴权横切）、`fire`（消防域总称）、`fire-facility`（消防设施）、`fire-alarm`（消防报警）、`fire-monitoring`（消防监控）、`security-fire`（安防火情）、`common`（Result / 异常 / DeviceCode / 工具）、`db`（schema 与迁移脚本）、`config`（配置类、`application*.yml`、构建）、`docs`、`chore`、`openspec`（openspec 变更流程与归档）、`ci`（CI 流水线与门禁配置）。
   仓库名（`backend`）、架构层（`service` / `controller` / `mapper`）与自造复合词（`system-facts` / `data-scope`）**不是 scope**：按改动所属域取名，跨域则写 `type: 描述` 不带括号。
 - 跨域改动**按影响面拆成多个提交**：横切层（`common` / `security`）先行，业务域跟随；确属原子改动才允许双 scope（如 `feat(alarm,security):`），不得常态化。
 - 提交信息**只写一行标题**（`type(scope): 描述` 本身就是那句总结），**禁止正文/body**、禁止长段落与 `- ` 分点列表；说明性内容写进代码注释、`docs/` 或 openspec，不塞进提交信息。禁止提交构建产物与临时输出（`target/` 已被 `.gitignore` 覆盖）。
