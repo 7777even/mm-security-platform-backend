@@ -10,5 +10,5 @@
 - [x] KPI「未处置告警」聚合未处置 + 已确认
 - [x] 跑 mvn compile（通过）+ check-api-contract.mjs --strict（0 漂移）+ check-endpoint-authz.mjs（写端点带 perm，不进 ALLOWLIST）
 - [x] 隔离实例（:8899 新文件库）curl 验证写回落库：PUT 返回 code=0，re-GET 确认 status/falseAlarm/handleResult/dispatchPersonnel/notifyMethod 持久化；未知 id→404、非法枚举→100、无 token→401
-- [ ] 按 scope 拆分双仓提交（backend: common/production，frontend: screen/production/shared）
-- [ ] 归档至 openspec/archive/（全勾后按纪律归档，补 spec-delta 并回填 openspec/specs/）
+- [x] 按 scope 拆分双仓提交（backend: common/production，frontend: screen/production/shared）
+- [x] 归档至 openspec/archive/（全勾后按纪律归档，补 spec-delta 并回填 openspec/specs/）
