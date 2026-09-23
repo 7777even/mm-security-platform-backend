@@ -180,3 +180,22 @@ ratelimit:
       qps: ${RATELIMIT_REFRESH_QPS:10}
       burst: ${RATELIMIT_REFRESH_BURST:20}
 
+# =============================================================================
+# 消防监测采集器（真实设备状态自动持久化的采集入口，默认关闭）
+#   - 关闭时监测表保持 Flyway 种子 / 上次真实上报值，不造假数据（与本仓"只推真实数据"约定一致）。
+#   - 接入真实采集源：enabled=true 并实现 FireFacilitySourceAdapter 对接上游
+#     （消防主机 / 物联网平台 / SCADA，HTTP/OPC-UA/Modbus 等），采集器按 cron 周期拉取 →
+#     复用 POST /monitors/report 写链路落库 + 触发大屏实时刷新。
+#   - 亦可让真实源直接调 POST /api/v1/fire-facility/monitors/report 推送（无需本采集器）。
+# =============================================================================
+fire-facility:
+  collector:
+    enabled: ${FIRE_FACILITY_COLLECTOR_ENABLED:false}
+    mode: ${FIRE_FACILITY_COLLECTOR_MODE:upstream}
+    cron: ${FIRE_FACILITY_COLLECTOR_CRON:0 0/1 * * * ?}
+    upstream:
+      url: ${FIRE_FACILITY_COLLECTOR_URL:}
+      token: ${FIRE_FACILITY_COLLECTOR_TOKEN:}
+      timeout-seconds: ${FIRE_FACILITY_COLLECTOR_TIMEOUT:10}
+      insecure-tls: ${FIRE_FACILITY_COLLECTOR_INSECURE_TLS:false}
+
