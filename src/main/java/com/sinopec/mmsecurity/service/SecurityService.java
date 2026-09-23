@@ -1,5 +1,8 @@
 package com.sinopec.mmsecurity.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.annotation.RealtimeSync;
@@ -9,6 +12,7 @@ import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
@@ -244,6 +248,41 @@ public class SecurityService {
             e.setNotifySms(req.getNotifySms());
         }
         perimeterAlarmMapper.updateById(e);
+        return toPerimeterAlarmDetail(e);
+    }
+
+    /**
+     * 周界入侵告警手工创建：操作员录入一条新告警，落 fac_perimeter_alarm。
+     * 生成 alarmCode（PA-yyyyMMdd-HHmmss），默认 status='未确认'、falseAlarm='未核实'、source='人工录入'、version=0；
+     * 经 @RealtimeSync 广播 security.perimeter-alarm，前端 SecurityStatusPanel 自动重拉最新告警。
+     * title 非空校验，空则抛 B3 PARAM_INVALID（非 HTTP 400）。
+     */
+    @RealtimeSync(domain = "security.perimeter-alarm")
+    public PerimeterAlarmDetail createPerimeterAlarm(PerimeterAlarmCreateRequest req) {
+        if (req.getTitle() == null || req.getTitle().isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "告警标题不能为空");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter codeFmt = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+        FacPerimeterAlarm e = new FacPerimeterAlarm();
+        e.setAlarmCode("PA-" + now.format(codeFmt));
+        e.setTitle(req.getTitle());
+        e.setAlarmType(req.getAlarmType() != null ? req.getAlarmType() : "周界入侵告警");
+        e.setLevelCode(req.getLevelCode());
+        e.setLocation(req.getLocation());
+        e.setAlarmTime(req.getAlarmTime() != null ? req.getAlarmTime() : now.format(fmt));
+        e.setDescription(req.getDescription());
+        e.setObjectName(req.getObjectName());
+        e.setObjectType(req.getObjectType());
+        e.setIntrusionPosition(req.getIntrusionPosition());
+        e.setIntrusionMethod(req.getIntrusionMethod());
+        e.setRelatedCamera(req.getRelatedCamera());
+        e.setSource("人工录入");
+        e.setStatus("未确认");
+        e.setFalseAlarm("未核实");
+        e.setVersion(0L);
+        perimeterAlarmMapper.insert(e);
         return toPerimeterAlarmDetail(e);
     }
 

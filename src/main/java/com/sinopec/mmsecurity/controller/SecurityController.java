@@ -7,6 +7,7 @@ import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
 import com.sinopec.mmsecurity.dto.SecurityTrackSummary;
@@ -140,5 +141,12 @@ public class SecurityController {
             @PathVariable Long id,
             @RequestBody PerimeterAlarmUpdateRequest req) {
         return Result.ok(securityService.updatePerimeterAlarm(id, req));
+    }
+
+    @PostMapping("/security/perimeter-alarms")
+    @RequireAuth(perm = "security:perimeter-create")
+    public Result<PerimeterAlarmDetail> createPerimeterAlarm(
+            @RequestBody PerimeterAlarmCreateRequest req) {
+        return Result.ok(securityService.createPerimeterAlarm(req));
     }
 }
