@@ -32,10 +32,16 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -183,6 +189,11 @@ public class FireMonitoringService {
         List<FacFirePatrol> rows = firePatrolMapper.selectList(
                 new LambdaQueryWrapper<FacFirePatrol>().orderByDesc(FacFirePatrol::getPatrolDate));
 
+        // 演示数据：将种子日期重锚定到「今天」，使大屏「今日巡查」始终有数，
+        // 不受一次性迁移（V75）绝对日期陈旧影响。以库内最新种子日期为锚点，
+        // 每条 patrolDate = 今天 − (最新日 − 该记录日)。
+        rebasePatrolDatesToToday(rows);
+
         // 一次性加载全部异常结果并按 patrolId 分组，避免逐条查询（N+1）
         Map<Long, Map<String, FacFirePatrolItemResult>> abnormalByPatrol =
                 patrolItemResultMapper.selectList(null).stream()
@@ -225,6 +236,44 @@ public class FireMonitoringService {
             out.add(rec);
         }
         return out;
+    }
+
+    private static final DateTimeFormatter PATROL_DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /**
+     * 演示数据重锚定：以库内最新种子日期为锚点，把所有 patrolDate 平移到「相对于今天」，
+     * 使大屏「今日巡查」始终匹配今天、且跨天不陈旧（每次缓存未命中按当天重算）。
+     * 不改变库内数据，仅影响本方法的返回。
+     */
+    private void rebasePatrolDatesToToday(List<FacFirePatrol> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        LocalDate today = LocalDate.now();
+        LocalDate latest = rows.stream()
+                .map(p -> parsePatrolDate(p.getPatrolDate()))
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(today);
+        for (FacFirePatrol p : rows) {
+            LocalDate d = parsePatrolDate(p.getPatrolDate());
+            if (d == null) {
+                continue;
+            }
+            long offset = ChronoUnit.DAYS.between(d, latest);
+            p.setPatrolDate(today.minusDays(offset).format(PATROL_DATE_FMT));
+        }
+    }
+
+    private LocalDate parsePatrolDate(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(s, PATROL_DATE_FMT);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     /** 测试隔离用：清空巡查缓存，避免跨用例污染。 */
