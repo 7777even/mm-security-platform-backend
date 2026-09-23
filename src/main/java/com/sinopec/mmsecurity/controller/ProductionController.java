@@ -1,10 +1,12 @@
 package com.sinopec.mmsecurity.controller;
 
+import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.PersonnelMarker;
 import com.sinopec.mmsecurity.dto.ProductionAlarmItem;
+import com.sinopec.mmsecurity.dto.ProductionAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.ProductionAreaDetail;
 import com.sinopec.mmsecurity.dto.ProductionDevicePage;
 import com.sinopec.mmsecurity.dto.ProductionOverview;
@@ -13,6 +15,8 @@ import com.sinopec.mmsecurity.service.ProductionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,6 +45,18 @@ public class ProductionController {
     public Result<List<ProductionAlarmItem>> alarms(
             @RequestParam(value = "facilityId", required = false) Long facilityId) {
         return Result.ok(service.alarms(facilityId));
+    }
+
+    /**
+     * 生产报警写回：确认/处理中/已处置状态流转 + 误报标记 + 处置情况/时间/派单人员/通知方式。
+     * 局部更新（read-modify-write），记录不存在返回 B3 NOT_FOUND；perm 受 production:ack 保护。
+     */
+    @PutMapping("/alarms/{id}")
+    @RequireAuth(perm = "production:ack")
+    public Result<ProductionAlarmItem> updateAlarm(
+            @PathVariable("id") Long id,
+            @RequestBody ProductionAlarmUpdateRequest req) {
+        return Result.ok(service.update(id, req));
     }
 
     /** 风险预警列表（红/橙/黄三级）。 */

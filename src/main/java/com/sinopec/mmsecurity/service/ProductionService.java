@@ -5,7 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.OverviewGridItem;
 import com.sinopec.mmsecurity.dto.PersonnelMarker;
 import com.sinopec.mmsecurity.dto.PersonnelSlice;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.ProductionAlarmItem;
+import com.sinopec.mmsecurity.dto.ProductionAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.ProductionAreaDetail;
 import com.sinopec.mmsecurity.dto.ProductionAreaMetric;
 import com.sinopec.mmsecurity.dto.ProductionAreaZone;
@@ -39,6 +43,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -55,6 +60,12 @@ public class ProductionService {
 
     /** 设备状态下拉的「全部」选项，前端原样回传时按不过滤处理 */
     private static final String STATUS_ALL = "全部状态";
+
+    /** 生产报警处置状态字典（与 fac_production_alarm.status_name、前端详情状态机对齐）。 */
+    private static final Set<String> VALID_PRODUCTION_STATUS =
+            Set.of("未处置", "已确认", "处置中", "已处置");
+    /** 误报标记字典。 */
+    private static final Set<String> VALID_PRODUCTION_FALSE_ALARM = Set.of("是", "否", "未核实");
 
     /** 人员构成类别与配色（本厂人员 / 承包商 / 访客），沿用 productionAreaMock */
     private static final String[] SLICE_NAMES = {"本厂人员", "承包商", "访客"};
@@ -129,6 +140,39 @@ public class ProductionService {
         Page<FacProductionAlarm> page = new Page<>(1, 500, false);
         return alarmMapper.selectPage(page, alarmQuery(facilityId)).getRecords().stream()
                 .map(this::toAlarm).collect(Collectors.toList());
+    }
+
+    /**
+     * 生产报警写回：确认/处理中/已处置状态流转 + 误报标记 + 处置情况/时间/派单人员/通知方式。
+     * read-modify-write：先按 id 取当前记录（实体 @Version 乐观锁），仅在传入字段非空时覆盖，
+     * updateById 自动携带 version 做并发防护；记录不存在返回 B3 NOT_FOUND。
+     * 成功返回更新后的 ProductionAlarmItem 供前端即时回填。
+     */
+    @RealtimeSync(domain = "production.alarm")
+    public ProductionAlarmItem update(Long id, ProductionAlarmUpdateRequest req) {
+        FacProductionAlarm e = alarmMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "生产报警不存在：" + id);
+        }
+        if (req.getStatus() != null) {
+            if (!VALID_PRODUCTION_STATUS.contains(req.getStatus())) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "非法处置状态：" + req.getStatus());
+            }
+            e.setStatusName(req.getStatus());
+        }
+        if (req.getFalseAlarm() != null) {
+            if (!VALID_PRODUCTION_FALSE_ALARM.contains(req.getFalseAlarm())) {
+                throw new BusinessException(
+                        ResultCode.PARAM_INVALID, "非法误报标记：" + req.getFalseAlarm());
+            }
+            e.setFalseAlarm(req.getFalseAlarm());
+        }
+        if (req.getHandleResult() != null) e.setHandleResult(req.getHandleResult());
+        if (req.getHandleTime() != null) e.setHandleTime(req.getHandleTime());
+        if (req.getDispatchPersonnel() != null) e.setDispatchPersonnel(req.getDispatchPersonnel());
+        if (req.getNotifyMethod() != null) e.setNotifyMethod(req.getNotifyMethod());
+        alarmMapper.updateById(e);
+        return toAlarm(e);
     }
 
     /** 风险预警列表：按红/橙/黄三级着色，取自 fac_production_risk_warning。 */
@@ -320,7 +364,8 @@ public class ProductionService {
         }
         return switch (label) {
             case "报警总数" -> alarmTotal;
-            case "未处置告警" -> alarmByStatus.getOrDefault("未处置", 0L);
+            case "未处置告警" -> alarmByStatus.getOrDefault("未处置", 0L)
+                    + alarmByStatus.getOrDefault("已确认", 0L);
             case "处置中告警" -> alarmByStatus.getOrDefault("处置中", 0L);
             case "已处置告警" -> alarmByStatus.getOrDefault("已处置", 0L);
             default -> null;
@@ -336,6 +381,11 @@ public class ProductionService {
         d.setTime(e.getOccurredAt());
         d.setDescription(e.getDescription());
         d.setStatus(e.getStatusName());
+        d.setFalseAlarm(e.getFalseAlarm());
+        d.setHandleResult(e.getHandleResult());
+        d.setHandleTime(e.getHandleTime());
+        d.setDispatchPersonnel(e.getDispatchPersonnel());
+        d.setNotifyMethod(e.getNotifyMethod());
         d.setIconIndex(e.getIconIndex());
         d.setThumb(e.getThumb());
         return d;
