@@ -7,6 +7,7 @@ import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
 import com.sinopec.mmsecurity.dto.SecurityTrackSummary;
 import com.sinopec.mmsecurity.dto.SecurityTrackTimelineItem;
@@ -23,6 +24,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -122,5 +126,19 @@ public class SecurityController {
                 .contentType(MediaType.IMAGE_JPEG)
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS))
                 .body(new ByteArrayResource(bytes));
+    }
+
+    /**
+     * 周界入侵告警写回：确认/派单/处置状态流转 + 误报标记 + 处置情况/时间/派单人员/通知方式局部更新。
+     * 需权限码 {@code security:perimeter-ack}（V70 已登记并授权 ADMIN 及岗位角色）。
+     * 成功返回更新后的 PerimeterAlarmDetail（B3 包络），供前端即时回填并触发 security.perimeter-alarm 实时广播。
+     * 与消防报警写回（FireAlarmController#update）同源范式，状态使用中文枚举（未确认/已确认/已派单/已处理）。
+     */
+    @PutMapping("/security/perimeter-alarms/{id}")
+    @RequireAuth(perm = "security:perimeter-ack")
+    public Result<PerimeterAlarmDetail> updatePerimeterAlarm(
+            @PathVariable Long id,
+            @RequestBody PerimeterAlarmUpdateRequest req) {
+        return Result.ok(securityService.updatePerimeterAlarm(id, req));
     }
 }

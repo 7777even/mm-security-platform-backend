@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 /**
@@ -16,6 +17,10 @@ public class FacPerimeterAlarm {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
+
+    /** 乐观锁版本号：MyBatis-Plus @Version，在 update 时自动比对并自增，防护并发确认/处置。 */
+    @Version
+    private Long version;
 
     private String alarmCode;
     private String title;

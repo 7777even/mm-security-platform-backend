@@ -2,10 +2,14 @@ package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
@@ -38,6 +42,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -189,6 +194,57 @@ public class SecurityService {
         FacPerimeterAlarm e = perimeterAlarmMapper.selectById(id);
         if (e == null || e.getSnapshotBytes() == null || e.getSnapshotBytes().length == 0) return null;
         return e.getSnapshotBytes();
+    }
+
+    private static final Set<String> VALID_PERIMETER_STATUS =
+            Set.of("未确认", "已确认", "已派单", "已处理");
+    private static final Set<String> VALID_PERIMETER_FALSE_ALARM = Set.of("是", "否", "未核实");
+
+    /**
+     * 周界入侵告警写回：确认/派单/处置状态流转 + 误报标记 + 处置情况/时间/派单人员/通知方式局部更新。
+     * read-modify-write：先按 id 取当前记录（实体 @Version 乐观锁），仅在传入字段非空时覆盖，
+     * updateById 自动携带 version 做并发防护；记录不存在返回 B3 NOT_FOUND。
+     * 成功返回更新后的 PerimeterAlarmDetail 供前端即时回填，并触发 security.perimeter-alarm 实时广播。
+     * 与消防报警写回（FireAlarmService.update）同源范式，因 fac_perimeter_alarm 现状使用中文状态枚举，
+     * 此处校验中文集合而非英文 ACTIVE/ACKED。
+     */
+    @RealtimeSync(domain = "security.perimeter-alarm")
+    public PerimeterAlarmDetail updatePerimeterAlarm(Long id, PerimeterAlarmUpdateRequest req) {
+        FacPerimeterAlarm e = perimeterAlarmMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "周界入侵告警不存在：" + id);
+        }
+        if (req.getStatus() != null) {
+            if (!VALID_PERIMETER_STATUS.contains(req.getStatus())) {
+                throw new BusinessException(
+                        ResultCode.PARAM_INVALID, "非法处置状态：" + req.getStatus());
+            }
+            e.setStatus(req.getStatus());
+        }
+        if (req.getFalseAlarm() != null) {
+            if (!VALID_PERIMETER_FALSE_ALARM.contains(req.getFalseAlarm())) {
+                throw new BusinessException(
+                        ResultCode.PARAM_INVALID, "非法误报标记：" + req.getFalseAlarm());
+            }
+            e.setFalseAlarm(req.getFalseAlarm());
+        }
+        if (req.getHandleResult() != null) {
+            e.setHandleResult(req.getHandleResult());
+        }
+        if (req.getHandleTime() != null) {
+            e.setHandleTime(req.getHandleTime());
+        }
+        if (req.getDispatchPersonnel() != null) {
+            e.setDispatchPersonnel(req.getDispatchPersonnel());
+        }
+        if (req.getNotifyApp() != null) {
+            e.setNotifyApp(req.getNotifyApp());
+        }
+        if (req.getNotifySms() != null) {
+            e.setNotifySms(req.getNotifySms());
+        }
+        perimeterAlarmMapper.updateById(e);
+        return toPerimeterAlarmDetail(e);
     }
 
     private PerimeterAlarmDetail toPerimeterAlarmDetail(FacPerimeterAlarm e) {
