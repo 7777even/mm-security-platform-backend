@@ -34,12 +34,12 @@ const IGNORE_IMPL_PATHS = new Set(['/api/v1/health', '/actuator/health']);
 
 function parseArgs(argv) {
   const args = {
-    contracts: path.resolve(REPO_ROOT, '../frontend-scaffold/docs/api'),
+    contracts: '../frontend-scaffold/docs/api',
     strict: false,
     schema: true,
   };
   for (let i = 2; i < argv.length; i += 1) {
-    if (argv[i] === '--contracts') args.contracts = path.resolve(argv[++i]);
+    if (argv[i] === '--contracts') args.contracts = argv[++i];
     else if (argv[i] === '--strict') args.strict = true;
     else if (argv[i] === '--no-schema') args.schema = false;
     else if (argv[i] === '--help' || argv[i] === '-h') {
@@ -48,6 +48,41 @@ function parseArgs(argv) {
     }
   }
   return args;
+}
+
+/**
+ * 解析契约目录：兼容不同 CI checkout 布局。
+ *  - 支持 FRONTEND_CONTRACTS_DIR / FRONTEND_SCAFFOLD_DIR 环境变量显式指定；
+ *  - 找不到默认同级 frontend-scaffold 时，从仓根逐级向上搜索 frontend-scaffold/docs/api；
+ *  - 全部未命中时回退到「给定路径」（通常即默认同级路径），由调用方按 missing 处理。
+ */
+function resolveContractsDir(raw) {
+  const candidates = [];
+  const explicit =
+    process.env.FRONTEND_CONTRACTS_DIR || process.env.FRONTEND_SCAFFOLD_DIR;
+  if (explicit) {
+    const e = path.isAbsolute(explicit)
+      ? explicit
+      : path.resolve(REPO_ROOT, explicit);
+    candidates.push(e, path.join(e, 'docs', 'api'));
+  }
+  const given = path.isAbsolute(raw) ? raw : path.resolve(REPO_ROOT, raw);
+  candidates.push(given);
+  let cur = REPO_ROOT;
+  for (let i = 0; i < 6; i += 1) {
+    candidates.push(path.join(cur, 'frontend-scaffold', 'docs', 'api'));
+    const parent = path.dirname(cur);
+    if (parent === cur) break;
+    cur = parent;
+  }
+  const found = candidates.find((c) => {
+    try {
+      return fs.existsSync(c) && fs.statSync(c).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+  return { dir: found || given, tried: candidates };
 }
 
 function walk(dir, out = []) {
@@ -279,14 +314,18 @@ function diffSchema(contractDef, backendDto) {
 
 function main() {
   const args = parseArgs(process.argv);
+  const { dir: contractsDir, tried } = resolveContractsDir(args.contracts);
   const impl = scanImplementation();
-  const { endpoints: contract, missing } = scanContracts(args.contracts);
+  const { endpoints: contract, missing } = scanContracts(contractsDir);
 
   if (missing) {
-    console.error(`[error] 契约目录不存在：${args.contracts}`);
-    console.error('        用 --contracts <dir> 指定 frontend-scaffold/docs/api 的位置。');
+    console.error(`[error] 契约目录不存在：${contractsDir}`);
+    console.error('        已尝试候选路径：');
+    for (const c of tried) console.error('          - ' + c);
+    console.error('        可用 FRONTEND_CONTRACTS_DIR 环境变量指定 frontend-scaffold/docs/api 的位置（绝对路径，或指向仓库根目录）。');
     process.exit(args.strict ? 1 : 0);
   }
+  args.contracts = contractsDir;
 
   /* ---- 路由层 ---- */
   const comparable = impl.filter((e) => !IGNORE_IMPL_PATHS.has(e.path));
