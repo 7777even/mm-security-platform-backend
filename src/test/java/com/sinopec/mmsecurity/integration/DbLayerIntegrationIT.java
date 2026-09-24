@@ -8,6 +8,10 @@ import com.sinopec.mmsecurity.entity.FacFieldReport;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.AuditLogMapper;
 import com.sinopec.mmsecurity.mapper.FacFieldReportMapper;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
+import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
+import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
+import com.sinopec.mmsecurity.service.SecurityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,6 +53,10 @@ class DbLayerIntegrationIT {
     private AlarmMapper alarmMapper;
     @Autowired
     private AuditLogMapper auditLogMapper;
+    @Autowired
+    private FacPerimeterAlarmMapper perimeterAlarmMapper;
+    @Autowired
+    private SecurityService securityService;
 
     /** 证明 schema + 种子数据来自 V 文件（非第二份 DDL）：V6 种子行必须可读。 */
     @Test
@@ -109,5 +117,35 @@ class DbLayerIntegrationIT {
         log.setCreatedAt(LocalDateTime.now());
         auditLogMapper.insert(log);
         assertNotNull(auditLogMapper.selectById(log.getId()));
+    }
+
+    /**
+     * 回归（治安防控-新增周界告警 409）：V29 种子显式写入 id=1,2，但 H2 的 AUTO_INCREMENT 在「显式插入自增列」
+     * 时不会推进内部序列，导致首个无 id 的录入 INSERT 取到 id=1 与种子行主键冲突
+     * （H2 23505 → DataIntegrityViolationException → 端点返回 409）。V77 已复位序列到 MAX(id)+1。
+     * 本测试在「真实 Flyway + H2 种子库」上调用 service 落库，断言连续录入不再主键冲突、且 id 越过种子。
+     */
+    @Test
+    void perimeterAlarm_createAfterSeed_noPrimaryKeyConflict() {
+        // 种子应存在 id=1,2
+        assertNotNull(perimeterAlarmMapper.selectById(1L), "V29 种子 id=1 应存在");
+        assertNotNull(perimeterAlarmMapper.selectById(2L), "V29 种子 id=2 应存在");
+
+        PerimeterAlarmCreateRequest req1 = new PerimeterAlarmCreateRequest();
+        req1.setTitle("回归-南门翻越");
+        req1.setLocation("厂区南门");
+        PerimeterAlarmDetail d1 = securityService.createPerimeterAlarm(req1);
+        assertNotNull(d1);
+        Long id1 = d1.getId();
+        assertTrue(id1 != null && id1 > 2, "首个录入 id 应越过种子（>2），实际=" + id1);
+
+        // 连续第二次录入仍不应主键冲突
+        PerimeterAlarmCreateRequest req2 = new PerimeterAlarmCreateRequest();
+        req2.setTitle("回归-西门翻越");
+        req2.setLocation("厂区西门");
+        PerimeterAlarmDetail d2 = securityService.createPerimeterAlarm(req2);
+        assertNotNull(d2);
+        assertTrue(d2.getId() != null && d2.getId() > id1,
+                "连续录入 id 应递增，实际=" + d2.getId());
     }
 }
