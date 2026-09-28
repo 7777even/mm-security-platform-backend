@@ -2,18 +2,24 @@ package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
 import com.sinopec.mmsecurity.dto.TvOverview;
+import com.sinopec.mmsecurity.dto.TvSnapshotAckResult;
+import com.sinopec.mmsecurity.dto.TvSnapshotIngestRequest;
+import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
+import com.sinopec.mmsecurity.entity.FacTvSnapshot;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
+import com.sinopec.mmsecurity.mapper.FacTvSnapshotMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,8 +27,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** 工业电视服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
@@ -37,6 +47,8 @@ class TvServiceTest {
     private FacTvInspectionRecordMapper inspectionRecordMapper;
     @Mock
     private FacTvMonitorMapper tvMonitorMapper;
+    @Mock
+    private FacTvSnapshotMapper snapshotMapper;
     @Mock
     private FacMajorHazardMapper majorHazardMapper;
 
@@ -140,5 +152,68 @@ class TvServiceTest {
         assertEquals(1, summary.getPersons().size());
         assertEquals("陈志强", summary.getPersons().get(0).getName());
         assertEquals("炼油运行一部", summary.getPersons().get(0).getDepartment());
+    }
+
+    // ===================== 录像截图采集入库闭环（V78） =====================
+
+    @Test
+    void submitSnapshot_storesPendingAndDecodesBase64() {
+        when(tvMonitorMapper.selectOne(any())).thenReturn(null); // 不回查点位名
+        when(snapshotMapper.insert(any(FacTvSnapshot.class))).thenAnswer(inv -> {
+            FacTvSnapshot e = inv.getArgument(0);
+            e.setId(99L);
+            return 1;
+        });
+
+        TvSnapshotIngestRequest req = new TvSnapshotIngestRequest();
+        req.setMonitorCode("ar-01");
+        req.setImageBase64("data:image/jpeg;base64,/9j/4AAQSkZJRg==");
+
+        TvSnapshotIngestResult r = service.submitSnapshot(req);
+        assertEquals(99L, r.getId());
+        assertEquals("PENDING", r.getReviewStatus());
+
+        ArgumentCaptor<FacTvSnapshot> cap = ArgumentCaptor.forClass(FacTvSnapshot.class);
+        verify(snapshotMapper, times(1)).insert(cap.capture());
+        FacTvSnapshot e = cap.getValue();
+        assertEquals("ar-01", e.getMonitorCode());
+        assertEquals("PENDING", e.getReviewStatus());
+        assertEquals("DEVICE", e.getSource());
+        assertNotNull(e.getSnapshotBytes());
+        assertNotNull(e.getCreatedAt());
+    }
+
+    @Test
+    void ackSnapshot_marksAcked() {
+        FacTvSnapshot existing = new FacTvSnapshot();
+        existing.setId(5L);
+        existing.setReviewStatus("PENDING");
+        when(snapshotMapper.selectById(5L)).thenReturn(existing);
+
+        TvSnapshotAckResult r = service.ackSnapshot(5L);
+        assertEquals("ACKED", r.getReviewStatus());
+        assertEquals("ACKED", existing.getReviewStatus());
+        verify(snapshotMapper, times(1)).updateById(existing);
+    }
+
+    @Test
+    void submitSnapshots_batchesValidAndSkipsInvalid() {
+        when(tvMonitorMapper.selectOne(any())).thenReturn(null);
+        when(snapshotMapper.insert(any(FacTvSnapshot.class))).thenAnswer(inv -> {
+            FacTvSnapshot e = inv.getArgument(0);
+            e.setId(1L);
+            return 1;
+        });
+
+        TvSnapshotIngestRequest good = new TvSnapshotIngestRequest();
+        good.setMonitorCode("ar-01");
+        good.setImageBase64("data:image/jpeg;base64,/9j/4AAQSkZJRg==");
+        TvSnapshotIngestRequest bad = new TvSnapshotIngestRequest();
+        bad.setMonitorCode("ar-02");
+        bad.setImageBase64(""); // 非法：空图，应被跳过
+
+        int n = service.submitSnapshots(List.of(good, bad));
+        assertEquals(1, n, "非法项被跳过，仅合法项入库");
+        verify(snapshotMapper, times(1)).insert(any(FacTvSnapshot.class));
     }
 }

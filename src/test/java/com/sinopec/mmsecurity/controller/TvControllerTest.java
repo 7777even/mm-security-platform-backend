@@ -9,19 +9,26 @@ import com.sinopec.mmsecurity.dto.TvOverview;
 import com.sinopec.mmsecurity.dto.TvMapPoint;
 import com.sinopec.mmsecurity.dto.TvMonitorDetail;
 import com.sinopec.mmsecurity.dto.TvOverviewItem;
+import com.sinopec.mmsecurity.dto.TvSnapshotAckResult;
+import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
+import com.sinopec.mmsecurity.dto.TvSnapshotPage;
 import com.sinopec.mmsecurity.service.TvService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -128,5 +135,66 @@ class TvControllerTest {
         mvc().perform(get("/api/v1/tv/monitors/X"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(404));
+    }
+
+    // ---- 录像截图采集入库闭环（V78） ----
+
+    @Test
+    void submitSnapshot_returnsIngestResult() throws Exception {
+        TvSnapshotIngestResult r = new TvSnapshotIngestResult();
+        r.setId(1L);
+        r.setMonitorCode("ar-01");
+        r.setReviewStatus("PENDING");
+        r.setCreatedAt("2026-09-28 17:30:01");
+        when(service.submitSnapshot(any())).thenReturn(r);
+        mvc().perform(post("/api/v1/tv/snapshots")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"monitorCode\":\"ar-01\",\"imageBase64\":\"data:image/jpeg;base64,AAAA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.reviewStatus").value("PENDING"));
+    }
+
+    @Test
+    void snapshots_returnsPage() throws Exception {
+        TvSnapshotPage page = new TvSnapshotPage();
+        page.setTotal(1);
+        page.setPage(1);
+        page.setSize(12);
+        page.setPages(1);
+        page.setList(List.of());
+        when(service.listSnapshots(1, 12)).thenReturn(page);
+        mvc().perform(get("/api/v1/tv/snapshots"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(1));
+    }
+
+    @Test
+    void ackSnapshot_returnsResult() throws Exception {
+        TvSnapshotAckResult r = new TvSnapshotAckResult();
+        r.setId(2L);
+        r.setReviewStatus("ACKED");
+        when(service.ackSnapshot(2L)).thenReturn(r);
+        mvc().perform(post("/api/v1/tv/snapshots/2/ack"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.reviewStatus").value("ACKED"));
+    }
+
+    @Test
+    void snapshot_withBytes_returnsJpeg() throws Exception {
+        when(service.getSnapshotBytes(3L)).thenReturn(new byte[]{1, 2, 3});
+        mvc().perform(get("/api/v1/tv/snapshots/3/snapshot"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_JPEG));
+    }
+
+    @Test
+    void snapshot_noBytes_returns404() throws Exception {
+        when(service.getSnapshotBytes(3L)).thenReturn(null);
+        mvc().perform(get("/api/v1/tv/snapshots/3/snapshot"))
+                .andExpect(status().isNotFound());
     }
 }
