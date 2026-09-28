@@ -33,6 +33,7 @@ import com.sinopec.mmsecurity.mapper.FacSecurityTrackMetaMapper;
 import com.sinopec.mmsecurity.mapper.FacVehicleSearchMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 
@@ -60,7 +61,14 @@ class SecurityServiceTest {
     private final SecurityService service = new SecurityService(
             patrolCameraMapper, gateControlMapper, bollardMapper,
             vehicleSearchMapper, personSearchMapper, securityEventMapper,
-            trackMapper, trackMetaMapper, perimeterAlarmMapper);
+            trackMapper, trackMetaMapper, perimeterAlarmMapper,
+            emptyProvider());
+
+    /** dev 占位抓拍渲染器 provider：单测环境无 Spring 上下文，给空 provider（创建流程跳过占位图）。 */
+    @SuppressWarnings("unchecked")
+    private static ObjectProvider<com.sinopec.mmsecurity.config.PerimeterAlarmSnapshotRenderer> emptyProvider() {
+        return mock(ObjectProvider.class);
+    }
 
     @BeforeEach
     void resetCaches() {

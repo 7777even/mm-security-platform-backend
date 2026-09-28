@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.config.PerimeterAlarmSnapshotRenderer;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.entity.FacPerimeterAlarm;
@@ -11,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,6 +32,10 @@ class SecurityPerimeterAlarmCreateTest {
 
     @Mock
     private FacPerimeterAlarmMapper perimeterAlarmMapper;
+
+    /** dev 占位抓拍渲染器 provider：单测上下文无 Spring，mock 后 getIfAvailable() 默认 null，创建流程跳过占位图。 */
+    @Mock
+    private ObjectProvider<PerimeterAlarmSnapshotRenderer> snapshotRendererProvider;
 
     @InjectMocks
     private SecurityService securityService;

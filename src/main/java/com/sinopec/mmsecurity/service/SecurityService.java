@@ -21,6 +21,7 @@ import com.sinopec.mmsecurity.dto.SecurityTrackSummary;
 import com.sinopec.mmsecurity.dto.SecurityTrackTimelineItem;
 import com.sinopec.mmsecurity.dto.VehicleSearchDetail;
 import com.sinopec.mmsecurity.dto.VehicleSearchResult;
+import com.sinopec.mmsecurity.config.PerimeterAlarmSnapshotRenderer;
 import com.sinopec.mmsecurity.entity.FacBollard;
 import com.sinopec.mmsecurity.entity.FacGateControl;
 import com.sinopec.mmsecurity.entity.FacPatrolCamera;
@@ -41,6 +42,7 @@ import com.sinopec.mmsecurity.mapper.FacSecurityTrackMetaMapper;
 import com.sinopec.mmsecurity.mapper.FacVehicleSearchMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -72,6 +74,11 @@ public class SecurityService {
     private final FacSecurityTrackMapper trackMapper;
     private final FacSecurityTrackMetaMapper trackMetaMapper;
     private final FacPerimeterAlarmMapper perimeterAlarmMapper;
+    /**
+     * dev 占位抓拍渲染器（@Profile("dev") 才注册）：手工创建告警后立即生成现场图，
+     * 避免「启动期 Seeder 只补存量、新建告警缩略图永远空白」。生产环境 provider 为空，跳过。
+     */
+    private final ObjectProvider<PerimeterAlarmSnapshotRenderer> snapshotRendererProvider;
 
     /**
      * 安全防恐设备配置表（巡逻摄像机 / 道闸 / 防恐柱）读穿缓存：大屏轮询入口，TTL 60s 兜底。
@@ -278,11 +285,23 @@ public class SecurityService {
         e.setIntrusionPosition(req.getIntrusionPosition());
         e.setIntrusionMethod(req.getIntrusionMethod());
         e.setRelatedCamera(req.getRelatedCamera());
+        e.setDeviceId(req.getDeviceId());
         e.setSource("人工录入");
         e.setStatus("未确认");
         e.setFalseAlarm("未核实");
         e.setVersion(0L);
         perimeterAlarmMapper.insert(e);
+        // dev 即时占位抓拍：与启动期 Seeder 同一渲染器，保证手工录入的告警卡片/详情立刻有现场图；
+        // 渲染失败不阻断创建（仅记 warn，快照端点仍按 404 语义兜底）。prod 无该 bean，自然跳过。
+        PerimeterAlarmSnapshotRenderer renderer = snapshotRendererProvider.getIfAvailable();
+        if (renderer != null) {
+            try {
+                e.setSnapshotBytes(renderer.render(e));
+                perimeterAlarmMapper.updateById(e);
+            } catch (Exception ex) {
+                log.warn("[createPerimeterAlarm] 生成告警 {} 占位抓拍失败: {}", e.getId(), ex.getMessage());
+            }
+        }
         return toPerimeterAlarmDetail(e);
     }
 
