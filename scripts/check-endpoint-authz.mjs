@@ -63,6 +63,12 @@ const ALLOWLIST = new Map([
     '大屏事故救援页「启动应急响应」（POST /emergency-events/{id}/start-response）：由登录态的值守/指挥人员自助启动，'
     + '仅把 fac_emergency_event + fac_accident_incident 的状态推进为 processing/处置中；与 create/report 同源的'
     + '「仅登录态」自助场景，若后续要收紧，应引入 emergency:event:write 之类 perm 码。'],
+
+  // —— 流程填报（一线人员自助填报，语义上不能要求管理权限）——
+  ['FormRecord#create',
+    '流程填报记录新增（POST /form-records）：一线人员自助填报入口，任意登录用户即可提交'
+    + '（控制器注释明示「任意登录用户即可提交，一线人员填报入口」），与 EmergencyEvent#create 同源的'
+    + '「仅登录态」自助场景；若后续要收紧，应引入 form-record:create 之类 perm 码，而非简单 role=ADMIN。'],
 ]);
 
 /** 去掉块注释与行注释，避免把注释里的注解当成真注解 */
