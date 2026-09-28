@@ -7,6 +7,7 @@ import com.sinopec.mmsecurity.dto.RiskHeatItem;
 import com.sinopec.mmsecurity.dto.SystemMessageItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.FacPerimeterAlarm;
 import com.sinopec.mmsecurity.entity.FacDevice;
 import com.sinopec.mmsecurity.entity.FacSystemMessage;
 import com.sinopec.mmsecurity.entity.FacWorkstation;
@@ -99,38 +100,46 @@ class DashboardServiceTest {
     }
 
     @Test
-    void trend24h_bucketsByHourWithZeroPadding() {
-        // 固定 now = 2026-09-07 11:30 → 窗口 [09-06 12:00, 09-07 12:00)
+    void trendDaily_bucketsByDay() {
+        // 固定 now = 2026-09-07 11:30 → 窗口 09-01 .. 09-07（7 天），今天 = 09-07
         LocalDateTime now = LocalDateTime.of(2026, 9, 7, 11, 30);
         when(alarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(
-                alarmAt(2026, 9, 7, 8, 0),   // 桶 20 → "08:00"
-                alarmAt(2026, 9, 7, 9, 0),   // 桶 21 → "09:00"
-                alarmAt(2026, 9, 7, 9, 45),  // 桶 21 → "09:00"（同桶累加）
-                alarmAt(2026, 9, 7, 11, 15)  // 桶 23 → "11:00"
+                alarmAt(2026, 9, 7, 8, 0),   // 计入「09-07」
+                alarmAt(2026, 9, 7, 9, 0),   // 计入「09-07」（同日累加）
+                alarmAt(2026, 9, 7, 9, 45),  // 计入「09-07」
+                alarmAt(2026, 9, 7, 11, 15), // 计入「09-07」
+                alarmAt(2026, 9, 5, 14, 0)   // 计入「09-05」，不应混入「09-07」
+        ));
+        when(perimeterAlarmMapper.selectList(any())).thenReturn(List.of(
+                perimeterAt(2026, 9, 6, 10, 0) // 计入「09-06」
         ));
 
-        List<AlarmTrendPoint> points = service.trend24h(now);
-        assertEquals(24, points.size());
+        List<AlarmTrendPoint> points = service.trendDaily(now);
+        assertEquals(7, points.size());
 
-        Map<String, Integer> byHour = points.stream()
-                .collect(Collectors.toMap(AlarmTrendPoint::getHour, AlarmTrendPoint::getCount));
-        assertEquals(1, byHour.get("08:00"));
-        assertEquals(2, byHour.get("09:00"));
-        assertEquals(1, byHour.get("11:00"));
-        // 其余 21 个桶补 0
-        assertEquals(0, byHour.get("00:00"));
-        assertEquals(0, byHour.get("07:00"));
-        assertEquals(0, byHour.get("23:00"));
+        Map<String, Integer> byDay = points.stream()
+                .collect(Collectors.toMap(AlarmTrendPoint::getDate, AlarmTrendPoint::getCount));
+        // 今天（09-07）4 条主告警
+        assertEquals(4, byDay.get("09-07"));
+        // 09-05 主告警 1 条
+        assertEquals(1, byDay.get("09-05"));
+        // 09-06 周界告警 1 条
+        assertEquals(1, byDay.get("09-06"));
+        // 其余 4 天补 0
+        assertEquals(0, byDay.get("09-01"));
+        assertEquals(0, byDay.get("09-02"));
+        assertEquals(0, byDay.get("09-03"));
+        assertEquals(0, byDay.get("09-04"));
     }
 
     @Test
-    void trend24h_emptyWindow_returnsAllZeros() {
+    void trendDaily_emptyWindow_returnsAllZeros() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 7, 11, 30);
         when(alarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
         when(perimeterAlarmMapper.selectList(any())).thenReturn(List.of());
 
-        List<AlarmTrendPoint> points = service.trend24h(now);
-        assertEquals(24, points.size());
+        List<AlarmTrendPoint> points = service.trendDaily(now);
+        assertEquals(7, points.size());
         assertEquals(0, points.stream().mapToInt(AlarmTrendPoint::getCount).sum());
     }
 
@@ -138,6 +147,12 @@ class DashboardServiceTest {
         FacAlarm a = new FacAlarm();
         a.setOccurredAt(LocalDateTime.of(y, mo, d, h, mi));
         return a;
+    }
+
+    private FacPerimeterAlarm perimeterAt(int y, int mo, int d, int h, int mi) {
+        FacPerimeterAlarm p = new FacPerimeterAlarm();
+        p.setAlarmTime(String.format("%04d-%02d-%02d %02d:%02d:00", y, mo, d, h, mi));
+        return p;
     }
 
     private FacWorkstation ws(String id, String name, String zone, boolean online) {

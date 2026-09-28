@@ -31,7 +31,7 @@ public class DashboardController {
 
     @GetMapping("/alarm-trend")
     public Result<List<AlarmTrendPoint>> alarmTrend() {
-        return Result.ok(dashboardService.trend24h(LocalDateTime.now()));
+        return Result.ok(dashboardService.trendDaily(LocalDateTime.now()));
     }
 
     @GetMapping("/workstations")

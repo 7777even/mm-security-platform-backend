@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -128,47 +129,58 @@ public class DashboardService {
      *
      * @param now 当前时间（由调用方传入，便于单测注入固定时钟）
      */
-    public List<AlarmTrendPoint> trend24h(LocalDateTime now) {
-        return trendCache.get(now.truncatedTo(ChronoUnit.HOURS), k -> computeTrend24h(now));
+    public List<AlarmTrendPoint> trendDaily(LocalDateTime now) {
+        return trendCache.get(now.truncatedTo(ChronoUnit.HOURS), k -> computeTrendDaily(now));
     }
 
-    private List<AlarmTrendPoint> computeTrend24h(LocalDateTime now) {
-        // 真实统计：近 7 天窗口内合并「主告警 fac_alarm」与「周界入侵告警 fac_perimeter_alarm」，
-        // 按发生时段（hour-of-day 0..23）聚合，得到全天告警时段分布；无报警的小时 count=0。
-        LocalDateTime end = now;
-        LocalDateTime start = now.minusDays(7);
+    private List<AlarmTrendPoint> computeTrendDaily(LocalDateTime now) {
+        // 真实统计：近 7 天（含今天）每天一个桶；桶的高度 = 当天「主告警 fac_alarm」+
+        // 「周界入侵告警 fac_perimeter_alarm」的发生总数。今天刚新增的报警即时计入「今天」桶；
+        // 无报警的日子 count=0，保证前端拿到完整 7 点序列，形成按天的趋势曲线。
+        LocalDate today = now.toLocalDate();
+        LocalDate windowStart = today.minusDays(6);
+        LocalDateTime start = windowStart.atStartOfDay();
+        LocalDateTime end = today.atTime(23, 59, 59);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        DateTimeFormatter dayFmt = DateTimeFormatter.ofPattern("MM-dd");
+
+        Map<LocalDate, Integer> counts = new HashMap<>();
+        for (int i = 0; i <= 6; i++) {
+            counts.put(windowStart.plusDays(i), 0);
+        }
 
         List<FacAlarm> alarms = alarmMapper.selectList(new LambdaQueryWrapper<FacAlarm>()
                 .eq(FacAlarm::getDeleted, 0)
                 .ge(FacAlarm::getOccurredAt, start)
                 .le(FacAlarm::getOccurredAt, end));
-        List<FacPerimeterAlarm> perims = perimeterAlarmMapper.selectList(new LambdaQueryWrapper<FacPerimeterAlarm>());
-        if (perims == null) perims = List.of();
-
-        Map<Integer, Integer> counts = new HashMap<>();
-        for (FacAlarm a : alarms) {
-            LocalDateTime occ = a.getOccurredAt();
-            if (occ == null) continue;
-            counts.merge(occ.getHour(), 1, Integer::sum);
+        if (alarms != null) {
+            for (FacAlarm a : alarms) {
+                LocalDateTime occ = a.getOccurredAt();
+                if (occ == null) continue;
+                counts.merge(occ.toLocalDate(), 1, Integer::sum);
+            }
         }
-        for (FacPerimeterAlarm p : perims) {
-            if (p.getAlarmTime() == null) continue;
-            try {
-                LocalDateTime t = LocalDateTime.parse(p.getAlarmTime(), fmt);
-                if (!t.isBefore(start) && !t.isAfter(end)) {
-                    counts.merge(t.getHour(), 1, Integer::sum);
+        List<FacPerimeterAlarm> perims = perimeterAlarmMapper.selectList(new LambdaQueryWrapper<FacPerimeterAlarm>()
+                .ge(FacPerimeterAlarm::getAlarmTime, start.format(fmt))
+                .le(FacPerimeterAlarm::getAlarmTime, end.format(fmt)));
+        if (perims != null) {
+            for (FacPerimeterAlarm p : perims) {
+                if (p.getAlarmTime() == null) continue;
+                try {
+                    LocalDateTime t = LocalDateTime.parse(p.getAlarmTime(), fmt);
+                    counts.merge(t.toLocalDate(), 1, Integer::sum);
+                } catch (Exception ignored) {
+                    // 时间格式异常的行跳过，不参与趋势统计
                 }
-            } catch (Exception ignored) {
-                // 时间格式异常的行跳过，不参与趋势统计
             }
         }
 
-        List<AlarmTrendPoint> points = new ArrayList<>(24);
-        for (int i = 0; i < 24; i++) {
+        List<AlarmTrendPoint> points = new ArrayList<>(7);
+        for (int i = 0; i <= 6; i++) {
+            LocalDate d = windowStart.plusDays(i);
             AlarmTrendPoint p = new AlarmTrendPoint();
-            p.setHour(String.format("%02d:00", i));
-            p.setCount(counts.getOrDefault(i, 0));
+            p.setDate(d.format(dayFmt));
+            p.setCount(counts.getOrDefault(d, 0));
             points.add(p);
         }
         return points;

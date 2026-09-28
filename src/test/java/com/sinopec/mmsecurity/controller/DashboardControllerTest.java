@@ -71,20 +71,20 @@ class DashboardControllerTest {
     @Test
     void alarmTrend_returnsTrendPoints() throws Exception {
         AlarmTrendPoint p1 = new AlarmTrendPoint();
-        p1.setHour("08:00");
+        p1.setDate("09-22");
         p1.setCount(3);
         AlarmTrendPoint p2 = new AlarmTrendPoint();
-        p2.setHour("09:00");
+        p2.setDate("09-23");
         p2.setCount(12);
-        when(service.trend24h(org.mockito.ArgumentMatchers.any(java.time.LocalDateTime.class)))
+        when(service.trendDaily(org.mockito.ArgumentMatchers.any(java.time.LocalDateTime.class)))
                 .thenReturn(List.of(p1, p2));
 
         mockMvc.perform(get("/api/v1/dashboard/alarm-trend"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data[0].hour").value("08:00"))
+                .andExpect(jsonPath("$.data[0].date").value("09-22"))
                 .andExpect(jsonPath("$.data[0].count").value(3))
-                .andExpect(jsonPath("$.data[1].hour").value("09:00"))
+                .andExpect(jsonPath("$.data[1].date").value("09-23"))
                 .andExpect(jsonPath("$.data[1].count").value(12));
     }
 
