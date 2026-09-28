@@ -14,6 +14,7 @@ import com.sinopec.mmsecurity.mapper.AlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
+import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
 import com.sinopec.mmsecurity.security.DataScopeResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,8 +41,9 @@ class DashboardServiceTest {
     private final FacWorkstationMapper workstationMapper = mock(FacWorkstationMapper.class);
     private final FacSystemMessageMapper systemMessageMapper = mock(FacSystemMessageMapper.class);
     private final DataScopeResolver dataScopeResolver = mock(DataScopeResolver.class);
+    private final FacPerimeterAlarmMapper perimeterAlarmMapper = mock(FacPerimeterAlarmMapper.class);
     private final DashboardService service =
-            new DashboardService(deviceMapper, alarmMapper, workstationMapper, systemMessageMapper, dataScopeResolver);
+            new DashboardService(deviceMapper, alarmMapper, workstationMapper, systemMessageMapper, dataScopeResolver, perimeterAlarmMapper);
 
     @BeforeEach
     void resetCaches() {
@@ -125,6 +127,7 @@ class DashboardServiceTest {
     void trend24h_emptyWindow_returnsAllZeros() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 7, 11, 30);
         when(alarmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(perimeterAlarmMapper.selectList(any())).thenReturn(List.of());
 
         List<AlarmTrendPoint> points = service.trend24h(now);
         assertEquals(24, points.size());

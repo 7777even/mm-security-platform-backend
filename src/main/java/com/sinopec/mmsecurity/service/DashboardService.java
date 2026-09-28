@@ -7,10 +7,12 @@ import com.sinopec.mmsecurity.dto.RiskHeatItem;
 import com.sinopec.mmsecurity.dto.SystemMessageItem;
 import com.sinopec.mmsecurity.dto.Workstation;
 import com.sinopec.mmsecurity.entity.FacAlarm;
+import com.sinopec.mmsecurity.entity.FacPerimeterAlarm;
 import com.sinopec.mmsecurity.entity.FacDevice;
 import com.sinopec.mmsecurity.entity.FacWorkstation;
 import com.sinopec.mmsecurity.entity.FacSystemMessage;
 import com.sinopec.mmsecurity.mapper.AlarmMapper;
+import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacDeviceMapper;
 import com.sinopec.mmsecurity.mapper.FacWorkstationMapper;
 import com.sinopec.mmsecurity.mapper.FacSystemMessageMapper;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -48,6 +51,7 @@ public class DashboardService {
     private final FacWorkstationMapper workstationMapper;
     private final FacSystemMessageMapper systemMessageMapper;
     private final DataScopeResolver dataScopeResolver;
+    private final FacPerimeterAlarmMapper perimeterAlarmMapper;
 
     /**
      * 大屏聚合短 TTL 缓存：轮询场景下避免每次刷新全表物化 + Java 侧聚合。
@@ -129,29 +133,41 @@ public class DashboardService {
     }
 
     private List<AlarmTrendPoint> computeTrend24h(LocalDateTime now) {
-        LocalDateTime endHour = now.truncatedTo(ChronoUnit.HOURS);
-        LocalDateTime startHour = endHour.minusHours(23);
-        LocalDateTime windowEnd = endHour.plusHours(1);
+        // 真实统计：近 7 天窗口内合并「主告警 fac_alarm」与「周界入侵告警 fac_perimeter_alarm」，
+        // 按发生时段（hour-of-day 0..23）聚合，得到全天告警时段分布；无报警的小时 count=0。
+        LocalDateTime end = now;
+        LocalDateTime start = now.minusDays(7);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         List<FacAlarm> alarms = alarmMapper.selectList(new LambdaQueryWrapper<FacAlarm>()
                 .eq(FacAlarm::getDeleted, 0)
-                .ge(FacAlarm::getOccurredAt, startHour)
-                .lt(FacAlarm::getOccurredAt, windowEnd));
+                .ge(FacAlarm::getOccurredAt, start)
+                .le(FacAlarm::getOccurredAt, end));
+        List<FacPerimeterAlarm> perims = perimeterAlarmMapper.selectList(new LambdaQueryWrapper<FacPerimeterAlarm>());
+        if (perims == null) perims = List.of();
 
         Map<Integer, Integer> counts = new HashMap<>();
         for (FacAlarm a : alarms) {
             LocalDateTime occ = a.getOccurredAt();
             if (occ == null) continue;
-            long bucket = Duration.between(startHour, occ.truncatedTo(ChronoUnit.HOURS)).toHours();
-            if (bucket >= 0 && bucket <= 23) {
-                counts.merge((int) bucket, 1, Integer::sum);
+            counts.merge(occ.getHour(), 1, Integer::sum);
+        }
+        for (FacPerimeterAlarm p : perims) {
+            if (p.getAlarmTime() == null) continue;
+            try {
+                LocalDateTime t = LocalDateTime.parse(p.getAlarmTime(), fmt);
+                if (!t.isBefore(start) && !t.isAfter(end)) {
+                    counts.merge(t.getHour(), 1, Integer::sum);
+                }
+            } catch (Exception ignored) {
+                // 时间格式异常的行跳过，不参与趋势统计
             }
         }
 
         List<AlarmTrendPoint> points = new ArrayList<>(24);
         for (int i = 0; i < 24; i++) {
             AlarmTrendPoint p = new AlarmTrendPoint();
-            p.setHour(String.format("%02d:00", startHour.plusHours(i).getHour()));
+            p.setHour(String.format("%02d:00", i));
             p.setCount(counts.getOrDefault(i, 0));
             points.add(p);
         }
