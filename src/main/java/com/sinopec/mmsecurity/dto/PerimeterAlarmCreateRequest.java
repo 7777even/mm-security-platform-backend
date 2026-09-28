@@ -38,4 +38,6 @@ public class PerimeterAlarmCreateRequest {
     private String intrusionMethod;
     /** 关联摄像机（可选）。 */
     private String relatedCamera;
+    /** 设备编号（可选，落库 device_id）。 */
+    private String deviceId;
 }
