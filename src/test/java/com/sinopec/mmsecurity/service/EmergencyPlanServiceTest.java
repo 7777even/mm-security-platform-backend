@@ -95,7 +95,7 @@ class EmergencyPlanServiceTest {
                 catalog(1L, "disposal", "乙烯储罐火灾处置方案", 1),
                 catalog(2L, "fire", "乙烯装置消防救援处置方案", 3)));
 
-        EmergencyPlanOptions options = service.options();
+        EmergencyPlanOptions options = service.options(null);
 
         assertEquals(4, options.getTabs().size());
         assertEquals("disposal", options.getTabs().get(0).getKey());

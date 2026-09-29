@@ -12,6 +12,8 @@ import com.sinopec.mmsecurity.dto.EmergencyPlanTab;
 import com.sinopec.mmsecurity.dto.PlanActionCard;
 import com.sinopec.mmsecurity.dto.PlanCombatResource;
 import com.sinopec.mmsecurity.dto.PlanInstance;
+import com.sinopec.mmsecurity.dto.PlanInvokeRequest;
+import com.sinopec.mmsecurity.dto.PlanInvokeResult;
 import com.sinopec.mmsecurity.dto.PlanMajorPhase;
 import com.sinopec.mmsecurity.dto.SelectableEmergencyPlan;
 import com.sinopec.mmsecurity.service.EmergencyPlanService;
@@ -68,7 +70,7 @@ class EmergencyPlanControllerTest {
         plan.setAccidentType("火灾/爆炸");
         plan.setFacility("乙烯罐区");
         options.setPlans(List.of(plan));
-        when(service.options()).thenReturn(options);
+        when(service.options(any())).thenReturn(options);
 
         mvc().perform(get("/api/v1/emergency-plans/options"))
                 .andExpect(status().isOk())
@@ -211,5 +213,46 @@ class EmergencyPlanControllerTest {
                 .andExpect(jsonPath("$.data.sections[0].title").value("基础信息"))
                 .andExpect(jsonPath("$.data.sections[0].fields[0].label").value("所属组织"))
                 .andExpect(jsonPath("$.data.sections[0].fields[0].value").value("茂名石化应急指挥中心"));
+    }
+
+    /** 一键调用预案：控制器→服务契约（鉴权由 RequireAuthInterceptor 在 WebMvcConfig 注册，standalone 不挂载，故此处聚焦返回值）。 */
+    @Test
+    void invokePlan_returnsInvokeResult() throws Exception {
+        PlanInvokeResult result = new PlanInvokeResult();
+        result.setPlanId(1L);
+        result.setPlanName("乙烯储罐火灾处置方案");
+        result.setDomain("production");
+        result.setIsActive(true);
+        result.setInvokeCount(1);
+        when(service.invokePlan(eq(1L), any())).thenReturn(result);
+
+        mvc().perform(post("/api/v1/emergency-plans/1/invoke")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"note\":\"升级/更换预案\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.planId").value(1))
+                .andExpect(jsonPath("$.data.planName").value("乙烯储罐火灾处置方案"))
+                .andExpect(jsonPath("$.data.domain").value("production"))
+                .andExpect(jsonPath("$.data.isActive").value(true))
+                .andExpect(jsonPath("$.data.invokeCount").value(1));
+    }
+
+    /** 一键调用预案：无 note 也允许（body 可选）。 */
+    @Test
+    void invokePlan_withoutBody_returnsInvokeResult() throws Exception {
+        PlanInvokeResult result = new PlanInvokeResult();
+        result.setPlanId(2L);
+        result.setIsActive(true);
+        result.setInvokeCount(3);
+        when(service.invokePlan(eq(2L), any())).thenReturn(result);
+
+        mvc().perform(post("/api/v1/emergency-plans/2/invoke")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.planId").value(2))
+                .andExpect(jsonPath("$.data.isActive").value(true))
+                .andExpect(jsonPath("$.data.invokeCount").value(3));
     }
 }
