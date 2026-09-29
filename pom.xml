@@ -146,6 +146,26 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- 集成测试：Testcontainers 三方言真机迁移验证（PG 容器；DM8 无公开镜像，走 env 门控 IT）。
+             Docker daemon 未运行时 PostgresqlFlywayMigrationIT 由 assumeTrue 跳过，保证 mvn test 仍绿。 -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.19.8</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.19.8</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>1.19.8</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

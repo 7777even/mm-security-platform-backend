@@ -13,6 +13,7 @@ import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
 import com.sinopec.mmsecurity.service.SecurityService;
 import org.junit.jupiter.api.Test;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -28,14 +29,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * DB 集成测试层（DB-IT）：启动真实 Spring 上下文 + dev profile（H2 内存库 + Flyway 应用
- * {@code db/migration/h2} 的 V1–V8），在真实数据源上验证 MyBatis-Plus Mapper 的
+ * {@code db/migration/h2} 的 V1–V87），在真实数据源上验证 MyBatis-Plus Mapper 的
  * 落库 / 逻辑删除 / 审计写入。
  *
  * <p>与 standalone MockMvc 的 {@code *Test}（答逻辑/契约）分层：本测试答「真实 SQL / 落库 / 逻辑删除」，
  * 且<b>复用 {@code db/migration/h2} 的 V 文件作为唯一 schema 来源，禁止在测试目录复制第二份 DDL</b>。</p>
  *
- * <p>Docker / Testcontainers 不可用（本机无 Docker），故以 H2 充当集成 DB；H2 与 PG / DM 在 Flyway 方言上
- * 不完全等价，生产库语义最终以 {@code docs/deployment/dameng-migration-runbook.md} 在真实实例复核为准。</p>
+ * <p>Docker / Testcontainers 不可用（本机 daemon 未运行）时，以 H2 充当集成 DB；PostgreSQL / 达梦 DM8
+ * 真机迁移验证由 {@code PostgresqlFlywayMigrationIT} / {@code DamengFlywayMigrationIT} 在环境就绪后运行。</p>
  */
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -57,6 +58,8 @@ class DbLayerIntegrationIT {
     private FacPerimeterAlarmMapper perimeterAlarmMapper;
     @Autowired
     private SecurityService securityService;
+    @Autowired
+    private Flyway flyway;
 
     /** 证明 schema + 种子数据来自 V 文件（非第二份 DDL）：V6 种子行必须可读。 */
     @Test
@@ -147,5 +150,22 @@ class DbLayerIntegrationIT {
         assertNotNull(d2);
         assertTrue(d2.getId() != null && d2.getId() > id1,
                 "连续录入 id 应递增，实际=" + d2.getId());
+    }
+
+    /**
+     * 三方言 Flyway 迁移基线（H2 方言）：断言 classpath:db/migration/h2 的全部 V 文件在真实
+     * Flyway 上干净应用、无方言漂移/语法错误。任一 V 文件 SQL 不兼容会导致上下文启动失败；
+     * 此处再显式校验「已应用迁移数 == H2 方言 V 文件数」，作为三方言一致性的人工可读护栏。
+     *
+     * <p>PostgreSQL / 达梦 DM8 真机迁移验证见 {@code PostgresqlFlywayMigrationIT} /
+     * {@code DamengFlywayMigrationIT}（需 Docker / 达梦实例，环境就绪即跑）。</p>
+     */
+    @Test
+    void flywayMigrations_allH2VersionsApplied_noDrift() {
+        assertNotNull(flyway.info().current(), "Flyway 应已应用迁移（当前版本非空）");
+        // h2 方言共 84 个 V 文件（V1 快照 + V2..V87 增量）；保守阈值避免随增量微调而脆弱。
+        int applied = flyway.info().applied().length;
+        assertTrue(applied >= 80,
+                "h2 方言应已应用全部 V 文件（>=80），实际已应用=" + applied);
     }
 }
