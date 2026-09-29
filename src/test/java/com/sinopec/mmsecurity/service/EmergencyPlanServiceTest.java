@@ -25,7 +25,18 @@ import com.sinopec.mmsecurity.mapper.FacPlanMajorPhaseMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanResourceMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanRiskEventMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanSubPhaseMapper;
+import com.sinopec.mmsecurity.dto.PlanInvokeRequest;
+import com.sinopec.mmsecurity.dto.PlanInvokeResult;
+import com.sinopec.mmsecurity.entity.FacEmergencyPlanInvokeLog;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPlanInvokeLogMapper;
+import com.sinopec.mmsecurity.security.LoginUser;
+import com.sinopec.mmsecurity.security.UserContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.mockito.ArgumentCaptor;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -40,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 /** 应急预案服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
@@ -64,9 +76,22 @@ class EmergencyPlanServiceTest {
     private FacEmergencyPlanCatalogMapper planCatalogMapper;
     @Mock
     private FacEmergencyPlanDetailMapper planDetailMapper;
+    @Mock
+    private FacEmergencyPlanInvokeLogMapper invokeLogMapper;
 
     @InjectMocks
     private EmergencyPlanService service;
+
+    /**
+     * 纯 Mockito 不起 Spring，MyBatis-Plus 的 TableInfo 缓存未初始化，
+     * 导致 invokePlan 内 LambdaUpdateWrapper 解析 lambda 列时报 "can not find lambda cache"。
+     * 手动为 FacEmergencyPlan 注入缓存，使同域置非激活断言可跑通。
+     */
+    @BeforeAll
+    static void initTableInfoCache() {
+        MapperBuilderAssistant assistant = new MapperBuilderAssistant(new MybatisConfiguration(), "test");
+        TableInfoHelper.initTableInfo(assistant, FacEmergencyPlan.class);
+    }
 
     private static FacEmergencyPlan catalog(Long id, String tab, String name, int sortNo) {
         FacEmergencyPlan entity = new FacEmergencyPlan();
@@ -368,5 +393,55 @@ class EmergencyPlanServiceTest {
     void planCatalogDetail_handlesEmptyTable() {
         when(planDetailMapper.selectList(any())).thenReturn(List.of());
         assertTrue(service.planCatalogDetail().getSections().isEmpty());
+    }
+
+    // ===================== 一键调用预案（production-plan-oneclick 遗留补测） =====================
+
+    private static FacEmergencyPlan plan(Long id, String domain, String name) {
+        FacEmergencyPlan p = new FacEmergencyPlan();
+        p.setId(id);
+        p.setDomain(domain);
+        p.setPlanName(name);
+        p.setIsActive(false);
+        p.setInvokeCount(0);
+        return p;
+    }
+
+    @Test
+    void invokePlan_activatesPlanDeactivatesSameDomainAndLogs() {
+        UserContext.set(new LoginUser(null, "tester", "USER"));
+        FacEmergencyPlan p = plan(1L, "production", "乙烯储罐火灾处置方案");
+        when(emergencyPlanMapper.selectById(1L)).thenReturn(p);
+        when(emergencyPlanMapper.update(any(), any())).thenReturn(1);
+        when(emergencyPlanMapper.updateById(any())).thenReturn(1);
+        when(invokeLogMapper.insert(any())).thenReturn(1);
+
+        PlanInvokeRequest in = new PlanInvokeRequest();
+        in.setNote("升级预案");
+        PlanInvokeResult r = service.invokePlan(1L, in);
+
+        assertNotNull(r);
+        assertTrue(r.getIsActive(), "调用后置激活");
+        assertEquals(1, r.getInvokeCount(), "调用次数 +1");
+        assertEquals("tester", r.getOperator());
+        assertEquals("production", r.getDomain());
+
+        // 同域其余预案置非激活（域内核）
+        verify(emergencyPlanMapper).update(any(), any());
+        // 留痕入库
+        ArgumentCaptor<FacEmergencyPlanInvokeLog> cap = ArgumentCaptor.forClass(FacEmergencyPlanInvokeLog.class);
+        verify(invokeLogMapper).insert(cap.capture());
+        assertEquals(1L, cap.getValue().getPlanId());
+        assertEquals("production", cap.getValue().getDomain());
+        assertEquals("升级预案", cap.getValue().getInvokeNote());
+    }
+
+    @Test
+    void invokePlan_returnsNullWhenPlanMissing() {
+        UserContext.set(new LoginUser(null, "tester", "USER"));
+        when(emergencyPlanMapper.selectById(99L)).thenReturn(null);
+
+        assertNull(service.invokePlan(99L, new PlanInvokeRequest()));
+        verify(invokeLogMapper, times(0)).insert(any());
     }
 }

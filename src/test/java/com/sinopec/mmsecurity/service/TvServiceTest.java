@@ -13,6 +13,7 @@ import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvSnapshot;
+import com.sinopec.mmsecurity.entity.SysZone;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
@@ -359,5 +360,66 @@ class TvServiceTest {
         TvSnapshotPage out = service.monitorSnapshots("ar-01", 1, 12, null, null);
         assertEquals(1, out.getTotal());
         assertEquals(1, out.getList().size());
+    }
+
+    // ===================== 生产告警自动关联兜底（production-tv-snapshot-linkage） =====================
+
+    @Test
+    void autoRelate_writesBackOrphanSnapshotWithinWindowAndLocation() {
+        // 防区主数据：Z1 -> 乙烯罐区（供 zoneNameMap 取 zoneName）
+        SysZone zone = new SysZone();
+        zone.setZoneCode("Z1");
+        zone.setZoneName("乙烯罐区");
+        when(zoneMapper.selectList(null)).thenReturn(List.of(zone));
+
+        FacTvSnapshot orphan = new FacTvSnapshot();
+        orphan.setId(7L);
+        orphan.setMonitorName("高空AR-01");
+        orphan.setZoneCode("Z1");
+        orphan.setCaptureTime("2026-03-17 10:30:00");
+        orphan.setAlarmId(null);
+        when(snapshotMapper.selectList(any())).thenReturn(List.of(orphan));
+        when(snapshotMapper.updateById(any())).thenReturn(1);
+
+        int n = service.autoRelateSnapshotsForAlarm(42L, "PRODUCTION", "乙烯罐区", "2026-03-17 10:30:00");
+
+        assertEquals(1, n, "窗口内 + 位置匹配 → 反写 1 条孤儿快照");
+        ArgumentCaptor<FacTvSnapshot> cap = ArgumentCaptor.forClass(FacTvSnapshot.class);
+        verify(snapshotMapper, times(1)).updateById(cap.capture());
+        assertEquals(42L, cap.getValue().getAlarmId());
+        assertEquals("PRODUCTION", cap.getValue().getAlarmType());
+    }
+
+    @Test
+    void autoRelate_returnsZeroWhenLocationMismatch() {
+        SysZone zone = new SysZone();
+        zone.setZoneCode("Z1");
+        zone.setZoneName("乙烯罐区");
+        when(zoneMapper.selectList(null)).thenReturn(List.of(zone));
+
+        FacTvSnapshot orphan = new FacTvSnapshot();
+        orphan.setId(7L);
+        orphan.setMonitorName("高空AR-01");
+        orphan.setZoneCode("Z1");
+        orphan.setCaptureTime("2026-03-17 10:30:00");
+        when(snapshotMapper.selectList(any())).thenReturn(List.of(orphan));
+
+        int n = service.autoRelateSnapshotsForAlarm(42L, "PRODUCTION", "码头区", "2026-03-17 10:30:00");
+
+        assertEquals(0, n, "位置不符 → 不反写，返回 0（前端走空态，绝不编造）");
+        verify(snapshotMapper, times(0)).updateById(any());
+    }
+
+    @Test
+    void autoRelate_returnsZeroWhenLocationTooShort() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        FacTvSnapshot orphan = new FacTvSnapshot();
+        orphan.setId(7L);
+        when(snapshotMapper.selectList(any())).thenReturn(List.of(orphan));
+
+        int n = service.autoRelateSnapshotsForAlarm(42L, "PRODUCTION", "a", "2026-03-17 10:30:00");
+
+        assertEquals(0, n, "location 关键字 <2 字符 → 直接返回 0（防误关联）");
+        verify(snapshotMapper, times(0)).updateById(any());
     }
 }
