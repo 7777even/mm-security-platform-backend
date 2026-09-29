@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -33,4 +34,23 @@ public class FacTvSnapshot {
     /** 入库时刻（服务端生成，yyyy-MM-dd HH:mm:ss）。 */
     private String createdAt;
     private Integer sortNo;
+
+    /**
+     * 关联告警 id（跨域联动：生产告警详情内嵌关联抓拍）。
+     * 为空表示未关联任何告警（如纯巡检抓拍）。
+     */
+    private Long alarmId;
+
+    /**
+     * 关联告警类型：PRODUCTION 生产 / FIRE 消防 / PERIMETER 周界；空表示未关联。
+     * 与 alarm_id 配套，便于多告警域共用同一张快照表时区分来源。
+     */
+    private String alarmType;
+
+    /**
+     * 防区编码（关联 sys_zone.zone_code，V86 建立防区维度）。
+     * 落库时由监控点位 zone_code 回填（已存在截图）或采集时回查（新截图），与点位防区保持一致。
+     */
+    @TableField("zone_code")
+    private String zoneCode;
 }

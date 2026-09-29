@@ -21,6 +21,10 @@ public class FacTvMonitor {
     private String monitorType;
     private String department;
 
+    /** 防区编码（关联 sys_zone.zone_code，V86 建立防区维度）。 */
+    @TableField("zone_code")
+    private String zoneCode;
+
     /** 安装位置坐标描述；列名 location_desc 避免与通用列冲突 */
     @TableField("location_desc")
     private String location;

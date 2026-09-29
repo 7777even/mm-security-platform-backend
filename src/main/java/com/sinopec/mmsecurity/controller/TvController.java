@@ -6,6 +6,7 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
 import com.sinopec.mmsecurity.dto.TvMapPoint;
 import com.sinopec.mmsecurity.dto.TvMonitorDetail;
+import com.sinopec.mmsecurity.dto.TvMonitorSummary;
 import com.sinopec.mmsecurity.dto.TvOverview;
 import com.sinopec.mmsecurity.dto.TvSnapshotAckResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestRequest;
@@ -86,12 +87,47 @@ public class TvController {
         return Result.ok(tvService.submitSnapshot(req));
     }
 
-    /** 录像截图分页列表（最新在前）。前端订阅 tv.snapshot.changed 实时刷新。 */
+    /**
+     * 录像截图分页列表（最新在前）。前端订阅 tv.snapshot.changed 实时刷新。
+     * 支持按关联告警 alarmId / alarmType 反向过滤（跨域联动：生产告警详情精准取关联抓拍），
+     * 以及按监控点位 monitorCode / 防区 zoneCode / 采集时间区间 startTime~endTime 过滤
+     * （「设备/防区筛选」二级页使用）。
+     */
     @GetMapping("/snapshots")
     public Result<TvSnapshotPage> snapshots(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "12") int size) {
-        return Result.ok(tvService.listSnapshots(page, size));
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) Long alarmId,
+            @RequestParam(required = false) String alarmType,
+            @RequestParam(required = false) String monitorCode,
+            @RequestParam(required = false) String zone,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        return Result.ok(tvService.listSnapshots(page, size, alarmId, alarmType,
+                monitorCode, zone, startTime, endTime));
+    }
+
+    /**
+     * 视频监控点位摘要列表（设备下拉 / 筛选维度）。返回全部点位（含防区），
+     * 供「设备/防区筛选」二级页设备维度下拉使用。
+     */
+    @GetMapping("/monitors")
+    public Result<List<TvMonitorSummary>> monitors() {
+        return Result.ok(tvService.listMonitors());
+    }
+
+    /**
+     * 设备级历史回放：指定监控点位（monitorCode）的录像截图分页列表（最新在前）。
+     * 支持按采集时间区间 startTime~endTime 过滤，供「设备/防区筛选」二级页按设备维度回放历史抓拍。
+     */
+    @GetMapping("/monitors/{code}/snapshots")
+    public Result<TvSnapshotPage> monitorSnapshots(
+            @PathVariable String code,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
+        return Result.ok(tvService.monitorSnapshots(code, page, size, startTime, endTime));
     }
 
     /**

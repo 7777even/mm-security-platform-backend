@@ -19,6 +19,7 @@ import com.sinopec.mmsecurity.dto.TvSnapshotIngestRequest;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotItem;
 import com.sinopec.mmsecurity.dto.TvSnapshotPage;
+import com.sinopec.mmsecurity.dto.TvMonitorSummary;
 import com.sinopec.mmsecurity.entity.FacMajorHazard;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvMapPoint;
@@ -26,6 +27,7 @@ import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvSnapshot;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
+import com.sinopec.mmsecurity.entity.SysZone;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
@@ -33,6 +35,7 @@ import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvSnapshotMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMapPointMapper;
+import com.sinopec.mmsecurity.mapper.SysZoneMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +48,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -76,6 +80,17 @@ public class TvService {
     private final FacTvSnapshotMapper snapshotMapper;
     /** 重大危险源（与 GET /hazards 同源）：用于校正总览卡片的「重大危险源」数量。 */
     private final FacMajorHazardMapper majorHazardMapper;
+    /** 防区主数据（sys_zone）：解析 zone_code → zone_name，供监控点位/截图展示防区名称。 */
+    private final SysZoneMapper zoneMapper;
+
+    /**
+     * 防区编码 → 防区名称 映射（实时从 sys_zone 读取，7 行量级，调用方按需取用）。
+     * 不缓存：防区主数据可被运维维护，直读保证与库一致。
+     */
+    private Map<String, String> zoneNameMap() {
+        return zoneMapper.selectList(null).stream()
+                .collect(Collectors.toMap(SysZone::getZoneCode, SysZone::getZoneName, (a, b) -> a));
+    }
 
     /**
      * 工业电视首屏聚合短 TTL 缓存：大屏高频轮询入口，聚合读 fac_tv_stat_item + fac_tv_operation_stat。
@@ -201,10 +216,33 @@ public class TvService {
         d.setIntegrity(m.getIntegrity());
         d.setMonitorType(m.getMonitorType());
         d.setDepartment(m.getDepartment());
+        Map<String, String> zoneMap = zoneNameMap();
+        d.setZoneCode(m.getZoneCode());
+        d.setZoneName(m.getZoneCode() == null ? null : zoneMap.get(m.getZoneCode()));
         d.setLocation(m.getLocation());
         d.setHeight(m.getHeight());
         d.setAngle(m.getAngle());
         return d;
+    }
+
+    /**
+     * 视频监控点位摘要列表（设备下拉/筛选）：返回全部点位（含防区）。
+     * 供「设备/防区筛选」二级页设备维度下拉使用。
+     */
+    public List<TvMonitorSummary> listMonitors() {
+        Map<String, String> zoneMap = zoneNameMap();
+        return tvMonitorMapper.selectList(
+                new LambdaQueryWrapper<FacTvMonitor>().orderByAsc(FacTvMonitor::getMonitorCode))
+                .stream().map(m -> {
+                    TvMonitorSummary s = new TvMonitorSummary();
+                    s.setCode(m.getMonitorCode());
+                    s.setName(m.getMonitorName());
+                    s.setOnline(Boolean.TRUE.equals(m.getOnline()));
+                    s.setDepartment(m.getDepartment());
+                    s.setZoneCode(m.getZoneCode());
+                    s.setZoneName(m.getZoneCode() == null ? null : zoneMap.get(m.getZoneCode()));
+                    return s;
+                }).collect(Collectors.toList());
     }
 
     // ===================== 录像截图采集入库闭环（V78） =====================
@@ -254,15 +292,18 @@ public class TvService {
         byte[] bytes = decodeBase64(req.getImageBase64());
 
         String name = req.getMonitorName();
-        if (name == null || name.isBlank()) {
-            FacTvMonitor m = tvMonitorMapper.selectOne(new LambdaQueryWrapper<FacTvMonitor>()
-                    .eq(FacTvMonitor::getMonitorCode, req.getMonitorCode()));
-            if (m != null) name = m.getMonitorName();
+        String zoneCode = null;
+        FacTvMonitor m = tvMonitorMapper.selectOne(new LambdaQueryWrapper<FacTvMonitor>()
+                .eq(FacTvMonitor::getMonitorCode, req.getMonitorCode()));
+        if (m != null) {
+            if (name == null || name.isBlank()) name = m.getMonitorName();
+            zoneCode = m.getZoneCode();
         }
 
         FacTvSnapshot e = new FacTvSnapshot();
         e.setMonitorCode(req.getMonitorCode());
         e.setMonitorName(name);
+        e.setZoneCode(zoneCode);
         e.setCaptureTime(req.getCaptureTime() == null || req.getCaptureTime().isBlank()
                 ? now() : req.getCaptureTime());
         e.setEventType(req.getEventType());
@@ -271,27 +312,80 @@ public class TvService {
         e.setSnapshotBytes(bytes);
         e.setCreatedAt(now());
         e.setSortNo(0);
+        e.setAlarmId(req.getAlarmId());
+        e.setAlarmType(req.getAlarmType());
         snapshotMapper.insert(e);
         return e;
     }
 
-    /** 录像截图分页列表（最新在前）。 */
-    public TvSnapshotPage listSnapshots(int page, int size) {
+    /**
+     * 录像截图分页列表（最新在前）。可按关联告警 alarmId / alarmType 反向过滤，
+     * 也可按监控点位 monitorCode / 防区 zoneCode / 采集时间区间 startTime~endTime 过滤，
+     * 供「生产告警详情内嵌关联抓拍」精准取数（跨域联动）及「设备/防区筛选」二级页使用。
+     */
+    public TvSnapshotPage listSnapshots(int page, int size, Long alarmId, String alarmType,
+                                        String monitorCode, String zoneCode, String startTime, String endTime) {
         if (page < 1) page = 1;
         if (size < 1) size = 12;
         final int p = page, s = size;
-        return snapshotListCache.get("p" + p + "s" + s, k -> computeSnapshotPage(p, s));
+        final String key = "p" + p + "s" + s
+                + "a" + (alarmId == null ? "0" : alarmId)
+                + "t" + (alarmType == null ? "" : alarmType)
+                + "mc" + (monitorCode == null ? "" : monitorCode)
+                + "zc" + (zoneCode == null ? "" : zoneCode)
+                + "st" + (startTime == null ? "" : startTime)
+                + "et" + (endTime == null ? "" : endTime);
+        return snapshotListCache.get(key, k -> computeSnapshotPage(p, s, alarmId, alarmType, monitorCode, zoneCode, startTime, endTime));
     }
 
-    private TvSnapshotPage computeSnapshotPage(int page, int size) {
-        Page<FacTvSnapshot> pg = snapshotMapper.selectPage(new Page<>(page, size),
-                new LambdaQueryWrapper<FacTvSnapshot>().orderByDesc(FacTvSnapshot::getId));
+    private TvSnapshotPage computeSnapshotPage(int page, int size, Long alarmId, String alarmType,
+                                               String monitorCode, String zoneCode, String startTime, String endTime) {
+        LambdaQueryWrapper<FacTvSnapshot> q = new LambdaQueryWrapper<FacTvSnapshot>()
+                .orderByDesc(FacTvSnapshot::getId);
+        if (alarmId != null) q.eq(FacTvSnapshot::getAlarmId, alarmId);
+        if (alarmType != null && !alarmType.isBlank()) q.eq(FacTvSnapshot::getAlarmType, alarmType);
+        if (monitorCode != null && !monitorCode.isBlank()) q.eq(FacTvSnapshot::getMonitorCode, monitorCode);
+        if (zoneCode != null && !zoneCode.isBlank()) q.eq(FacTvSnapshot::getZoneCode, zoneCode);
+        if (startTime != null && !startTime.isBlank()) q.ge(FacTvSnapshot::getCaptureTime, startTime);
+        if (endTime != null && !endTime.isBlank()) q.le(FacTvSnapshot::getCaptureTime, endTime);
+        Page<FacTvSnapshot> pg = snapshotMapper.selectPage(new Page<>(page, size), q);
         TvSnapshotPage out = new TvSnapshotPage();
         out.setTotal(pg.getTotal());
         out.setPage(page);
         out.setSize(size);
         out.setPages((int) Math.ceil(pg.getTotal() / (double) size));
-        out.setList(pg.getRecords().stream().map(this::toItem).collect(Collectors.toList()));
+        Map<String, String> zoneMap = zoneNameMap();
+        out.setList(pg.getRecords().stream().map(e -> toItem(e, zoneMap)).collect(Collectors.toList()));
+        return out;
+    }
+
+    /**
+     * 设备级历史回放：指定监控点位（monitorCode）的录像截图分页列表（最新在前）。
+     * 供「设备/防区筛选」二级页按设备维度回放历史抓拍。
+     */
+    public TvSnapshotPage monitorSnapshots(String code, int page, int size, String startTime, String endTime) {
+        if (page < 1) page = 1;
+        if (size < 1) size = 12;
+        final int p = page, s = size;
+        final String key = "dev" + (code == null ? "" : code) + "p" + p + "s" + s
+                + "st" + (startTime == null ? "" : startTime) + "et" + (endTime == null ? "" : endTime);
+        return snapshotListCache.get(key, k -> computeMonitorPage(code, p, s, startTime, endTime));
+    }
+
+    private TvSnapshotPage computeMonitorPage(String code, int page, int size, String startTime, String endTime) {
+        LambdaQueryWrapper<FacTvSnapshot> q = new LambdaQueryWrapper<FacTvSnapshot>()
+                .eq(FacTvSnapshot::getMonitorCode, code)
+                .orderByDesc(FacTvSnapshot::getId);
+        if (startTime != null && !startTime.isBlank()) q.ge(FacTvSnapshot::getCaptureTime, startTime);
+        if (endTime != null && !endTime.isBlank()) q.le(FacTvSnapshot::getCaptureTime, endTime);
+        Page<FacTvSnapshot> pg = snapshotMapper.selectPage(new Page<>(page, size), q);
+        TvSnapshotPage out = new TvSnapshotPage();
+        out.setTotal(pg.getTotal());
+        out.setPage(page);
+        out.setSize(size);
+        out.setPages((int) Math.ceil(pg.getTotal() / (double) size));
+        Map<String, String> zoneMap = zoneNameMap();
+        out.setList(pg.getRecords().stream().map(e -> toItem(e, zoneMap)).collect(Collectors.toList()));
         return out;
     }
 
@@ -320,7 +414,7 @@ public class TvService {
         return r;
     }
 
-    private TvSnapshotItem toItem(FacTvSnapshot e) {
+    private TvSnapshotItem toItem(FacTvSnapshot e, Map<String, String> zoneMap) {
         TvSnapshotItem i = new TvSnapshotItem();
         i.setId(e.getId());
         i.setMonitorCode(e.getMonitorCode());
@@ -331,6 +425,10 @@ public class TvService {
         i.setSource(e.getSource());
         i.setCreatedAt(e.getCreatedAt());
         i.setHasImage(e.getSnapshotBytes() != null && e.getSnapshotBytes().length > 0);
+        i.setAlarmId(e.getAlarmId());
+        i.setAlarmType(e.getAlarmType());
+        i.setZoneCode(e.getZoneCode());
+        i.setZoneName(e.getZoneCode() == null ? null : zoneMap.get(e.getZoneCode()));
         return i;
     }
 

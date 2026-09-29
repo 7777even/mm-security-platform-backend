@@ -23,6 +23,10 @@ public class TvMonitorDetail implements Serializable {
     private String monitorType;
     /** 责任部门 */
     private String department;
+    /** 防区编码（关联 sys_zone.zone_code，V86 建立防区维度） */
+    private String zoneCode;
+    /** 防区名称（由 zone_code 关联 sys_zone.zone_name 解析，便于前端直接展示） */
+    private String zoneName;
     /** 安装位置坐标描述 */
     private String location;
     /** 挂高文案 */

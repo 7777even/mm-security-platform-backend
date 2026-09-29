@@ -26,4 +26,16 @@ public class TvSnapshotIngestRequest {
 
     /** 来源：DEVICE 设备采集 / MANUAL 手工；缺省 DEVICE。 */
     private String source;
+
+    /**
+     * 关联告警 id（可选，跨域联动：将该抓拍绑定到具体告警）。
+     * 由采集端/调用方在已知告警上下文时上送，使生产告警详情可精准内嵌关联抓拍。
+     */
+    private Long alarmId;
+
+    /**
+     * 关联告警类型（可选）：PRODUCTION 生产 / FIRE 消防 / PERIMETER 周界。
+     * 与 alarm_id 配套，区分多告警域来源。
+     */
+    private String alarmType;
 }
