@@ -4,6 +4,7 @@ import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.dto.TvEventBreakdownItem;
 import com.sinopec.mmsecurity.dto.TvInspectionItem;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
+import com.sinopec.mmsecurity.dto.TvMonitorSummary;
 import com.sinopec.mmsecurity.dto.TvOperationStats;
 import com.sinopec.mmsecurity.dto.TvOverview;
 import com.sinopec.mmsecurity.dto.TvMapPoint;
@@ -25,9 +26,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -196,5 +201,66 @@ class TvControllerTest {
         when(service.getSnapshotBytes(3L)).thenReturn(null);
         mvc().perform(get("/api/v1/tv/snapshots/3/snapshot"))
                 .andExpect(status().isNotFound());
+    }
+
+    // ---- 监控点位管理 CRUD 端点（设备/防区管理，V87） ----
+
+    @Test
+    void monitors_returnsList() throws Exception {
+        when(service.listMonitors()).thenReturn(List.of(new TvMonitorSummary()));
+        mvc().perform(get("/api/v1/tv/monitors"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.length()").value(1));
+    }
+
+    @Test
+    void createMonitor_returnsSummary() throws Exception {
+        TvMonitorSummary s = new TvMonitorSummary();
+        s.setCode("ar-09");
+        s.setName("新点位");
+        when(service.createMonitor(any())).thenReturn(s);
+        mvc().perform(post("/api/v1/tv/monitors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"monitorCode\":\"ar-09\",\"monitorName\":\"新点位\",\"zoneCode\":\"Z9\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.code").value("ar-09"));
+    }
+
+    @Test
+    void updateMonitor_returnsSummary() throws Exception {
+        TvMonitorSummary s = new TvMonitorSummary();
+        s.setCode("ar-07");
+        when(service.updateMonitor(any(), any())).thenReturn(s);
+        mvc().perform(put("/api/v1/tv/monitors/ar-07")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"monitorName\":\"新名\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.code").value("ar-07"));
+    }
+
+    @Test
+    void deleteMonitor_returnsOk() throws Exception {
+        doNothing().when(service).deleteMonitor(any());
+        mvc().perform(delete("/api/v1/tv/monitors/ar-08"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    void monitorSnapshots_returnsPage() throws Exception {
+        TvSnapshotPage page = new TvSnapshotPage();
+        page.setTotal(0);
+        page.setPage(1);
+        page.setSize(12);
+        page.setPages(0);
+        page.setList(List.of());
+        when(service.monitorSnapshots(any(), anyInt(), anyInt(), any(), any())).thenReturn(page);
+        mvc().perform(get("/api/v1/tv/monitors/ar-01/snapshots"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(0));
     }
 }

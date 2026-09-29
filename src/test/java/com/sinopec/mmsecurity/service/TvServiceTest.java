@@ -1,10 +1,14 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
+import com.sinopec.mmsecurity.dto.TvMonitorSummary;
+import com.sinopec.mmsecurity.dto.TvMonitorUpsertRequest;
 import com.sinopec.mmsecurity.dto.TvOverview;
 import com.sinopec.mmsecurity.dto.TvSnapshotAckResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestRequest;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
+import com.sinopec.mmsecurity.dto.TvSnapshotPage;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
@@ -16,6 +20,7 @@ import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvSnapshotMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
+import com.sinopec.mmsecurity.mapper.SysZoneMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,9 +31,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
@@ -51,6 +58,8 @@ class TvServiceTest {
     private FacTvSnapshotMapper snapshotMapper;
     @Mock
     private FacMajorHazardMapper majorHazardMapper;
+    @Mock
+    private SysZoneMapper zoneMapper;
 
     @InjectMocks
     private TvService service;
@@ -215,5 +224,140 @@ class TvServiceTest {
         int n = service.submitSnapshots(List.of(good, bad));
         assertEquals(1, n, "非法项被跳过，仅合法项入库");
         verify(snapshotMapper, times(1)).insert(any(FacTvSnapshot.class));
+    }
+
+    // ===================== 监控点位管理 CRUD（设备/防区管理，V87） =====================
+
+    @Test
+    void listMonitors_mapsSummaryWithZoneName() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        FacTvMonitor m = new FacTvMonitor();
+        m.setMonitorCode("ar-01");
+        m.setMonitorName("高空AR-01");
+        m.setOnline(true);
+        m.setDepartment("安环部");
+        m.setZoneCode("Z1");
+        when(tvMonitorMapper.selectList(any())).thenReturn(List.of(m));
+
+        List<TvMonitorSummary> list = service.listMonitors();
+
+        assertEquals(1, list.size());
+        assertEquals("ar-01", list.get(0).getCode());
+        assertEquals("高空AR-01", list.get(0).getName());
+        assertEquals("安环部", list.get(0).getDepartment());
+        assertNull(list.get(0).getZoneName(), "zoneMapper 返回空时 zoneName 为 null（line 覆盖）");
+    }
+
+    @Test
+    void createMonitor_persistsAndReturnsSummary() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        when(tvMonitorMapper.selectOne(any())).thenReturn(null);
+        when(tvMonitorMapper.insert(any(FacTvMonitor.class))).thenAnswer(inv -> {
+            FacTvMonitor e = inv.getArgument(0);
+            e.setId(10L);
+            return 1;
+        });
+
+        TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
+        req.setMonitorCode("ar-09");
+        req.setMonitorName("新点位");
+        req.setOnline(false);
+        req.setDepartment("安保部");
+        req.setZoneCode("Z9");
+        req.setLocation("110.88,21.68");
+        req.setHeight("24m");
+        req.setAngle("56°");
+
+        TvMonitorSummary s = service.createMonitor(req);
+        assertEquals("ar-09", s.getCode());
+        assertEquals("新点位", s.getName());
+        assertFalse(s.getOnline());
+        assertEquals("安保部", s.getDepartment());
+        verify(tvMonitorMapper, times(1)).insert(any(FacTvMonitor.class));
+    }
+
+    @Test
+    void createMonitor_blankCode_throws() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
+        req.setMonitorCode("   ");
+        assertThrows(BusinessException.class, () -> service.createMonitor(req));
+    }
+
+    @Test
+    void createMonitor_duplicateCode_throws() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        when(tvMonitorMapper.selectOne(any())).thenReturn(new FacTvMonitor());
+        TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
+        req.setMonitorCode("ar-01");
+        assertThrows(BusinessException.class, () -> service.createMonitor(req));
+    }
+
+    @Test
+    void updateMonitor_readModifyWrite() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        FacTvMonitor existing = new FacTvMonitor();
+        existing.setId(7L);
+        existing.setMonitorCode("ar-07");
+        existing.setMonitorName("旧名");
+        existing.setOnline(true);
+        when(tvMonitorMapper.selectOne(any())).thenReturn(existing);
+        when(tvMonitorMapper.updateById(any())).thenReturn(1);
+
+        TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
+        req.setMonitorName("新名");
+        req.setDepartment("运维部");
+        req.setZoneCode("Z7");
+
+        TvMonitorSummary s = service.updateMonitor("ar-07", req);
+        assertEquals("ar-07", s.getCode());
+        assertEquals("新名", s.getName());
+        assertEquals("运维部", s.getDepartment());
+        assertEquals("Z7", s.getZoneCode());
+        verify(tvMonitorMapper, times(1)).updateById(any());
+    }
+
+    @Test
+    void updateMonitor_notFound_throws() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        when(tvMonitorMapper.selectOne(any())).thenReturn(null);
+        TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
+        req.setMonitorName("x");
+        assertThrows(BusinessException.class, () -> service.updateMonitor("nope", req));
+    }
+
+    @Test
+    void deleteMonitor_removesWhenExists() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        FacTvMonitor existing = new FacTvMonitor();
+        existing.setId(8L);
+        existing.setMonitorCode("ar-08");
+        when(tvMonitorMapper.selectOne(any())).thenReturn(existing);
+        when(tvMonitorMapper.deleteById(8L)).thenReturn(1);
+
+        service.deleteMonitor("ar-08");
+        verify(tvMonitorMapper, times(1)).deleteById(8L);
+    }
+
+    @Test
+    void deleteMonitor_notFound_throws() {
+        when(zoneMapper.selectList(null)).thenReturn(List.of());
+        when(tvMonitorMapper.selectOne(any())).thenReturn(null);
+        assertThrows(BusinessException.class, () -> service.deleteMonitor("nope"));
+    }
+
+    @Test
+    void monitorSnapshots_returnsPage() {
+        FacTvSnapshot snap = new FacTvSnapshot();
+        snap.setId(1L);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<FacTvSnapshot> pg =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 12);
+        pg.setTotal(1L);
+        pg.setRecords(List.of(snap));
+        when(snapshotMapper.selectPage(any(), any())).thenReturn(pg);
+
+        TvSnapshotPage out = service.monitorSnapshots("ar-01", 1, 12, null, null);
+        assertEquals(1, out.getTotal());
+        assertEquals(1, out.getList().size());
     }
 }
