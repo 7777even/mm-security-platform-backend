@@ -70,7 +70,11 @@ function resolveContractsDir(raw) {
   candidates.push(given);
   let cur = REPO_ROOT;
   for (let i = 0; i < 6; i += 1) {
+    // 既支持「兄弟目录 frontend-scaffold/docs/api」（后端 CI / 本地同级布局），
+    // 也支持「某级祖先根直接含 docs/api」（前端 CI 把后端稀疏检出到前端仓内 backend-scaffold/ 子目录时的布局），
+    // 否则后者会因只搜 */frontend-scaffold/docs/api 而解析不到契约目录 → 误报全量漂移。
     candidates.push(path.join(cur, 'frontend-scaffold', 'docs', 'api'));
+    candidates.push(path.join(cur, 'docs', 'api'));
     const parent = path.dirname(cur);
     if (parent === cur) break;
     cur = parent;
