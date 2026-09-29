@@ -164,7 +164,7 @@ class TvControllerTest {
         page.setSize(12);
         page.setPages(1);
         page.setList(List.of());
-        when(service.listSnapshots(1, 12)).thenReturn(page);
+        when(service.listSnapshots(1, 12, null, null, null, null, null, null)).thenReturn(page);
         mvc().perform(get("/api/v1/tv/snapshots"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
