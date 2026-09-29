@@ -9,6 +9,8 @@ import com.sinopec.mmsecurity.dto.PlanActionCard;
 import com.sinopec.mmsecurity.dto.PlanActionCardCreate;
 import com.sinopec.mmsecurity.dto.PlanActionCardUpdate;
 import com.sinopec.mmsecurity.dto.PlanInstance;
+import com.sinopec.mmsecurity.dto.PlanInvokeRequest;
+import com.sinopec.mmsecurity.dto.PlanInvokeResult;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.EmergencyPlanService;
 import jakarta.validation.Valid;
@@ -31,10 +33,11 @@ public class EmergencyPlanController {
 
     private final EmergencyPlanService emergencyPlanService;
 
-    /** 预案切换面板选项：页签 + 事故类型/装置筛选字典 + 预案目录。 */
+    /** 预案切换面板选项：页签 + 事故类型/装置筛选字典 + 预案目录。domain 非空时仅返回该业务域预案。 */
     @GetMapping("/options")
-    public Result<EmergencyPlanOptions> options() {
-        return Result.ok(emergencyPlanService.options());
+    public Result<EmergencyPlanOptions> options(
+            @RequestParam(required = false) String domain) {
+        return Result.ok(emergencyPlanService.options(domain));
     }
 
     /** 预案目录（4 行层级：上级单位 / 公司级 / 消防救援 / 现场处置）。V39。 */
@@ -53,6 +56,15 @@ public class EmergencyPlanController {
     @GetMapping("/matrix")
     public Result<PlanInstance> matrix(@RequestParam(required = false) String planId) {
         return Result.ok(emergencyPlanService.matrix(planId));
+    }
+
+    /** 一键调用预案：激活 + 广播 + 留痕（不向任何物理设备下发控制指令，符合零下行控制红线）。 */
+    @PostMapping("/{id}/invoke")
+    @RequireAuth(role = "ADMIN")
+    public Result<PlanInvokeResult> invoke(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) PlanInvokeRequest body) {
+        return Result.ok(emergencyPlanService.invokePlan(id, body));
     }
 
     /** 在指定预案实例下新建行动卡片。 */

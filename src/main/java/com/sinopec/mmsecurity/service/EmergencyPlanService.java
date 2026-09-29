@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.EmergencyPlanOptions;
 import com.sinopec.mmsecurity.dto.EmergencyPlanTab;
@@ -19,15 +20,19 @@ import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogSummary;
 import com.sinopec.mmsecurity.dto.EmergencyPlanDetailField;
 import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSection;
 import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSummary;
+import com.sinopec.mmsecurity.dto.PlanInvokeRequest;
+import com.sinopec.mmsecurity.dto.PlanInvokeResult;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlan;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlanCatalog;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlanDetail;
+import com.sinopec.mmsecurity.entity.FacEmergencyPlanInvokeLog;
 import com.sinopec.mmsecurity.entity.FacPlanActionCard;
 import com.sinopec.mmsecurity.entity.FacPlanInstance;
 import com.sinopec.mmsecurity.entity.FacPlanMajorPhase;
 import com.sinopec.mmsecurity.entity.FacPlanResource;
 import com.sinopec.mmsecurity.entity.FacPlanRiskEvent;
 import com.sinopec.mmsecurity.entity.FacPlanSubPhase;
+import com.sinopec.mmsecurity.mapper.FacEmergencyPlanInvokeLogMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyPlanMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanActionCardMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanInstanceMapper;
@@ -37,9 +42,11 @@ import com.sinopec.mmsecurity.mapper.FacPlanRiskEventMapper;
 import com.sinopec.mmsecurity.mapper.FacPlanSubPhaseMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyPlanCatalogMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyPlanDetailMapper;
+import com.sinopec.mmsecurity.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -80,11 +87,16 @@ public class EmergencyPlanService {
     private final FacPlanActionCardMapper planActionCardMapper;
     private final FacEmergencyPlanCatalogMapper planCatalogMapper;
     private final FacEmergencyPlanDetailMapper planDetailMapper;
+    private final FacEmergencyPlanInvokeLogMapper invokeLogMapper;
 
-    /** 预案切换面板：页签 + 事故类型/装置筛选字典 + 预案目录。 */
-    public EmergencyPlanOptions options() {
-        List<FacEmergencyPlan> plans = emergencyPlanMapper.selectList(
-                new LambdaQueryWrapper<FacEmergencyPlan>().orderByAsc(FacEmergencyPlan::getSortNo));
+    /** 预案切换面板：页签 + 事故类型/装置筛选字典 + 预案目录。domain 非空时仅返回该业务域预案。 */
+    public EmergencyPlanOptions options(String domain) {
+        LambdaQueryWrapper<FacEmergencyPlan> q =
+                new LambdaQueryWrapper<FacEmergencyPlan>().orderByAsc(FacEmergencyPlan::getSortNo);
+        if (domain != null && !domain.isBlank()) {
+            q.eq(FacEmergencyPlan::getDomain, domain);
+        }
+        List<FacEmergencyPlan> plans = emergencyPlanMapper.selectList(q);
 
         EmergencyPlanOptions options = new EmergencyPlanOptions();
         options.setTabs(Arrays.stream(TAB_DEFS).map(def -> {
@@ -311,7 +323,60 @@ public class EmergencyPlanService {
         dto.setName(entity.getPlanName());
         dto.setAccidentType(entity.getAccidentType());
         dto.setFacility(entity.getFacility());
+        dto.setDomain(entity.getDomain());
+        dto.setNuclear(entity.getNuclear());
+        dto.setIsActive(entity.getIsActive());
+        dto.setInvokeCount(entity.getInvokeCount());
+        dto.setLastInvokedAt(entity.getLastInvokedAt());
         return dto;
+    }
+
+    /**
+     * 一键调用预案：激活 + 广播 + 留痕。
+     * <ul>
+     *   <li>激活：同业务域内仅保留一个激活预案（其余置非激活）。</li>
+     *   <li>留痕：写入 fac_emergency_plan_invoke_log（操作人取自登录态，不触达任何物理设备）。</li>
+     *   <li>广播：@RealtimeSync 推送 emergency.plan 域变更。</li>
+     * </ul>
+     * 未命中预案时返回 null（Result 丢 null data），不影响调用方。
+     */
+    @RealtimeSync(domain = "emergency.plan")
+    public PlanInvokeResult invokePlan(Long id, PlanInvokeRequest in) {
+        FacEmergencyPlan plan = emergencyPlanMapper.selectById(id);
+        if (plan == null) {
+            return null;
+        }
+        // 激活：同域内其余预案置为非激活
+        if (plan.getDomain() != null) {
+            emergencyPlanMapper.update(null, new LambdaUpdateWrapper<FacEmergencyPlan>()
+                    .eq(FacEmergencyPlan::getDomain, plan.getDomain())
+                    .ne(FacEmergencyPlan::getId, plan.getId())
+                    .set(FacEmergencyPlan::getIsActive, false));
+        }
+        plan.setIsActive(true);
+        plan.setInvokeCount((plan.getInvokeCount() == null ? 0 : plan.getInvokeCount()) + 1);
+        plan.setLastInvokedAt(LocalDateTime.now());
+        emergencyPlanMapper.updateById(plan);
+
+        // 留痕
+        FacEmergencyPlanInvokeLog log = new FacEmergencyPlanInvokeLog();
+        log.setPlanId(plan.getId());
+        log.setPlanName(plan.getPlanName());
+        log.setDomain(plan.getDomain());
+        log.setOperator(UserContext.username());
+        log.setInvokeNote(in != null ? in.getNote() : null);
+        log.setInvokeAt(LocalDateTime.now());
+        invokeLogMapper.insert(log);
+
+        PlanInvokeResult result = new PlanInvokeResult();
+        result.setPlanId(plan.getId());
+        result.setPlanName(plan.getPlanName());
+        result.setDomain(plan.getDomain());
+        result.setIsActive(true);
+        result.setInvokeCount(plan.getInvokeCount());
+        result.setInvokedAt(plan.getLastInvokedAt());
+        result.setOperator(UserContext.username());
+        return result;
     }
 
     private PlanMajorPhase toMajorPhase(FacPlanMajorPhase entity) {
