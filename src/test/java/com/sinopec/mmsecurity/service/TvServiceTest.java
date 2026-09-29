@@ -279,7 +279,6 @@ class TvServiceTest {
 
     @Test
     void createMonitor_blankCode_throws() {
-        when(zoneMapper.selectList(null)).thenReturn(List.of());
         TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
         req.setMonitorCode("   ");
         assertThrows(BusinessException.class, () -> service.createMonitor(req));
@@ -287,7 +286,6 @@ class TvServiceTest {
 
     @Test
     void createMonitor_duplicateCode_throws() {
-        when(zoneMapper.selectList(null)).thenReturn(List.of());
         when(tvMonitorMapper.selectOne(any())).thenReturn(new FacTvMonitor());
         TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
         req.setMonitorCode("ar-01");
@@ -320,7 +318,6 @@ class TvServiceTest {
 
     @Test
     void updateMonitor_notFound_throws() {
-        when(zoneMapper.selectList(null)).thenReturn(List.of());
         when(tvMonitorMapper.selectOne(any())).thenReturn(null);
         TvMonitorUpsertRequest req = new TvMonitorUpsertRequest();
         req.setMonitorName("x");
@@ -329,7 +326,6 @@ class TvServiceTest {
 
     @Test
     void deleteMonitor_removesWhenExists() {
-        when(zoneMapper.selectList(null)).thenReturn(List.of());
         FacTvMonitor existing = new FacTvMonitor();
         existing.setId(8L);
         existing.setMonitorCode("ar-08");
@@ -342,7 +338,6 @@ class TvServiceTest {
 
     @Test
     void deleteMonitor_notFound_throws() {
-        when(zoneMapper.selectList(null)).thenReturn(List.of());
         when(tvMonitorMapper.selectOne(any())).thenReturn(null);
         assertThrows(BusinessException.class, () -> service.deleteMonitor("nope"));
     }
