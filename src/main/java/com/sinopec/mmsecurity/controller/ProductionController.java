@@ -11,7 +11,9 @@ import com.sinopec.mmsecurity.dto.ProductionAreaDetail;
 import com.sinopec.mmsecurity.dto.ProductionDevicePage;
 import com.sinopec.mmsecurity.dto.ProductionOverview;
 import com.sinopec.mmsecurity.dto.RiskWarningItem;
+import com.sinopec.mmsecurity.dto.TvSnapshotPage;
 import com.sinopec.mmsecurity.service.ProductionService;
+import com.sinopec.mmsecurity.service.TvService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +35,7 @@ import java.util.List;
 public class ProductionController {
 
     private final ProductionService service;
+    private final TvService tvService;
 
     /** 首屏总览：设施卡片 + 设备分类卡片 + 统计概览条 + 风险汇总。 */
     @GetMapping("/overview")
@@ -57,6 +60,16 @@ public class ProductionController {
             @PathVariable("id") Long id,
             @RequestBody ProductionAlarmUpdateRequest req) {
         return Result.ok(service.update(id, req));
+    }
+
+    /**
+     * 生产报警关联抓拍列表（跨域联动）。按 alarmId + alarmType=PRODUCTION 精准取工业电视关联抓拍，
+     * 使生产告警详情「现场工业电视抓拍」区块为数据级关联（取代前端 location 软匹配）。
+     * 无关联抓拍时返回空列表（total=0），由前端渲染空态，绝不编造关联。
+     */
+    @GetMapping("/alarms/{id}/snapshots")
+    public Result<TvSnapshotPage> alarmSnapshots(@PathVariable("id") Long id) {
+        return Result.ok(tvService.listSnapshots(1, 50, id, "PRODUCTION", null, null, null, null));
     }
 
     /** 风险预警列表（红/橙/黄三级）。 */
