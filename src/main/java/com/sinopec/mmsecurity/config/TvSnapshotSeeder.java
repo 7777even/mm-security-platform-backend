@@ -1,8 +1,10 @@
 package com.sinopec.mmsecurity.config;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.entity.FacProductionAlarm;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvSnapshot;
+import com.sinopec.mmsecurity.mapper.FacProductionAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacTvSnapshotMapper;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ public class TvSnapshotSeeder implements CommandLineRunner {
 
     private final FacTvSnapshotMapper snapshotMapper;
     private final FacTvMonitorMapper monitorMapper;
+    private final FacProductionAlarmMapper productionAlarmMapper;
     private final TvSnapshotRenderer renderer;
 
     @Override
@@ -74,6 +77,36 @@ public class TvSnapshotSeeder implements CommandLineRunner {
             }
             i++;
         }
+        // 生产告警关联抓拍样例：取前 2 条生产告警，各绑定 1 张抓拍，
+        // 使「生产告警详情内嵌关联抓拍」区块在 dev 下不再恒空、可目视验证联通链路。
+        try {
+            List<FacProductionAlarm> alarms = productionAlarmMapper.selectList(
+                    new LambdaQueryWrapper<FacProductionAlarm>()
+                            .orderByAsc(FacProductionAlarm::getId).last("LIMIT 2"));
+            int bound = 0;
+            for (FacProductionAlarm alarm : alarms) {
+                FacTvMonitor m = monitors.stream().limit(6).toList().get(bound % 6);
+                FacTvSnapshot e = new FacTvSnapshot();
+                e.setMonitorCode(m.getMonitorCode());
+                e.setMonitorName(m.getMonitorName());
+                e.setCaptureTime(LocalDateTime.now().minusMinutes(3L + bound).format(TS_FMT));
+                e.setEventType("生产告警关联抓拍");
+                e.setReviewStatus("ACKED");
+                e.setSource("DEVICE");
+                e.setSnapshotBytes(renderer.render(m.getMonitorName(), "生产告警关联抓拍"));
+                e.setCreatedAt(LocalDateTime.now().format(TS_FMT));
+                e.setSortNo(0);
+                e.setAlarmId(alarm.getId());
+                e.setAlarmType("PRODUCTION");
+                snapshotMapper.insert(e);
+                bound++;
+            }
+            generated += bound;
+            log.info("[TvSnapshotSeeder] 绑定生产告警关联抓拍 {} 张", bound);
+        } catch (Exception ex) {
+            log.warn("[TvSnapshotSeeder] 生成生产告警关联抓拍失败: {}", ex.getMessage());
+        }
+
         log.info("[TvSnapshotSeeder] 完成，生成样例录像截图 {} 张", generated);
     }
 }

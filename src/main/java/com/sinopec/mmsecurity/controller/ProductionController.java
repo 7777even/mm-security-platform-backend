@@ -12,6 +12,8 @@ import com.sinopec.mmsecurity.dto.ProductionDevicePage;
 import com.sinopec.mmsecurity.dto.ProductionOverview;
 import com.sinopec.mmsecurity.dto.RiskWarningItem;
 import com.sinopec.mmsecurity.dto.TvSnapshotPage;
+import com.sinopec.mmsecurity.entity.FacProductionAlarm;
+import com.sinopec.mmsecurity.mapper.FacProductionAlarmMapper;
 import com.sinopec.mmsecurity.service.ProductionService;
 import com.sinopec.mmsecurity.service.TvService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class ProductionController {
 
     private final ProductionService service;
     private final TvService tvService;
+    private final FacProductionAlarmMapper productionAlarmMapper;
 
     /** 首屏总览：设施卡片 + 设备分类卡片 + 统计概览条 + 风险汇总。 */
     @GetMapping("/overview")
@@ -69,6 +72,14 @@ public class ProductionController {
      */
     @GetMapping("/alarms/{id}/snapshots")
     public Result<TvSnapshotPage> alarmSnapshots(@PathVariable("id") Long id) {
+        // 先查显式关联；为空时触发自动关联兜底（时间窗 + 位置），再查一次
+        TvSnapshotPage explicit = tvService.listSnapshots(1, 50, id, "PRODUCTION", null, null, null, null);
+        if (explicit.getTotal() == 0) {
+            FacProductionAlarm alarm = productionAlarmMapper.selectById(id);
+            if (alarm != null) {
+                tvService.autoRelateSnapshotsForAlarm(id, "PRODUCTION", alarm.getLocation(), alarm.getOccurredAt());
+            }
+        }
         return Result.ok(tvService.listSnapshots(1, 50, id, "PRODUCTION", null, null, null, null));
     }
 

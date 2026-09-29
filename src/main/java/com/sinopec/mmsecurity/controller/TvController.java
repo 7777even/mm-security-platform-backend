@@ -12,6 +12,8 @@ import com.sinopec.mmsecurity.dto.TvSnapshotAckResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestRequest;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotPage;
+import com.sinopec.mmsecurity.dto.TvMonitorSummary;
+import com.sinopec.mmsecurity.dto.TvMonitorUpsertRequest;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.TvService;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +23,11 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -114,6 +118,38 @@ public class TvController {
     @GetMapping("/monitors")
     public Result<List<TvMonitorSummary>> monitors() {
         return Result.ok(tvService.listMonitors());
+    }
+
+    /**
+     * 新增监控点位（设备/防区管理 CRUD）。需权限码 tv:monitor:create（V87 已登记并授权 ADMIN 及岗位角色）。
+     * 成功后广播 tv.monitor.changed。
+     */
+    @PostMapping("/monitors")
+    @RequireAuth(perm = "tv:monitor:create")
+    public Result<TvMonitorSummary> createMonitor(@RequestBody TvMonitorUpsertRequest req) {
+        return Result.ok(tvService.createMonitor(req));
+    }
+
+    /**
+     * 更新监控点位（含防区归属 zoneCode）。需权限码 tv:monitor:update（V87 已登记并授权）。
+     * 成功后广播 tv.monitor.changed。
+     */
+    @PutMapping("/monitors/{code}")
+    @RequireAuth(perm = "tv:monitor:update")
+    public Result<TvMonitorSummary> updateMonitor(
+            @PathVariable String code, @RequestBody TvMonitorUpsertRequest req) {
+        return Result.ok(tvService.updateMonitor(code, req));
+    }
+
+    /**
+     * 删除监控点位（设备/防区管理 CRUD）。需权限码 tv:monitor:delete（V87 已登记并授权）。
+     * 成功后广播 tv.monitor.changed。
+     */
+    @DeleteMapping("/monitors/{code}")
+    @RequireAuth(perm = "tv:monitor:delete")
+    public Result<Void> deleteMonitor(@PathVariable String code) {
+        tvService.deleteMonitor(code);
+        return Result.ok(null);
     }
 
     /**

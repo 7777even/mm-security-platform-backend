@@ -20,6 +20,7 @@ import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotItem;
 import com.sinopec.mmsecurity.dto.TvSnapshotPage;
 import com.sinopec.mmsecurity.dto.TvMonitorSummary;
+import com.sinopec.mmsecurity.dto.TvMonitorUpsertRequest;
 import com.sinopec.mmsecurity.entity.FacMajorHazard;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvMapPoint;
@@ -245,6 +246,87 @@ public class TvService {
                 }).collect(Collectors.toList());
     }
 
+    // ===================== 监控点位管理 CRUD（设备/防区管理，V87） =====================
+
+    /**
+     * 新增监控点位（设备/防区管理）。monitorCode 重复时抛 PARAM_INVALID。
+     * 成功后广播 tv.monitor.changed，使大屏/管理页点位列表实时刷新。
+     */
+    @RealtimeSync(domain = "tv.monitor")
+    public TvMonitorSummary createMonitor(TvMonitorUpsertRequest req) {
+        if (req.getMonitorCode() == null || req.getMonitorCode().isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "monitorCode 不能为空");
+        }
+        if (tvMonitorMapper.selectOne(new LambdaQueryWrapper<FacTvMonitor>()
+                .eq(FacTvMonitor::getMonitorCode, req.getMonitorCode())) != null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "监控点位编码已存在：" + req.getMonitorCode());
+        }
+        FacTvMonitor e = toMonitorEntity(req);
+        tvMonitorMapper.insert(e);
+        return toMonitorSummary(e, zoneNameMap());
+    }
+
+    /**
+     * 更新监控点位（含防区归属 zoneCode）。仅覆盖非空字段（read-modify-write）。
+     * 成功后广播 tv.monitor.changed。
+     */
+    @RealtimeSync(domain = "tv.monitor")
+    public TvMonitorSummary updateMonitor(String code, TvMonitorUpsertRequest req) {
+        FacTvMonitor e = tvMonitorMapper.selectOne(new LambdaQueryWrapper<FacTvMonitor>()
+                .eq(FacTvMonitor::getMonitorCode, code));
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "监控点位不存在：" + code);
+        }
+        if (req.getMonitorName() != null) e.setMonitorName(req.getMonitorName());
+        if (req.getOnline() != null) e.setOnline(req.getOnline());
+        if (req.getIntegrity() != null) e.setIntegrity(req.getIntegrity());
+        if (req.getMonitorType() != null) e.setMonitorType(req.getMonitorType());
+        if (req.getDepartment() != null) e.setDepartment(req.getDepartment());
+        if (req.getZoneCode() != null) e.setZoneCode(req.getZoneCode());
+        if (req.getLocation() != null) e.setLocation(req.getLocation());
+        if (req.getHeight() != null) e.setHeight(req.getHeight());
+        if (req.getAngle() != null) e.setAngle(req.getAngle());
+        tvMonitorMapper.updateById(e);
+        return toMonitorSummary(e, zoneNameMap());
+    }
+
+    /** 删除监控点位（设备/防区管理）。成功后广播 tv.monitor.changed。 */
+    @RealtimeSync(domain = "tv.monitor")
+    public void deleteMonitor(String code) {
+        FacTvMonitor e = tvMonitorMapper.selectOne(new LambdaQueryWrapper<FacTvMonitor>()
+                .eq(FacTvMonitor::getMonitorCode, code));
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "监控点位不存在：" + code);
+        }
+        tvMonitorMapper.deleteById(e.getId());
+    }
+
+    private FacTvMonitor toMonitorEntity(TvMonitorUpsertRequest req) {
+        FacTvMonitor e = new FacTvMonitor();
+        e.setMonitorCode(req.getMonitorCode());
+        e.setMonitorName(req.getMonitorName());
+        e.setOnline(req.getOnline());
+        e.setIntegrity(req.getIntegrity());
+        e.setMonitorType(req.getMonitorType());
+        e.setDepartment(req.getDepartment());
+        e.setZoneCode(req.getZoneCode());
+        e.setLocation(req.getLocation());
+        e.setHeight(req.getHeight());
+        e.setAngle(req.getAngle());
+        return e;
+    }
+
+    private TvMonitorSummary toMonitorSummary(FacTvMonitor e, Map<String, String> zoneMap) {
+        TvMonitorSummary s = new TvMonitorSummary();
+        s.setCode(e.getMonitorCode());
+        s.setName(e.getMonitorName());
+        s.setOnline(Boolean.TRUE.equals(e.getOnline()));
+        s.setDepartment(e.getDepartment());
+        s.setZoneCode(e.getZoneCode());
+        s.setZoneName(e.getZoneCode() == null ? null : zoneMap.get(e.getZoneCode()));
+        return s;
+    }
+
     // ===================== 录像截图采集入库闭环（V78） =====================
 
     /**
@@ -430,6 +512,50 @@ public class TvService {
         i.setZoneCode(e.getZoneCode());
         i.setZoneName(e.getZoneCode() == null ? null : zoneMap.get(e.getZoneCode()));
         return i;
+    }
+
+    /**
+     * 生产告警自动关联兜底：当告警无显式关联抓拍时，把「告警发生时间 ±15 分钟内、且位置关键词
+     * （告警 location 与快照 monitorName/zoneName 任一包含）匹配」的未关联快照回填 alarm_id/alarm_type，
+     * 落库建立数据级关联（绝不编造新抓拍）。仅更新 alarm_id 为空的快照，幂等；
+     * 真实环境若采集端上报时已带 alarmId 则走显式关联，本方法不会覆盖。返回新关联条数。
+     */
+    public int autoRelateSnapshotsForAlarm(Long alarmId, String alarmType, String location, String occurredAt) {
+        if (alarmId == null || occurredAt == null || occurredAt.isBlank()) return 0;
+        LocalDateTime occ = parseTs(occurredAt);
+        if (occ == null) return 0;
+        String fromStr = occ.minusMinutes(15).format(TS_FMT);
+        String toStr = occ.plusMinutes(15).format(TS_FMT);
+        List<FacTvSnapshot> candidates = snapshotMapper.selectList(new LambdaQueryWrapper<FacTvSnapshot>()
+                .isNull(FacTvSnapshot::getAlarmId)
+                .between(FacTvSnapshot::getCaptureTime, fromStr, toStr)
+                .orderByDesc(FacTvSnapshot::getId));
+        if (candidates.isEmpty()) return 0;
+        Map<String, String> zoneMap = zoneNameMap();
+        String locKey = location == null ? "" : location.toLowerCase();
+        if (locKey.length() < 2) return 0;
+        int n = 0;
+        for (FacTvSnapshot s : candidates) {
+            String snapKey = ((s.getMonitorName() == null ? "" : s.getMonitorName())
+                    + " " + (s.getZoneCode() == null ? "" : zoneMap.getOrDefault(s.getZoneCode(), "")))
+                    .toLowerCase();
+            if (snapKey.contains(locKey) || (locKey.contains(snapKey) && !snapKey.isBlank())) {
+                s.setAlarmId(alarmId);
+                s.setAlarmType(alarmType);
+                snapshotMapper.updateById(s);
+                n++;
+            }
+        }
+        if (n > 0) snapshotListCache.invalidateAll();
+        return n;
+    }
+
+    private LocalDateTime parseTs(String s) {
+        try {
+            return LocalDateTime.parse(s, TS_FMT);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private TvSnapshotIngestResult toIngestResult(FacTvSnapshot e) {
