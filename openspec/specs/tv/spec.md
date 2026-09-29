@@ -16,7 +16,7 @@
 | GET | `/api/v1/tv/monitors/{code}/snapshots` | 登录即可 | 单设备快照分页（支持 startTime/endTime 区间） |
 | GET | `/api/v1/tv/snapshots` | 登录即可 | 列表扩展过滤：`alarmId`/`alarmType`/`monitorCode`/`zone`/`startTime`/`endTime` |
 
-> **L4 库结构（V86）**：`fac_tv_monitor` / `fac_tv_snapshot` 新增 `zone_code` 列（关联 `sys_zone.zone_code`），设备与快照携带 `zoneCode` / `zoneName`，支持按防区筛选。详见 Change `2026-09-29-tv-zone-linkage`。
+> **L4 库结构（V86）**：`fac_tv_monitor` / `fac_tv_snapshot` 新增 `zone_code` 列（关联 `sys_zone.zone_code`），设备与快照携带 `zoneCode` / `zoneName`，支持按防区筛选。详见已归档 Change `openspec/archive/2026-09-29-tv-zone-linkage/spec-delta.md`。
 
 所有响应统一 B3 包络（HTTP 200 + `code=0` 为成功；参数/业务失败返回 HTTP 200 但 `code!=0`，**不返回 400**）。未鉴权返回 401，无权限返回 403。
 
