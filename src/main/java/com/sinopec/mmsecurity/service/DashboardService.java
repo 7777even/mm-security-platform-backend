@@ -107,8 +107,8 @@ public class DashboardService {
         return rows.stream().map(this::toWorkstation).toList();
     }
 
-    /** 值守工位单条明细：按主键取自 fac_workstation。 */
-    public Workstation workstationById(Long id) {
+    /** 值守工位单条明细：按业务主键（字符串，如 WS-01）取自 fac_workstation。 */
+    public Workstation workstationById(String id) {
         FacWorkstation w = workstationMapper.selectById(id);
         return w == null ? null : toWorkstation(w);
     }

@@ -42,9 +42,9 @@ public class DashboardController {
         return Result.ok(dashboardService.workstations());
     }
 
-    /** 值守工位单条明细；未命中返回 NOT_FOUND 业务码。 */
+    /** 值守工位单条明细；未命中返回 NOT_FOUND 业务码。工位主键为业务字符串（如 WS-01）。 */
     @GetMapping("/workstations/{id}")
-    public Result<Workstation> workstation(@PathVariable("id") Long id) {
+    public Result<Workstation> workstation(@PathVariable("id") String id) {
         Workstation ws = dashboardService.workstationById(id);
         if (ws == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "值守工位不存在：" + id);
