@@ -107,6 +107,12 @@ public class DashboardService {
         return rows.stream().map(this::toWorkstation).toList();
     }
 
+    /** 值守工位单条明细：按主键取自 fac_workstation。 */
+    public Workstation workstationById(Long id) {
+        FacWorkstation w = workstationMapper.selectById(id);
+        return w == null ? null : toWorkstation(w);
+    }
+
     /** 大屏底部滚动系统消息（危险/预警两类），来自 V24 fac_system_message 真实表。 */
     public List<SystemMessageItem> systemMessages() {
         List<FacSystemMessage> rows = systemMessageMapper.selectList(

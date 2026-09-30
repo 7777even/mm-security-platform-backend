@@ -1,6 +1,8 @@
 package com.sinopec.mmsecurity.controller;
 
+import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.AlarmTrendPoint;
 import com.sinopec.mmsecurity.dto.DashboardOverview;
 import com.sinopec.mmsecurity.dto.RiskHeatItem;
@@ -10,6 +12,7 @@ import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -37,6 +40,16 @@ public class DashboardController {
     @GetMapping("/workstations")
     public Result<List<Workstation>> workstations() {
         return Result.ok(dashboardService.workstations());
+    }
+
+    /** 值守工位单条明细；未命中返回 NOT_FOUND 业务码。 */
+    @GetMapping("/workstations/{id}")
+    public Result<Workstation> workstation(@PathVariable("id") Long id) {
+        Workstation ws = dashboardService.workstationById(id);
+        if (ws == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "值守工位不存在：" + id);
+        }
+        return Result.ok(ws);
     }
 
     @GetMapping("/risk-heatmap")
