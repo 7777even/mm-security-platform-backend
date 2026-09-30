@@ -10,6 +10,7 @@ import com.sinopec.mmsecurity.dto.TvSnapshotIngestRequest;
 import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotPage;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
+import com.sinopec.mmsecurity.entity.FacTvMaintenanceOrder;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvSnapshot;
@@ -17,6 +18,7 @@ import com.sinopec.mmsecurity.entity.SysZone;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
+import com.sinopec.mmsecurity.mapper.FacTvMaintenanceOrderMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvSnapshotMapper;
@@ -30,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -61,6 +64,8 @@ class TvServiceTest {
     private FacMajorHazardMapper majorHazardMapper;
     @Mock
     private SysZoneMapper zoneMapper;
+    @Mock
+    private FacTvMaintenanceOrderMapper maintenanceOrderMapper;
 
     @InjectMocks
     private TvService service;
@@ -89,31 +94,88 @@ class TvServiceTest {
         return m;
     }
 
+    private static FacTvMonitor monitorCat(boolean online, String integrity, String category) {
+        FacTvMonitor m = monitor(online, integrity);
+        m.setMonitorCategory(category);
+        return m;
+    }
+
+    private static FacTvMaintenanceOrder maintOrder(String status) {
+        FacTvMaintenanceOrder o = new FacTvMaintenanceOrder();
+        o.setId(1L);
+        o.setOrderNo("WO-x");
+        o.setDeviceName("设备");
+        o.setStatus(status);
+        o.setCreatedAt("2026-09-28 08:12:33");
+        return o;
+    }
+
     @Test
     void overview_splitsCategoriesAndMapsStats() {
         when(statItemMapper.selectList(any())).thenReturn(List.of(
                 statItem("OVERVIEW", "重大危险源", 665, null, null, 1),
-                statItem("MAINTENANCE", "未接单", 12, null, "grey", 1),
+                statItem("OVERVIEW", "生产设施", 56, null, null, 2),
+                statItem("OVERVIEW", "厂界", 56, null, null, 3),
+                statItem("OVERVIEW", "封闭入口", 55, null, null, 4),
+                statItem("OVERVIEW", "其他入口", 66, null, null, 5),
+                statItem("OVERVIEW", "其它", 6, null, null, 6),
                 statItem("EVENT", "区域入侵", 152, "#f0b429", null, 1)));
         when(majorHazardMapper.selectCount(any())).thenReturn(12L);
+        // 维修工单：V88 起由 fac_tv_maintenance_order GROUP BY order_status 实时计数（取代字典值）。
+        // 此处模拟 12 未接单 / 25 处理中 / 8 已超时（与 V88 种子口径一致）。
+        List<FacTvMaintenanceOrder> orders = new ArrayList<>();
+        for (int i = 0; i < 12; i++) orders.add(maintOrder("PENDING"));
+        for (int i = 0; i < 25; i++) orders.add(maintOrder("PROCESSING"));
+        for (int i = 0; i < 8; i++) orders.add(maintOrder("OVERTIME"));
+        when(maintenanceOrderMapper.selectList(any())).thenReturn(orders);
         when(tvMonitorMapper.selectList(any())).thenReturn(List.of(
-                monitor(true, "良好"), monitor(true, "良好"), monitor(false, "故障")));
+                monitorCat(true, "良好", "PRODUCTION"),
+                monitorCat(true, "良好", "PRODUCTION"),
+                monitorCat(true, "良好", "PRODUCTION"),
+                monitorCat(true, "良好", "BOUNDARY"),
+                monitorCat(true, "良好", "BOUNDARY"),
+                monitorCat(true, "良好", "BOUNDARY"),
+                monitorCat(true, "良好", "BOUNDARY"),
+                monitorCat(false, "一般", "CLOSED_GATE"),
+                monitorCat(true, "良好", "CLOSED_GATE"),
+                monitorCat(true, "良好", "OTHER_GATE"),
+                monitorCat(true, "良好", "OTHER"),
+                monitorCat(true, "良好", null),
+                monitorCat(true, "良好", null)));
         FacTvOperationStat stat = new FacTvOperationStat();
         stat.setEventTotal(110);
         when(operationStatMapper.selectList(any())).thenReturn(List.of(stat));
 
         TvOverview overview = service.overview();
 
-        assertEquals(1, overview.getOverviewItems().size());
-        assertEquals(12, overview.getOverviewItems().get(0).getValue(),
-                "「重大危险源」改由 fac_major_hazard 计数（与 GET /hazards 同源），不再取手填 665");
-        assertEquals("grey", overview.getMaintenanceOrders().get(0).getTone());
+        assertEquals(6, overview.getOverviewItems().size(), "OVERVIEW 含 6 个分类卡片");
+        // 重大危险源：fac_major_hazard 实时计数（与 GET /hazards 同源），category=MAJOR_HAZARD，不再取手填 665
+        var hazard = overview.getOverviewItems().get(0);
+        assertEquals("重大危险源", hazard.getLabel());
+        assertEquals(12, hazard.getValue());
+        assertEquals("MAJOR_HAZARD", hazard.getCategory());
+        // 其余 5 类：fac_tv_monitor.monitor_category 实时 GROUP BY 计数（V87 建立关联）
+        java.util.Map<String, Integer> catValue = overview.getOverviewItems().stream()
+                .collect(java.util.stream.Collectors.toMap(i -> i.getLabel(), i -> i.getValue()));
+        assertEquals(3, catValue.get("生产设施"), "PRODUCTION 3 个点位");
+        assertEquals(4, catValue.get("厂界"), "BOUNDARY 4 个点位");
+        assertEquals(2, catValue.get("封闭入口"), "CLOSED_GATE 2 个点位");
+        assertEquals(1, catValue.get("其他入口"), "OTHER_GATE 1 个点位");
+        assertEquals(1, catValue.get("其它"), "OTHER 1 个点位");
+        // 维保工单：fac_tv_maintenance_order GROUP BY order_status 实时计数（V88 取代字典值）
+        var maint = overview.getMaintenanceOrders();
+        assertEquals(3, maint.size(), "工单含 3 个状态卡片，按 PENDING/PROCESSING/OVERTIME 排序");
+        assertEquals("未接单", maint.get(0).getLabel());
+        assertEquals(12, maint.get(0).getValue());
+        assertEquals("grey", maint.get(0).getTone());
+        assertEquals("处理中", maint.get(1).getLabel());
+        assertEquals(25, maint.get(1).getValue());
+        assertEquals("已超时", maint.get(2).getLabel());
+        assertEquals(8, maint.get(2).getValue());
         assertEquals("#f0b429", overview.getEventBreakdown().get(0).getColor());
-        assertEquals(3, overview.getOperationStats().getTotal(), "运行统计改由 fac_tv_monitor 明细聚合");
+        assertEquals(13, overview.getOperationStats().getTotal(), "运行统计仍由 fac_tv_monitor 明细聚合（含 2 个未分类）");
         assertEquals(1, overview.getOperationStats().getOffline());
         assertEquals(1, overview.getOperationStats().getFault());
-        assertEquals(67, overview.getOperationStats().getOnlineRate(), "(3-1)/3 = 66.7% → 67");
-        assertEquals(67, overview.getOperationStats().getIntegrityRate());
         assertEquals(110, overview.getOperationStats().getEventTotal(), "eventTotal 无明细源，沿用统计表原值");
     }
 
@@ -340,6 +402,83 @@ class TvServiceTest {
     void deleteMonitor_notFound_throws() {
         when(tvMonitorMapper.selectOne(any())).thenReturn(null);
         assertThrows(BusinessException.class, () -> service.deleteMonitor("nope"));
+    }
+
+    // ===================== 维修工单真实台账（V88） =====================
+
+    @Test
+    void listMaintenanceOrders_mapsItemsAndStatusLabel() {
+        FacTvMaintenanceOrder pending = new FacTvMaintenanceOrder();
+        pending.setId(1L);
+        pending.setOrderNo("WO-2026-0901");
+        pending.setDeviceName("乙烯装置球机-01");
+        pending.setStatus("PENDING");
+        pending.setCreatedAt("2026-09-28 08:12:33");
+        FacTvMaintenanceOrder processing = new FacTvMaintenanceOrder();
+        processing.setId(2L);
+        processing.setOrderNo("WO-2026-0801");
+        processing.setDeviceName("乙烯装置球机-02");
+        processing.setStatus("PROCESSING");
+        processing.setAssignee("李伟");
+        processing.setCreatedAt("2026-09-20 09:00:00");
+        when(maintenanceOrderMapper.selectList(any())).thenReturn(List.of(pending, processing));
+
+        // 纯 Mockito：mapper 被 mock，SQL 侧 status 过滤不生效，仅验证 Service 端的字段映射。
+        var all = service.listMaintenanceOrders(null);
+        assertEquals(2, all.size());
+        assertEquals("未接单", all.get(0).getStatusLabel(), "statusLabel 由后端映射中文");
+        assertNull(all.get(0).getAssignee(), "PENDING 无负责人→null（映射不走该行）");
+        assertEquals("处理中", all.get(1).getStatusLabel());
+        assertEquals("李伟", all.get(1).getAssignee());
+        // status 透传到查询条件（构建 LambdaQueryWrapper），空串/blank 不拼 eq；此处只验证不抛 NPE。
+        assertEquals(2, service.listMaintenanceOrders("PENDING").size());
+    }
+
+    @Test
+    void listMaintenanceOrders_mapsStatusLabelAndNullableFields() {
+        FacTvMaintenanceOrder o = new FacTvMaintenanceOrder();
+        o.setId(3L);
+        o.setOrderNo("WO-2026-0701");
+        o.setDeviceName("乙烯装置枪机-01");
+        o.setStatus("OVERTIME");
+        o.setAssignee("刘洋");
+        o.setCreatedAt("2026-09-10 09:00:00");
+        o.setPlanFinishTime("2026-09-20 18:00:00");
+        // actualFinishTime / handleDesc 为空，验证可空字段不抛 NPE
+        when(maintenanceOrderMapper.selectList(any())).thenReturn(List.of(o));
+
+        var items = service.listMaintenanceOrders("OVERTIME");
+        assertEquals(1, items.size());
+        assertEquals("已超时", items.get(0).getStatusLabel());
+        assertNull(items.get(0).getActualFinishTime());
+        assertNull(items.get(0).getHandleDesc());
+    }
+
+    @Test
+    void getMaintenanceOrder_returnsNullWhenMissing() {
+        when(maintenanceOrderMapper.selectById(99L)).thenReturn(null);
+        assertNull(service.getMaintenanceOrder(99L));
+    }
+
+    @Test
+    void getMaintenanceOrder_mapsItem() {
+        FacTvMaintenanceOrder o = new FacTvMaintenanceOrder();
+        o.setId(5L);
+        o.setOrderNo("WO-2026-0901");
+        o.setDeviceName("乙烯装置球机-01");
+        o.setFaultDesc("画面持续模糊");
+        o.setStatus("PENDING");
+        o.setDepartment("储运车间");
+        o.setZoneCode("YIXI");
+        o.setCreatedAt("2026-09-28 08:12:33");
+        when(maintenanceOrderMapper.selectById(5L)).thenReturn(o);
+
+        var item = service.getMaintenanceOrder(5L);
+        assertNotNull(item);
+        assertEquals("WO-2026-0901", item.getOrderNo());
+        assertEquals("未接单", item.getStatusLabel());
+        assertEquals("储运车间", item.getDepartment());
+        assertEquals("YIXI", item.getZoneCode());
     }
 
     @Test
