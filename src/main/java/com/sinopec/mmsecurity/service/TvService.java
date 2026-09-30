@@ -9,6 +9,7 @@ import com.sinopec.mmsecurity.dto.TvEventBreakdownItem;
 import com.sinopec.mmsecurity.dto.TvInspectionItem;
 import com.sinopec.mmsecurity.dto.TvInspectionSummary;
 import com.sinopec.mmsecurity.dto.TvMaintenanceOrder;
+import com.sinopec.mmsecurity.dto.TvMaintenanceOrderItem;
 import com.sinopec.mmsecurity.dto.TvMapPoint;
 import com.sinopec.mmsecurity.dto.TvMonitorDetail;
 import com.sinopec.mmsecurity.dto.TvOverview;
@@ -25,6 +26,7 @@ import com.sinopec.mmsecurity.entity.FacMajorHazard;
 import com.sinopec.mmsecurity.entity.FacTvInspectionRecord;
 import com.sinopec.mmsecurity.entity.FacTvMapPoint;
 import com.sinopec.mmsecurity.entity.FacTvMonitor;
+import com.sinopec.mmsecurity.entity.FacTvMaintenanceOrder;
 import com.sinopec.mmsecurity.entity.FacTvOperationStat;
 import com.sinopec.mmsecurity.entity.FacTvSnapshot;
 import com.sinopec.mmsecurity.entity.FacTvStatItem;
@@ -32,6 +34,7 @@ import com.sinopec.mmsecurity.entity.SysZone;
 import com.sinopec.mmsecurity.mapper.FacMajorHazardMapper;
 import com.sinopec.mmsecurity.mapper.FacTvInspectionRecordMapper;
 import com.sinopec.mmsecurity.mapper.FacTvMonitorMapper;
+import com.sinopec.mmsecurity.mapper.FacTvMaintenanceOrderMapper;
 import com.sinopec.mmsecurity.mapper.FacTvOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacTvSnapshotMapper;
 import com.sinopec.mmsecurity.mapper.FacTvStatItemMapper;
@@ -71,6 +74,30 @@ public class TvService {
     private static final String CAT_EVENT = "EVENT";
     private static final String KIND_VEHICLE = "VEHICLE";
 
+    /**
+     * 视频概览卡片分类 label → 监控分类 code 映射（V87 建立）。重大危险源走 fac_major_hazard
+     * 实时计数（与 GET /hazards 同源），故映射 MAJOR_HAZARD 仅作标识，不用于 fac_tv_monitor 聚合；
+     * 其余 5 类对应 fac_tv_monitor.monitor_category 的 GROUP BY 实时计数，前端据此下钻真实点位。
+     */
+    private static final Map<String, String> OVERVIEW_LABEL_CATEGORY = Map.of(
+            "重大危险源", "MAJOR_HAZARD",
+            "生产设施", "PRODUCTION",
+            "厂界", "BOUNDARY",
+            "封闭入口", "CLOSED_GATE",
+            "其他入口", "OTHER_GATE",
+            "其它", "OTHER");
+
+    /**
+     * 维修工单状态顺序（决定概览卡片排序）：PENDING 未接单 / PROCESSING 处理中 / OVERTIME 已超时。
+     * 概览计数自 V88 起由 fac_tv_maintenance_order GROUP BY order_status 实时统计，取代
+     * fac_tv_stat_item.MAINTENANCE 字典手填值（该字典行已在 V88 删除）。
+     */
+    private static final List<String> MAINTENANCE_STATUS_ORDER = List.of("PENDING", "PROCESSING", "OVERTIME");
+    private static final Map<String, String> MAINTENANCE_STATUS_LABEL = Map.of(
+            "PENDING", "未接单", "PROCESSING", "处理中", "OVERTIME", "已超时");
+    private static final Map<String, String> MAINTENANCE_STATUS_TONE = Map.of(
+            "PENDING", "grey", "PROCESSING", "blue", "OVERTIME", "red");
+
     private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final FacTvStatItemMapper statItemMapper;
@@ -83,6 +110,8 @@ public class TvService {
     private final FacMajorHazardMapper majorHazardMapper;
     /** 防区主数据（sys_zone）：解析 zone_code → zone_name，供监控点位/截图展示防区名称。 */
     private final SysZoneMapper zoneMapper;
+    /** 维修工单真实台账（V88 新建）：概览工单计数与按状态下钻的真实明细来源。 */
+    private final FacTvMaintenanceOrderMapper maintenanceOrderMapper;
 
     /**
      * 防区编码 → 防区名称 映射（实时从 sys_zone 读取，7 行量级，调用方按需取用）。
@@ -113,29 +142,45 @@ public class TvService {
         List<FacTvStatItem> items = statItemMapper.selectList(
                 new LambdaQueryWrapper<FacTvStatItem>().orderByAsc(FacTvStatItem::getSortNo));
 
-        TvOverview overview = new TvOverview();
+        // 监控点位实时聚合（概览分类计数 + 运行统计共用，V87 起按 monitor_category 分组）
+        List<FacTvMonitor> monitors = tvMonitorMapper.selectList(null);
+        Map<String, Long> catCount = monitors.stream()
+                .filter(m -> m.getMonitorCategory() != null)
+                .collect(Collectors.groupingBy(FacTvMonitor::getMonitorCategory, Collectors.counting()));
         long hazardCount = majorHazardMapper.selectCount(null);
+
+        TvOverview overview = new TvOverview();
         overview.setOverviewItems(items.stream()
                 .filter(i -> CAT_OVERVIEW.equals(i.getItemCategory()))
                 .map(i -> {
                     TvOverviewItem item = new TvOverviewItem();
                     item.setId(i.getId());
                     item.setLabel(i.getLabel());
-                    // 「重大危险源」改由 fac_major_hazard 实时计数（与 GET /hazards 同源），不再取手填值；
-                    // 其余项（生产设施/厂界/封闭入口/其他入口/其它）暂无对应明细表，沿用字典值。
-                    item.setValue("重大危险源".equals(i.getLabel()) ? (int) hazardCount : i.getItemCount());
+                    String cat = OVERVIEW_LABEL_CATEGORY.getOrDefault(i.getLabel(), null);
+                    item.setCategory(cat);
+                    // 重大危险源实时计数（与 GET /hazards 同源）；其余类按 fac_tv_monitor.monitor_category
+                    // 实时 GROUP BY 计数（V87 建立关联），前端据此下钻真实点位；未映射分类兜底手填值。
+                    if ("MAJOR_HAZARD".equals(cat)) {
+                        item.setValue((int) hazardCount);
+                    } else if (cat != null) {
+                        item.setValue(catCount.getOrDefault(cat, 0L).intValue());
+                    } else {
+                        item.setValue(i.getItemCount());
+                    }
                     item.setIconIndex(i.getIconIndex());
                     return item;
                 }).collect(Collectors.toList()));
-        overview.setMaintenanceOrders(items.stream()
-                .filter(i -> CAT_MAINTENANCE.equals(i.getItemCategory()))
-                .map(i -> {
-                    TvMaintenanceOrder order = new TvMaintenanceOrder();
-                    order.setLabel(i.getLabel());
-                    order.setValue(i.getItemCount());
-                    order.setTone(i.getTone());
-                    return order;
-                }).collect(Collectors.toList()));
+        // 维保工单：自 V88 起由 fac_tv_maintenance_order GROUP BY order_status 实时计数，
+        // 取代 fac_tv_stat_item.MAINTENANCE 字典手填值（V88 已删除该字典行）。
+        Map<String, Long> orderCount = maintenanceOrderMapper.selectList(null).stream()
+                .collect(Collectors.groupingBy(FacTvMaintenanceOrder::getStatus, Collectors.counting()));
+        overview.setMaintenanceOrders(MAINTENANCE_STATUS_ORDER.stream().map(st -> {
+            TvMaintenanceOrder order = new TvMaintenanceOrder();
+            order.setLabel(MAINTENANCE_STATUS_LABEL.get(st));
+            order.setValue(orderCount.getOrDefault(st, 0L).intValue());
+            order.setTone(MAINTENANCE_STATUS_TONE.get(st));
+            return order;
+        }).collect(Collectors.toList()));
         overview.setEventBreakdown(items.stream()
                 .filter(i -> CAT_EVENT.equals(i.getItemCategory()))
                 .map(i -> {
@@ -146,9 +191,8 @@ public class TvService {
                     return item;
                 }).collect(Collectors.toList()));
 
-        // 运行统计：改由监控点明细 fac_tv_monitor 实时聚合（取代手填的 fac_tv_operation_stat 单行表：
-        // 原 total 1233 与监测点实际数量完全脱节）。eventTotal 无对应明细表，沿用统计表原值。
-        List<FacTvMonitor> monitors = tvMonitorMapper.selectList(null);
+        // 运行统计：由监控点明细 fac_tv_monitor 实时聚合（复用上方 monitors，不再重复查询）。
+        // eventTotal 无对应明细表，沿用统计表原值。
         int monitorTotal = monitors.size();
         int offlineCount = (int) monitors.stream()
                 .filter(m -> !Boolean.TRUE.equals(m.getOnline())).count();
@@ -242,6 +286,7 @@ public class TvService {
                     s.setDepartment(m.getDepartment());
                     s.setZoneCode(m.getZoneCode());
                     s.setZoneName(m.getZoneCode() == null ? null : zoneMap.get(m.getZoneCode()));
+                    s.setMonitorCategory(m.getMonitorCategory());
                     return s;
                 }).collect(Collectors.toList());
     }
@@ -283,6 +328,7 @@ public class TvService {
         if (req.getMonitorType() != null) e.setMonitorType(req.getMonitorType());
         if (req.getDepartment() != null) e.setDepartment(req.getDepartment());
         if (req.getZoneCode() != null) e.setZoneCode(req.getZoneCode());
+        if (req.getMonitorCategory() != null) e.setMonitorCategory(req.getMonitorCategory());
         if (req.getLocation() != null) e.setLocation(req.getLocation());
         if (req.getHeight() != null) e.setHeight(req.getHeight());
         if (req.getAngle() != null) e.setAngle(req.getAngle());
@@ -310,6 +356,7 @@ public class TvService {
         e.setMonitorType(req.getMonitorType());
         e.setDepartment(req.getDepartment());
         e.setZoneCode(req.getZoneCode());
+        e.setMonitorCategory(req.getMonitorCategory());
         e.setLocation(req.getLocation());
         e.setHeight(req.getHeight());
         e.setAngle(req.getAngle());
@@ -324,7 +371,47 @@ public class TvService {
         s.setDepartment(e.getDepartment());
         s.setZoneCode(e.getZoneCode());
         s.setZoneName(e.getZoneCode() == null ? null : zoneMap.get(e.getZoneCode()));
+        s.setMonitorCategory(e.getMonitorCategory());
         return s;
+    }
+
+    // ===================== 维修工单真实台账（V88） =====================
+
+    /**
+     * 维修工单明细列表（按状态过滤，status 为空返回全部），按创建时间倒序。
+     * 供概览工单卡片下钻真实工单明细（与大屏「重大危险源」列出真实清单同构）。
+     */
+    public List<TvMaintenanceOrderItem> listMaintenanceOrders(String status) {
+        List<FacTvMaintenanceOrder> rows = maintenanceOrderMapper.selectList(
+                new LambdaQueryWrapper<FacTvMaintenanceOrder>()
+                        .eq(status != null && !status.isBlank(), FacTvMaintenanceOrder::getStatus, status)
+                        .orderByDesc(FacTvMaintenanceOrder::getCreatedAt));
+        return rows.stream().map(this::toOrderItem).collect(Collectors.toList());
+    }
+
+    /** 单个维修工单明细；不存在返回 null。 */
+    public TvMaintenanceOrderItem getMaintenanceOrder(Long id) {
+        FacTvMaintenanceOrder e = maintenanceOrderMapper.selectById(id);
+        return e == null ? null : toOrderItem(e);
+    }
+
+    private TvMaintenanceOrderItem toOrderItem(FacTvMaintenanceOrder e) {
+        TvMaintenanceOrderItem i = new TvMaintenanceOrderItem();
+        i.setId(e.getId());
+        i.setOrderNo(e.getOrderNo());
+        i.setDeviceName(e.getDeviceName());
+        i.setDeviceCode(e.getDeviceCode());
+        i.setFaultDesc(e.getFaultDesc());
+        i.setStatus(e.getStatus());
+        i.setStatusLabel(MAINTENANCE_STATUS_LABEL.getOrDefault(e.getStatus(), e.getStatus()));
+        i.setAssignee(e.getAssignee());
+        i.setDepartment(e.getDepartment());
+        i.setZoneCode(e.getZoneCode());
+        i.setCreatedAt(e.getCreatedAt());
+        i.setPlanFinishTime(e.getPlanFinishTime());
+        i.setActualFinishTime(e.getActualFinishTime());
+        i.setHandleDesc(e.getHandleDesc());
+        return i;
     }
 
     // ===================== 录像截图采集入库闭环（V78） =====================

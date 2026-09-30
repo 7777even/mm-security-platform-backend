@@ -14,6 +14,7 @@ import com.sinopec.mmsecurity.dto.TvSnapshotIngestResult;
 import com.sinopec.mmsecurity.dto.TvSnapshotPage;
 import com.sinopec.mmsecurity.dto.TvMonitorSummary;
 import com.sinopec.mmsecurity.dto.TvMonitorUpsertRequest;
+import com.sinopec.mmsecurity.dto.TvMaintenanceOrderItem;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.TvService;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,28 @@ public class TvController {
     @GetMapping("/overview")
     public Result<TvOverview> overview() {
         return Result.ok(tvService.overview());
+    }
+
+    /**
+     * 维修工单明细列表（按状态过滤，status 为空返回全部）。
+     * 数据来自 V88 新建的 fac_tv_maintenance_order 真实台账，供概览工单卡片下钻真实工单明细
+     * （与大屏「重大危险源」列出真实清单同构）。状态取值：PENDING 未接单 / PROCESSING 处理中 /
+     * OVERTIME 已超时。
+     */
+    @GetMapping("/maintenance-orders")
+    public Result<List<TvMaintenanceOrderItem>> maintenanceOrders(
+            @RequestParam(required = false) String status) {
+        return Result.ok(tvService.listMaintenanceOrders(status));
+    }
+
+    /** 单个维修工单明细（按工单 id）。不存在返 404。 */
+    @GetMapping("/maintenance-orders/{id}")
+    public Result<TvMaintenanceOrderItem> maintenanceOrder(@PathVariable Long id) {
+        TvMaintenanceOrderItem item = tvService.getMaintenanceOrder(id);
+        if (item == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "维修工单不存在");
+        }
+        return Result.ok(item);
     }
 
     /** 入厂巡检聚合：车辆列表 + 人员列表。 */

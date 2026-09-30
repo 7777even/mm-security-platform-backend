@@ -25,6 +25,14 @@ public class FacTvMonitor {
     @TableField("zone_code")
     private String zoneCode;
 
+    /**
+     * 监控分类 code（V87 建立概览实时聚合维度）：PRODUCTION 生产设施 / BOUNDARY 厂界 /
+     * CLOSED_GATE 封闭入口 / OTHER_GATE 其他入口 / OTHER 其它。与 fac_tv_stat_item.OVERVIEW
+     * 分类 label 对齐（重大危险源例外，概览计数走 fac_major_hazard）。空表示未分类。
+     */
+    @TableField("monitor_category")
+    private String monitorCategory;
+
     /** 安装位置坐标描述；列名 location_desc 避免与通用列冲突 */
     @TableField("location_desc")
     private String location;

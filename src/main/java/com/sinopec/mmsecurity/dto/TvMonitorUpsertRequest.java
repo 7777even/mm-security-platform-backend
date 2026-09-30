@@ -22,6 +22,8 @@ public class TvMonitorUpsertRequest {
     private String department;
     /** 防区编码（关联 sys_zone.zone_code，防区归属编辑） */
     private String zoneCode;
+    /** 监控分类 code（V87）：PRODUCTION/BOUNDARY/CLOSED_GATE/OTHER_GATE/OTHER，空表示未分类 */
+    private String monitorCategory;
     /** 安装位置坐标描述 */
     private String location;
     /** 挂高文案（如 24m） */

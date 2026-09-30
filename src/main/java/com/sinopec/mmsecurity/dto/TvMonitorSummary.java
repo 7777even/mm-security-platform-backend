@@ -23,4 +23,6 @@ public class TvMonitorSummary implements Serializable {
     private String zoneCode;
     /** 防区名称（由 zone_code 解析） */
     private String zoneName;
+    /** 监控分类 code（V87）：PRODUCTION/BOUNDARY/CLOSED_GATE/OTHER_GATE/OTHER，空表示未分类 */
+    private String monitorCategory;
 }
