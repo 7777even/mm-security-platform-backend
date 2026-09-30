@@ -89,6 +89,16 @@ public class ProductionController {
         return Result.ok(service.riskWarnings());
     }
 
+    /** 风险预警单条明细；未命中返回 NOT_FOUND 业务码。 */
+    @GetMapping("/risk-warnings/{id}")
+    public Result<RiskWarningItem> riskWarning(@PathVariable("id") Long id) {
+        RiskWarningItem item = service.riskWarningById(id);
+        if (item == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "风险预警不存在：" + id);
+        }
+        return Result.ok(item);
+    }
+
     /** 人员定位标记（版面百分比坐标 + WGS84 经纬度）。 */
     @GetMapping("/personnel")
     public Result<List<PersonnelMarker>> personnel() {

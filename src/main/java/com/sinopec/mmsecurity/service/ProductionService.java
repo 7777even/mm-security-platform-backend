@@ -183,6 +183,12 @@ public class ProductionService {
                 .map(this::toRiskWarning).collect(Collectors.toList());
     }
 
+    /** 风险预警单条明细：按主键取自 fac_production_risk_warning。 */
+    public RiskWarningItem riskWarningById(Long id) {
+        FacProductionRiskWarning e = riskWarningMapper.selectById(id);
+        return e == null ? null : toRiskWarning(e);
+    }
+
     /** 人员定位标记：left/top 为舞台百分比，经纬度为 WGS84 真实坐标。 */
     public List<PersonnelMarker> personnel() {
         return personnelMapper.selectList(
