@@ -335,6 +335,21 @@ public class FireFacilityService {
             }
             e.setFaultStatus(req.getFaultStatus());
         }
+        // 基础字段（V91 起支持管理端全字段编辑）：仅在传入非空时覆盖（局部更新）。
+        if (req.getFacilityName() != null) e.setFacilityName(req.getFacilityName());
+        if (req.getFacilityType() != null) e.setFacilityType(req.getFacilityType());
+        if (req.getFaultType() != null) e.setFaultType(req.getFaultType());
+        if (req.getFaultLevel() != null) {
+            if (!VALID_FAULT_LEVEL.contains(req.getFaultLevel())) {
+                throw new BusinessException(
+                        ResultCode.PARAM_INVALID, "非法故障级别：" + req.getFaultLevel());
+            }
+            e.setFaultLevel(req.getFaultLevel());
+        }
+        if (req.getDiscoverTime() != null) e.setDiscoverTime(req.getDiscoverTime());
+        if (req.getDiscoverMethod() != null) e.setDiscoverMethod(req.getDiscoverMethod());
+        if (req.getPhenomenon() != null) e.setPhenomenon(req.getPhenomenon());
+        if (req.getCause() != null) e.setCauseText(req.getCause());
         // 派单/维修/验收字段：仅在传入非空时覆盖（局部更新）。
         if (req.getWorkOrderNo() != null) e.setWorkOrderNo(req.getWorkOrderNo());
         if (req.getRepairPerson() != null) e.setRepairPerson(req.getRepairPerson());
