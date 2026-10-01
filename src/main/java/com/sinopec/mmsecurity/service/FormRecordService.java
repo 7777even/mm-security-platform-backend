@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FormRecordCreateRequest;
@@ -60,6 +61,7 @@ public class FormRecordService {
     }
 
     /** 新增填报（写端点）。 */
+    @RealtimeSync(domain = "form.record")
     public FormRecordItem create(FormRecordCreateRequest req) {
         if (req.getFormType() == null || req.getFormType().isBlank()) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "填报类型不能为空");
@@ -86,11 +88,16 @@ public class FormRecordService {
         e.setStatus(normalizeStatus(req.getStatus(), "SUBMITTED"));
         e.setRemark(req.getRemark());
         e.setVersion(0L);
+        // V66 种子以显式 id（1、2）插入，而 H2 / PG / 达梦的自增序列都不会因显式插入而推进，
+        // 于是新增行仍从 id=1 起跳、撞主键 → create 恒定 409（dev 环境「新建填报」彻底不可用）。
+        // 显式分配 max(id)+1 规避，三种方言行为一致，不依赖各库序列的滞后状态。
+        e.setId(nextId());
         formRecordMapper.insert(e);
         return toItem(e);
     }
 
     /** 局部更新（状态流转等）。read-modify-write + @Version 乐观锁。 */
+    @RealtimeSync(domain = "form.record")
     public FormRecordItem update(long id, FormRecordUpdateRequest req) {
         FacFormRecord e = formRecordMapper.selectById(id);
         if (e == null) {
@@ -116,6 +123,29 @@ public class FormRecordService {
             throw new BusinessException(ResultCode.CONFLICT, "记录已被他人修改，请刷新后重试");
         }
         return toItem(e);
+    }
+
+    /** 取下一个主键：max(id)+1（见 create 内关于自增序列滞后的说明）。 */
+    private long nextId() {
+        FacFormRecord last = formRecordMapper.selectOne(new LambdaQueryWrapper<FacFormRecord>()
+                .orderByDesc(FacFormRecord::getId)
+                .last("LIMIT 1"));
+        return last == null || last.getId() == null ? 1L : last.getId() + 1;
+    }
+
+    /**
+     * 删除流程填报记录（物理删除：fac_form_record 无 deleted 列，不做逻辑删）。
+     *
+     * <p>记录不存在抛 B3 NOT_FOUND（重复删除同样返回 NOT_FOUND 而非静默成功，便于前端识别）。
+     * 标记 {@code @RealtimeSync(domain="form.record")}，管理端与已订阅该域的页面自动重拉。</p>
+     */
+    @RealtimeSync(domain = "form.record")
+    public void delete(long id) {
+        FacFormRecord e = formRecordMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "填报记录不存在：" + id);
+        }
+        formRecordMapper.deleteById(id);
     }
 
     private String normalizeStatus(String raw, String fallback) {

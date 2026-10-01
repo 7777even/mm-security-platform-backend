@@ -1,11 +1,13 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
+import com.sinopec.mmsecurity.dto.EmergencyEventUpdateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventWeatherMeta;
 import com.sinopec.mmsecurity.dto.EvacuationPerson;
 import com.sinopec.mmsecurity.entity.FacAccidentDetailField;
@@ -57,6 +59,15 @@ public class EmergencyEventService {
             "tank", "储罐消防报警",
             "facility", "消防设施异常",
             "video", "视频烟火联动");
+
+    /** 允许的事件状态枚举（编辑接口校验用）：与 V12/V17 种子口径一致。 */
+    private static final Set<String> ALLOWED_STATUSES = Set.of("pending", "processing", "done");
+
+    /** 状态枚举 → 规范中文标签（只传 status 时据此推导）。 */
+    private static final Map<String, String> STATUS_LABELS = Map.of(
+            "pending", "未处置",
+            "processing", "处置中",
+            "done", "已处置");
 
     private final FacEmergencyEventMapper emergencyEventMapper;
     private final FacEvacuationPersonMapper evacuationPersonMapper;
@@ -116,6 +127,7 @@ public class EmergencyEventService {
      * @return 已落库的事件项
      */
     @Transactional
+    @RealtimeSync(domain = "emergency.event")
     public EmergencyEventItem create(EmergencyEventCreateRequest req) {
         boolean isDrill = "drill".equalsIgnoreCase(req.getKind());
         boolean isWeather = !isDrill && "extremeWeather".equalsIgnoreCase(req.getEventCategory());
@@ -199,6 +211,7 @@ public class EmergencyEventService {
      * @return 已更新事件项
      */
     @Transactional
+    @RealtimeSync(domain = "emergency.event")
     public EmergencyEventItem report(Long eventId) {
         FacEmergencyEvent event = emergencyEventMapper.selectById(eventId);
         if (event == null) {
@@ -227,6 +240,7 @@ public class EmergencyEventService {
      * @return 已更新事件项
      */
     @Transactional
+    @RealtimeSync(domain = "emergency.event")
     public EmergencyEventItem startResponse(Long eventId) {
         FacEmergencyEvent event = emergencyEventMapper.selectById(eventId);
         if (event == null) {
@@ -243,6 +257,163 @@ public class EmergencyEventService {
             accidentIncidentMapper.updateById(incident);
         }
         return toItem(event);
+    }
+
+    /**
+     * 编辑应急事件（局部更新）。
+     *
+     * <p>字段为 {@code null} 表示「不修改」，service 承担 read-modify-write；事件不存在抛 NOT_FOUND，
+     * status 取值非法抛 PARAM_INVALID（B3 包络）。只传 status 时按枚举推导中文标签，两者都传以传入为准。</p>
+     *
+     * <p>与 create 同口径：fac_emergency_event 与 fac_accident_incident 及事故详情字段一并同步，
+     * 避免「事件基础信息」面板出现「事件改了、救援详情还是旧值」的双源漂移。
+     * 标记 {@code @RealtimeSync(domain="emergency.event")}，三端（mgmt/大屏/移动端）自动重拉。</p>
+     *
+     * @param eventId 应急事件 id
+     * @param req 局部更新入参
+     * @return 已更新事件项
+     */
+    @Transactional
+    @RealtimeSync(domain = "emergency.event")
+    public EmergencyEventItem update(Long eventId, EmergencyEventUpdateRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "更新内容不能为空");
+        }
+        FacEmergencyEvent event = emergencyEventMapper.selectById(eventId);
+        if (event == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急事件不存在");
+        }
+        if (req.getStatus() != null) {
+            String status = req.getStatus().trim().toLowerCase(Locale.ROOT);
+            if (!ALLOWED_STATUSES.contains(status)) {
+                throw new BusinessException(ResultCode.PARAM_INVALID,
+                        "事件状态 status 取值非法，允许：" + String.join("/", ALLOWED_STATUSES));
+            }
+            event.setStatus(status);
+            event.setStatusLabel(req.getStatusLabel() != null && !req.getStatusLabel().isBlank()
+                    ? req.getStatusLabel().trim()
+                    : STATUS_LABELS.getOrDefault(status, "未处置"));
+        } else if (req.getStatusLabel() != null && !req.getStatusLabel().isBlank()) {
+            event.setStatusLabel(req.getStatusLabel().trim());
+        }
+        if (req.getTitle() != null) {
+            event.setTitle(req.getTitle());
+        }
+        if (req.getLocation() != null) {
+            event.setLocation(req.getLocation());
+        }
+        if (req.getDescription() != null) {
+            event.setDescription(req.getDescription());
+        }
+        if (req.getEventTime() != null) {
+            event.setEventTime(req.getEventTime());
+        }
+        if (req.getReported() != null) {
+            event.setReported(req.getReported());
+        }
+        if (req.getAreaCode() != null) {
+            event.setAreaCode(req.getAreaCode());
+        }
+        if (req.getHazardSourceLevel() != null) {
+            event.setHazardSourceLevel(req.getHazardSourceLevel());
+        }
+        if (req.getLeftPercent() != null) {
+            event.setLeftPercent(req.getLeftPercent());
+        }
+        if (req.getTopPercent() != null) {
+            event.setTopPercent(req.getTopPercent());
+        }
+        if (req.getLongitude() != null) {
+            event.setLongitude(req.getLongitude());
+        }
+        if (req.getLatitude() != null) {
+            event.setLatitude(req.getLatitude());
+        }
+        if (req.getEndedAt() != null) {
+            event.setEndedAt(req.getEndedAt());
+        }
+        emergencyEventMapper.updateById(event);
+
+        syncIncidentForUpdate(event);
+        return toItem(event);
+    }
+
+    /**
+     * 删除应急事件：同事务清理关联的事故救援详情字段与事故救援行，最后删事件本体。
+     *
+     * <p>顺序不可颠倒：fac_accident_detail_field / fac_accident_incident 均以 event_id 或 incident_id
+     * 关联，先删子表再删父表，避免留下引用了已删除事件的孤儿行（会让 /accident/rescue-incident
+     * 聚合出现「有详情无事件」的空面板）。事件不存在抛 NOT_FOUND。
+     * 标记 {@code @RealtimeSync(domain="emergency.event")}，触发三端实时刷新。</p>
+     *
+     * @param eventId 应急事件 id
+     */
+    @Transactional
+    @RealtimeSync(domain = "emergency.event")
+    public void delete(Long eventId) {
+        FacEmergencyEvent event = emergencyEventMapper.selectById(eventId);
+        if (event == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急事件不存在");
+        }
+        List<FacAccidentIncident> incidents = accidentIncidentMapper.selectList(
+                new LambdaQueryWrapper<FacAccidentIncident>()
+                        .eq(FacAccidentIncident::getEventId, eventId));
+        for (FacAccidentIncident incident : incidents) {
+            if (incident.getId() != null) {
+                accidentDetailFieldMapper.delete(new LambdaQueryWrapper<FacAccidentDetailField>()
+                        .eq(FacAccidentDetailField::getIncidentId, incident.getId()));
+            }
+            accidentIncidentMapper.deleteById(incident.getId());
+        }
+        emergencyEventMapper.deleteById(eventId);
+    }
+
+    /**
+     * 编辑后同步关联事故救援行及其详情字段。
+     *
+     * <p>详情字段按 label 定位（事故时间/事发地点/事件描述/事件名称/事件级别/涉事区域），
+     * 命中则更新 value，未命中不新增——编辑不该改变详情行的数量与顺序，
+     * 否则大屏「事件基础信息」面板会出现行序漂移。</p>
+     */
+    private void syncIncidentForUpdate(FacEmergencyEvent event) {
+        FacAccidentIncident incident = firstIncidentByEventId(event.getId());
+        if (incident == null) {
+            return; // 演练/未落库事件没有关联救援行，跳过即可
+        }
+        incident.setTitle(event.getTitle());
+        incident.setLocation(event.getLocation());
+        incident.setLongitude(event.getLongitude());
+        incident.setLatitude(event.getLatitude());
+        incident.setHazardSourceLevel(event.getHazardSourceLevel());
+        incident.setStartedAt(event.getEventTime());
+        incident.setEndedAt(event.getEndedAt());
+        incident.setStatusName(event.getStatus());
+        incident.setMapStatus(event.getStatusLabel());
+        if (event.getReported() != null) {
+            incident.setReported(event.getReported());
+        }
+        if (event.getAreaCode() != null) {
+            incident.setFacilityName(event.getAreaCode());
+        }
+        accidentIncidentMapper.updateById(incident);
+
+        Map<String, String> updates = new LinkedHashMap<>();
+        updates.put("事故时间", event.getEventTime());
+        updates.put("事发地点", event.getLocation());
+        updates.put("事件描述", event.getDescription());
+        updates.put("事件名称", event.getTitle());
+        updates.put("事件级别", event.getHazardSourceLevel());
+        updates.put("涉事区域", event.getAreaCode());
+        List<FacAccidentDetailField> fields = accidentDetailFieldMapper.selectList(
+                new LambdaQueryWrapper<FacAccidentDetailField>()
+                        .eq(FacAccidentDetailField::getIncidentId, incident.getId()));
+        for (FacAccidentDetailField field : fields) {
+            String value = updates.get(field.getFieldLabel());
+            if (value != null) {
+                field.setFieldValue(value);
+                accidentDetailFieldMapper.updateById(field);
+            }
+        }
     }
 
     /** 按 event_id 取关联事故救援行（可能不存在，如演练/未落库事件）。 */

@@ -8,6 +8,7 @@ import com.sinopec.mmsecurity.dto.FormRecordUpdateRequest;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.FormRecordService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,5 +59,18 @@ public class FormRecordController {
             @PathVariable Long id,
             @RequestBody FormRecordUpdateRequest req) {
         return Result.ok(formRecordService.update(id, req));
+    }
+
+    /**
+     * 删除流程填报记录（需 ADMIN 角色，与 update 同口径）。
+     *
+     * <p>记录不存在返回 B3 NOT_FOUND；成功触发 form.record 实时广播。
+     * 删除为台账维护动作，不涉及任何设备下行（零下行红线与本域无关）。</p>
+     */
+    @DeleteMapping("/{id}")
+    @RequireAuth(role = "ADMIN")
+    public Result<Void> delete(@PathVariable Long id) {
+        formRecordService.delete(id);
+        return Result.ok(null);
     }
 }
