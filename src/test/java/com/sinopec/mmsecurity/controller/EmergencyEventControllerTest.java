@@ -24,8 +24,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,6 +45,39 @@ class EmergencyEventControllerTest {
         return MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    /**
+     * 编辑端点路由校验（PUT /api/v1/emergency-events/{id}）。
+     * 权限码由 RequireAuthInterceptor 负责，standalone MockMvc 不加载拦截器，故此处只校验路由与 B3 包络。
+     */
+    @Test
+    void update_returnsUpdatedEvent() throws Exception {
+        EmergencyEventItem updated = new EmergencyEventItem();
+        updated.setId(26L);
+        updated.setTitle("乙烯裂解炉泄漏（复核）");
+        updated.setStatus("processing");
+        updated.setStatusLabel("处置中");
+        when(service.update(eq(26L), any())).thenReturn(updated);
+
+        mvc().perform(put("/api/v1/emergency-events/26")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"乙烯裂解炉泄漏（复核）\",\"status\":\"processing\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(26))
+                .andExpect(jsonPath("$.data.statusLabel").value("处置中"));
+    }
+
+    /** 删除端点路由校验（DELETE /api/v1/emergency-events/{id}）。 */
+    @Test
+    void delete_returnsOkEnvelope() throws Exception {
+        mvc().perform(delete("/api/v1/emergency-events/26"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(service).delete(26L);
     }
 
     @Test

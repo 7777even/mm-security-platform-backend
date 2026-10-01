@@ -5,10 +5,13 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.EmergencyEventCreateRequest;
 import com.sinopec.mmsecurity.dto.EmergencyEventGroup;
 import com.sinopec.mmsecurity.dto.EmergencyEventItem;
+import com.sinopec.mmsecurity.dto.EmergencyEventUpdateRequest;
 import com.sinopec.mmsecurity.dto.EvacuationPerson;
+import com.sinopec.mmsecurity.entity.FacAccidentDetailField;
 import com.sinopec.mmsecurity.entity.FacAccidentIncident;
 import com.sinopec.mmsecurity.entity.FacEmergencyEvent;
 import com.sinopec.mmsecurity.entity.FacEvacuationPerson;
+import com.sinopec.mmsecurity.mapper.FacAccidentDetailFieldMapper;
 import com.sinopec.mmsecurity.mapper.FacAccidentIncidentMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyEventMapper;
 import com.sinopec.mmsecurity.mapper.FacEvacuationPersonMapper;
@@ -39,6 +42,8 @@ class EmergencyEventServiceTest {
     private FacEvacuationPersonMapper evacuationPersonMapper;
     @Mock
     private FacAccidentIncidentMapper accidentIncidentMapper;
+    @Mock
+    private FacAccidentDetailFieldMapper accidentDetailFieldMapper;
 
     @InjectMocks
     private EmergencyEventService service;
@@ -294,6 +299,122 @@ class EmergencyEventServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> service.startResponse(999L));
 
         assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+    }
+
+    @Test
+    void update_appliesPartialFieldsAndDerivesStatusLabel() {
+        FacEmergencyEvent existing = event("FIRE", "phone", "消防电话报警", "EVENT", "乙烯裂解炉泄漏", 1);
+        existing.setId(26L);
+        existing.setStatus("pending");
+        existing.setStatusLabel("未处置");
+        when(emergencyEventMapper.selectById(26L)).thenReturn(existing);
+
+        FacAccidentIncident incident = new FacAccidentIncident();
+        incident.setId(7L);
+        incident.setEventId(26L);
+        when(accidentIncidentMapper.selectOne(any())).thenReturn(incident);
+        FacAccidentDetailField field = new FacAccidentDetailField();
+        field.setId(3L);
+        field.setIncidentId(7L);
+        field.setFieldLabel("事件名称");
+        field.setFieldValue("乙烯裂解炉泄漏");
+        when(accidentDetailFieldMapper.selectList(any())).thenReturn(List.of(field));
+
+        EmergencyEventUpdateRequest req = new EmergencyEventUpdateRequest();
+        req.setTitle("乙烯裂解炉泄漏（复核）");
+        req.setStatus("processing");
+        EmergencyEventItem item = service.update(26L, req);
+
+        assertEquals("乙烯裂解炉泄漏（复核）", item.getTitle());
+        assertEquals("processing", item.getStatus());
+        // 只传 status 未传 statusLabel → 按枚举推导中文标签
+        assertEquals("处置中", item.getStatusLabel());
+        // 未传字段保持原值（局部更新语义，不能被 null 覆盖）
+        assertEquals("化工区乙烯裂解装置东北侧", item.getLocation());
+
+        ArgumentCaptor<FacEmergencyEvent> evCap = ArgumentCaptor.forClass(FacEmergencyEvent.class);
+        verify(emergencyEventMapper).updateById(evCap.capture());
+        assertEquals("processing", evCap.getValue().getStatus());
+
+        // 关联事故救援行与详情字段须同步，避免「事件改了、救援详情还是旧值」
+        ArgumentCaptor<FacAccidentIncident> incCap = ArgumentCaptor.forClass(FacAccidentIncident.class);
+        verify(accidentIncidentMapper).updateById(incCap.capture());
+        assertEquals("乙烯裂解炉泄漏（复核）", incCap.getValue().getTitle());
+        ArgumentCaptor<FacAccidentDetailField> fieldCap =
+                ArgumentCaptor.forClass(FacAccidentDetailField.class);
+        verify(accidentDetailFieldMapper).updateById(fieldCap.capture());
+        assertEquals("乙烯裂解炉泄漏（复核）", fieldCap.getValue().getFieldValue());
+    }
+
+    @Test
+    void update_keepsExplicitStatusLabelWhenProvided() {
+        FacEmergencyEvent existing = event("FIRE", "phone", "消防电话报警", "EVENT", "乙烯裂解炉泄漏", 1);
+        existing.setId(26L);
+        when(emergencyEventMapper.selectById(26L)).thenReturn(existing);
+        when(accidentIncidentMapper.selectOne(any())).thenReturn(null); // 无关联救援行，跳过同步
+
+        EmergencyEventUpdateRequest req = new EmergencyEventUpdateRequest();
+        req.setStatus("processing");
+        req.setStatusLabel("现场处置中");
+        EmergencyEventItem item = service.update(26L, req);
+
+        assertEquals("现场处置中", item.getStatusLabel());
+        verify(accidentIncidentMapper, org.mockito.Mockito.never()).updateById(any());
+    }
+
+    @Test
+    void update_rejectsIllegalStatus() {
+        FacEmergencyEvent existing = event("FIRE", "phone", "消防电话报警", "EVENT", "乙烯裂解炉泄漏", 1);
+        existing.setId(26L);
+        when(emergencyEventMapper.selectById(26L)).thenReturn(existing);
+
+        EmergencyEventUpdateRequest req = new EmergencyEventUpdateRequest();
+        req.setStatus("unknown-status");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.update(26L, req));
+
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(emergencyEventMapper, org.mockito.Mockito.never()).updateById(any());
+    }
+
+    @Test
+    void update_eventNotFoundThrowsNotFound() {
+        when(emergencyEventMapper.selectById(999L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.update(999L, new EmergencyEventUpdateRequest()));
+
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+    }
+
+    @Test
+    void delete_clearsDetailFieldsAndIncidentBeforeEvent() {
+        FacEmergencyEvent existing = event("FIRE", "phone", "消防电话报警", "EVENT", "乙烯裂解炉泄漏", 1);
+        existing.setId(26L);
+        when(emergencyEventMapper.selectById(26L)).thenReturn(existing);
+
+        FacAccidentIncident incident = new FacAccidentIncident();
+        incident.setId(7L);
+        incident.setEventId(26L);
+        when(accidentIncidentMapper.selectList(any())).thenReturn(List.of(incident));
+
+        service.delete(26L);
+
+        // 顺序：先清详情字段 → 再删救援行 → 最后删事件本体，避免留下孤儿行
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(
+                accidentDetailFieldMapper, accidentIncidentMapper, emergencyEventMapper);
+        inOrder.verify(accidentDetailFieldMapper).delete(any());
+        inOrder.verify(accidentIncidentMapper).deleteById(7L);
+        inOrder.verify(emergencyEventMapper).deleteById(26L);
+    }
+
+    @Test
+    void delete_eventNotFoundThrowsNotFound() {
+        when(emergencyEventMapper.selectById(999L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.delete(999L));
+
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(emergencyEventMapper, org.mockito.Mockito.never()).deleteById(any());
     }
 
     /** 捕获 create 内部生成的事件行（mock insert 不回填 id，仅记录入参对象）。 */
