@@ -10,4 +10,5 @@
 - [x] 单测：`FireFacilityServiceTest` 增 6 例、`FireFacilityControllerTest` 增 2 例（全绿）
 - [x] `mvn compile` 与方言一致性脚本 PASS；`check-endpoint-authz` PASS
 - [x] 契约守门 `check-api-contract.mjs --strict`：路由差异 0 / schema 漂移 0
-- [ ] 双仓提交推送（等待前端侧改动一并完成后执行）
+- [x] 真机验证（8787 直连）：新增成功 / 重复编号 409 / 全字段 PUT / 非法级别 100 / 删除 / 再删 404 / 条数回正
+- [x] 双仓提交推送并归档
