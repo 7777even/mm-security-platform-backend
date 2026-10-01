@@ -1,14 +1,18 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.dto.FireAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.FireAlarmItem;
 import com.sinopec.mmsecurity.dto.FireAlarmPageResult;
 import com.sinopec.mmsecurity.dto.FireAlarmUpdateRequest;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.FireAlarmService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +32,25 @@ public class FireAlarmController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "10") long size) {
         return Result.ok(fireAlarmService.page(page, size));
+    }
+
+    /**
+     * 消防报警新增：需权限码 {@code fire-alarm:create}。返回创建后的 FireAlarmItem 并广播 fire-alarm.alarm 变更。
+     */
+    @PostMapping("/fire-alarms")
+    @RequireAuth(perm = "fire-alarm:create")
+    public Result<FireAlarmItem> create(@Valid @RequestBody FireAlarmCreateRequest req) {
+        return Result.ok(fireAlarmService.create(req));
+    }
+
+    /**
+     * 消防报警删除（真删除）：需权限码 {@code fire-alarm:delete}。广播 fire-alarm.alarm 变更。
+     */
+    @DeleteMapping("/fire-alarms/{alarmId}")
+    @RequireAuth(perm = "fire-alarm:delete")
+    public Result<Void> delete(@PathVariable String alarmId) {
+        fireAlarmService.delete(alarmId);
+        return Result.ok(null);
     }
 
     /**
