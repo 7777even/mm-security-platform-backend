@@ -2,6 +2,7 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmResult;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultCreateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
@@ -12,6 +13,7 @@ import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderResult;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.FireFacilityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -89,5 +91,29 @@ public class FireFacilityController {
             @PathVariable String faultId,
             @RequestBody FireFacilityFaultUpdateRequest req) {
         return Result.ok(fireFacilityService.updateFault(faultId, req));
+    }
+
+    /**
+     * 消防故障新增（管理端台账录入）：落库并返回新建条目（含空时间线）。
+     * 需权限码 {@code fire-facility:fault-create}（V91 已登记并授权 ADMIN 及岗位角色）。
+     * 成功触发 fire-facility.fault 实时广播，供大屏与管理端即时刷新。
+     */
+    @PostMapping("/faults")
+    @RequireAuth(perm = "fire-facility:fault-create")
+    public Result<FireFacilityFaultItem> createFault(
+            @RequestBody FireFacilityFaultCreateRequest req) {
+        return Result.ok(fireFacilityService.createFault(req));
+    }
+
+    /**
+     * 消防故障删除：级联清理故障时间线后物理删除（真删除，无回收站）。
+     * 需权限码 {@code fire-facility:fault-delete}（V91 已登记并授权 ADMIN 及岗位角色）。
+     * 成功触发 fire-facility.fault 实时广播。
+     */
+    @DeleteMapping("/faults/{faultId}")
+    @RequireAuth(perm = "fire-facility:fault-delete")
+    public Result<Void> deleteFault(@PathVariable String faultId) {
+        fireFacilityService.deleteFault(faultId);
+        return Result.ok(null);
     }
 }

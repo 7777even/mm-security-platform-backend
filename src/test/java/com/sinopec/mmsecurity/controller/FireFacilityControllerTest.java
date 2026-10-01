@@ -28,7 +28,9 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -257,5 +259,37 @@ class FireFacilityControllerTest {
                 .andExpect(jsonPath("$.data.items[0].key").value("water"))
                 .andExpect(jsonPath("$.data.items[0].total").value(46))
                 .andExpect(jsonPath("$.data.items[0].status").value("告警"));
+    }
+
+    @Test
+    void createFault_returnsCreatedItemWithPendingStatus() throws Exception {
+        FireFacilityFaultItem item = new FireFacilityFaultItem();
+        item.setId(11L);
+        item.setFaultCode("FLT-2026-0001");
+        item.setFacilityCode("XF-002");
+        item.setFaultLevel("紧急");
+        item.setStatus("待确认");
+        item.setTimeline(List.of());
+        when(service.createFault(any())).thenReturn(item);
+
+        mvc().perform(post("/api/v1/fire-facility/faults")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"faultCode\":\"FLT-2026-0001\",\"facilityCode\":\"XF-002\","
+                                + "\"facilityName\":\"消火栓系统-2#罐区\",\"faultType\":\"硬件故障\","
+                                + "\"faultLevel\":\"紧急\",\"discoverTime\":\"2026-10-01 09:15:00\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.faultCode").value("FLT-2026-0001"))
+                .andExpect(jsonPath("$.data.status").value("待确认"))
+                .andExpect(jsonPath("$.data.faultLevel").value("紧急"));
+    }
+
+    @Test
+    void deleteFault_returnsOkEnvelopeAndDelegatesToService() throws Exception {
+        mvc().perform(delete("/api/v1/fire-facility/faults/7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deleteFault("7");
     }
 }

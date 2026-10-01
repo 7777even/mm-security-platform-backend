@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.service;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmResult;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultCreateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultTimelineCreate;
@@ -400,5 +401,84 @@ class FireFacilityServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> service.updateFault("999", req));
         assertEquals(ResultCode.NOT_FOUND, ex.getCode());
         verify(faultMapper, never()).updateById(any());
+    }
+
+    /* ==================== 新增 createFault / 删除 deleteFault ==================== */
+
+    private static FireFacilityFaultCreateRequest createReq(String faultCode, String level) {
+        FireFacilityFaultCreateRequest req = new FireFacilityFaultCreateRequest();
+        req.setFaultCode(faultCode);
+        req.setFacilityCode("XF-002");
+        req.setFacilityName("消火栓系统-2#罐区");
+        req.setFacilityType("消火栓系统");
+        req.setFaultType("硬件故障");
+        req.setFaultLevel(level);
+        req.setDiscoverTime("2026-10-01 09:15:00");
+        return req;
+    }
+
+    @Test
+    void createFault_valid_persistsDefaultsPendingAndAppendsSortNo() {
+        when(faultMapper.selectCount(any())).thenReturn(0L);
+        when(faultMapper.selectList(any())).thenReturn(List.of(fault(1L, "FLT-1", "硬件故障", "紧急", "待确认", null)));
+
+        FireFacilityFaultItem item = service.createFault(createReq("FLT-2026-0001", "紧急"));
+
+        ArgumentCaptor<FacFireFacilityFault> captor = ArgumentCaptor.forClass(FacFireFacilityFault.class);
+        verify(faultMapper).insert(captor.capture());
+        assertEquals("FLT-2026-0001", captor.getValue().getFaultCode());
+        assertEquals("紧急", captor.getValue().getFaultLevel());
+        // 未传状态时默认「待确认」，且 sort_no 接续现有最大值（既有 1 → 新 2）
+        assertEquals("待确认", captor.getValue().getFaultStatus());
+        assertEquals(2, captor.getValue().getSortNo());
+        assertEquals("待确认", item.getStatus());
+        assertTrue(item.getTimeline() == null || item.getTimeline().isEmpty());
+    }
+
+    @Test
+    void createFault_missingFaultCode_throwsParamInvalid() {
+        FireFacilityFaultCreateRequest req = createReq("FLT-2026-0002", "紧急");
+        req.setFaultCode("  ");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createFault(req));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(faultMapper, never()).insert(any());
+    }
+
+    @Test
+    void createFault_duplicateCode_throwsConflict() {
+        when(faultMapper.selectCount(any())).thenReturn(1L);
+
+        BusinessException ex = assertThrows(
+                BusinessException.class, () -> service.createFault(createReq("FLT-2026-0001", "紧急")));
+        assertEquals(ResultCode.CONFLICT, ex.getCode());
+        verify(faultMapper, never()).insert(any());
+    }
+
+    @Test
+    void createFault_invalidLevel_throwsParamInvalid() {
+        BusinessException ex = assertThrows(
+                BusinessException.class, () -> service.createFault(createReq("FLT-2026-0003", "超紧急")));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(faultMapper, never()).insert(any());
+    }
+
+    @Test
+    void deleteFault_existing_cascadesTimelineThenDeletes() {
+        when(faultMapper.selectById(7L)).thenReturn(fault(7L, "FLT-7", "硬件故障", "一般", "已闭环", "WO-1"));
+
+        service.deleteFault("7");
+
+        verify(timelineMapper).delete(any());
+        verify(faultMapper).deleteById(7L);
+    }
+
+    @Test
+    void deleteFault_notFound_throwsNotFound() {
+        when(faultMapper.selectById(999L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteFault("999"));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(faultMapper, never()).deleteById(any());
     }
 }

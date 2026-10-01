@@ -7,6 +7,7 @@ import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmItem;
 import com.sinopec.mmsecurity.dto.FireFacilityAlarmResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
+import com.sinopec.mmsecurity.dto.FireFacilityFaultCreateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultTimeline;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultTimelineCreate;
@@ -374,6 +375,107 @@ public class FireFacilityService {
                 .stream().map(this::toTimeline).collect(Collectors.toList());
         item.setTimeline(tl);
         return item;
+    }
+
+    /** 故障级别枚举（对齐既有种子数据与前端筛选选项）。 */
+    private static final Set<String> VALID_FAULT_LEVEL = Set.of("紧急", "重要", "一般");
+
+    /** 新建故障默认状态：待确认。 */
+    private static final String FAULT_STATUS_DEFAULT = "待确认";
+
+    /**
+     * 消防故障新增（管理端台账录入）：落库 fac_fire_facility_fault，返回带空时间线的新条目。
+     *
+     * <p>必填字段缺失 / 级别非法 → B3 PARAM_INVALID；faultCode 重复 → B3 CONFLICT。
+     * sort_no 接续现有最大值，保证列表顺序稳定。成功触发 fire-facility.fault 实时广播。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.fault")
+    public FireFacilityFaultItem createFault(FireFacilityFaultCreateRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "新增故障请求体不可为空");
+        }
+        String faultCode = blankToNull(req.getFaultCode());
+        if (faultCode == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "故障编号 faultCode 必填");
+        }
+        if (blankToNull(req.getFacilityCode()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "关联设施编码 facilityCode 必填");
+        }
+        if (blankToNull(req.getFaultType()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "故障类型 faultType 必填");
+        }
+        if (blankToNull(req.getFaultLevel()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "故障级别 faultLevel 必填");
+        }
+        if (blankToNull(req.getDiscoverTime()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "发现时间 discoverTime 必填");
+        }
+        if (!VALID_FAULT_LEVEL.contains(req.getFaultLevel())) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "非法故障级别：" + req.getFaultLevel());
+        }
+        Long dup = faultMapper.selectCount(new LambdaQueryWrapper<FacFireFacilityFault>()
+                .eq(FacFireFacilityFault::getFaultCode, faultCode));
+        if (dup != null && dup > 0) {
+            throw new BusinessException(ResultCode.CONFLICT, "故障编号已存在：" + faultCode);
+        }
+        String status = blankToNull(req.getFaultStatus()) == null
+                ? FAULT_STATUS_DEFAULT
+                : req.getFaultStatus();
+        if (!VALID_FAULT_STATUS.contains(status)) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "非法故障状态：" + status);
+        }
+
+        int maxSort = faultMapper.selectList(null).stream()
+                .mapToInt(r -> r.getSortNo() == null ? 0 : r.getSortNo())
+                .max().orElse(0);
+
+        FacFireFacilityFault e = new FacFireFacilityFault();
+        e.setFaultCode(faultCode);
+        e.setFacilityCode(req.getFacilityCode());
+        e.setFacilityName(req.getFacilityName());
+        e.setFacilityType(req.getFacilityType());
+        e.setFaultType(req.getFaultType());
+        e.setFaultLevel(req.getFaultLevel());
+        e.setDiscoverTime(req.getDiscoverTime());
+        e.setDiscoverMethod(req.getDiscoverMethod());
+        e.setPhenomenon(req.getPhenomenon());
+        e.setCauseText(req.getCause());
+        e.setFaultStatus(status);
+        e.setWorkOrderNo(req.getWorkOrderNo());
+        e.setRepairPerson(req.getRepairPerson());
+        e.setEstimatedFinish(req.getEstimatedFinish());
+        e.setActualFinish(req.getActualFinish());
+        e.setRepairMeasures(req.getRepairMeasures());
+        e.setAcceptancePerson(req.getAcceptancePerson());
+        e.setAcceptanceResult(req.getAcceptanceResult());
+        e.setSortNo(maxSort + 1);
+        faultMapper.insert(e);
+
+        FireFacilityFaultItem item = toFault(e);
+        item.setTimeline(new ArrayList<>());
+        return item;
+    }
+
+    /**
+     * 消防故障删除：级联清理 fac_fire_facility_fault_timeline 后物理删除故障记录。
+     *
+     * <p>id 非法 → B3 PARAM_INVALID；记录不存在 → B3 NOT_FOUND。成功触发 fire-facility.fault 实时广播。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.fault")
+    public void deleteFault(String faultId) {
+        Long id;
+        try {
+            id = Long.valueOf(faultId.trim());
+        } catch (NumberFormatException ex) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "非法故障 id：" + faultId);
+        }
+        FacFireFacilityFault e = faultMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "消防故障不存在：" + faultId);
+        }
+        timelineMapper.delete(new LambdaQueryWrapper<FacFireFacilityFaultTimeline>()
+                .eq(FacFireFacilityFaultTimeline::getFaultId, id));
+        faultMapper.deleteById(id);
     }
 
     /** 设施类型下拉：取自 fac_fire_facility_option（kind=FACILITY_TYPE）。 */
