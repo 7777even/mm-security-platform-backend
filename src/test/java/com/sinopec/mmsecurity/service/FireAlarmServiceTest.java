@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
+import com.sinopec.mmsecurity.dto.FireAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.FireAlarmItem;
 import com.sinopec.mmsecurity.dto.FireAlarmPageResult;
 import com.sinopec.mmsecurity.dto.FireAlarmUpdateRequest;
@@ -11,10 +12,13 @@ import com.sinopec.mmsecurity.mapper.FacFireAlarmMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.io.Serializable;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -179,5 +183,143 @@ class FireAlarmServiceTest {
         // 未传处置字段时不应覆盖既有值
         assertEquals("既有处置文本", captor.getValue().getHandleResult());
         assertEquals("ACKED", captor.getValue().getStatus());
+    }
+
+    /* ==================== 新增 create ==================== */
+
+    @Test
+    void create_roundTrip_echoesTitleTimeAndDefaultsActive() {
+        FireAlarmCreateRequest req = new FireAlarmCreateRequest();
+        req.setTitle("联动测试报警");
+        req.setTime("2026-10-01 21:00:00");
+        req.setTypeLabel("火灾报警");
+        req.setTypeTone("fire");
+        req.setLocation("化工区-测试");
+        // status 不传 → 期望默认 ACTIVE
+
+        FireAlarmItem item = service.create(req);
+
+        ArgumentCaptor<FacFireAlarm> captor = ArgumentCaptor.forClass(FacFireAlarm.class);
+        verify(mapper).insert(captor.capture());
+        FacFireAlarm saved = captor.getValue();
+        assertNotNull(saved.getAlarmId());
+        assertTrue(saved.getAlarmId().startsWith("FA-"), "alarmId 应以 FA- 前缀");
+        assertEquals("ACTIVE", saved.getStatus());
+        assertEquals(0L, saved.getVersion());
+        // 回读逐字段一致
+        assertEquals("联动测试报警", item.getTitle());
+        assertEquals("2026-10-01 21:00:00", item.getTime());
+        assertEquals("ACTIVE", item.getStatus());
+        assertEquals(saved.getAlarmId(), item.getAlarmId());
+    }
+
+    @Test
+    void create_invalidStatus_throwsParamInvalid() {
+        FireAlarmCreateRequest req = new FireAlarmCreateRequest();
+        req.setTitle("联动测试报警");
+        req.setTime("2026-10-01 21:00:00");
+        req.setStatus("BOGUS");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.create(req));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(mapper, never()).insert(any());
+    }
+
+    /* ==================== 删除 delete ==================== */
+
+    @Test
+    void delete_missing_throwsNotFound() {
+        when(mapper.selectById("FA-GONE")).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.delete("FA-GONE"));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(mapper, never()).deleteById(any(Serializable.class));
+    }
+
+    @Test
+    void delete_existing_succeeds() {
+        when(mapper.selectById("FA-DEL")).thenReturn(existing("FA-DEL"));
+
+        service.delete("FA-DEL");
+
+        verify(mapper).deleteById((Serializable) "FA-DEL");
+    }
+
+    /* ==================== 全字段 update 回读 ==================== */
+
+    @Test
+    void update_fullFieldsRoundTrip() {
+        when(mapper.selectById("FA-FULL")).thenReturn(existing("FA-FULL"));
+        FireAlarmUpdateRequest req = new FireAlarmUpdateRequest();
+        req.setTypeLabel("烟雾报警");
+        req.setTypeTone("smoke");
+        req.setSource("消防主机");
+        req.setObjectType("储罐");
+        req.setObjectName("汽油储罐T-01");
+        req.setLevel("高");
+        req.setDescription("烟雾浓度超标");
+        req.setLocation("罐区-测试");
+        req.setTime("2026-10-01 21:05:00");
+        req.setFalseAlarm("否");
+        req.setStatus("ACKED");
+        req.setRescueEventId("RE-1");
+        req.setMonitorId("M-1");
+        req.setMonitorLabel("监控点A");
+        req.setOnsiteMonitorId("OM-1");
+        req.setOnsiteMonitorLabel("现场监控B");
+        req.setTitle("全字段回读");
+        req.setHandleResult("已核实现场无明火");
+        req.setHandleTime("2026-10-01 21:30:00");
+        req.setDispatchPersonnel("张三,李四");
+        req.setNotifyMethod("APP,SMS");
+
+        FireAlarmItem item = service.update("FA-FULL", req);
+
+        ArgumentCaptor<FacFireAlarm> captor = ArgumentCaptor.forClass(FacFireAlarm.class);
+        verify(mapper).updateById(captor.capture());
+        FacFireAlarm saved = captor.getValue();
+        assertEquals("烟雾报警", saved.getTypeLabel());
+        assertEquals("smoke", saved.getTypeTone());
+        assertEquals("消防主机", saved.getSource());
+        assertEquals("储罐", saved.getObjectType());
+        assertEquals("汽油储罐T-01", saved.getObjectName());
+        assertEquals("高", saved.getLevel());
+        assertEquals("烟雾浓度超标", saved.getDescription());
+        assertEquals("罐区-测试", saved.getLocation());
+        assertEquals("2026-10-01 21:05:00", saved.getTime());
+        assertEquals("否", saved.getFalseAlarm());
+        assertEquals("ACKED", saved.getStatus());
+        assertEquals("RE-1", saved.getRescueEventId());
+        assertEquals("M-1", saved.getMonitorId());
+        assertEquals("监控点A", saved.getMonitorLabel());
+        assertEquals("OM-1", saved.getOnsiteMonitorId());
+        assertEquals("现场监控B", saved.getOnsiteMonitorLabel());
+        assertEquals("全字段回读", saved.getTitle());
+        assertEquals("已核实现场无明火", saved.getHandleResult());
+        assertEquals("2026-10-01 21:30:00", saved.getHandleTime());
+        assertEquals("张三,李四", saved.getDispatchPersonnel());
+        assertEquals("APP,SMS", saved.getNotifyMethod());
+        // 回读 item 与落库实体逐字段一致
+        assertEquals(saved.getTypeLabel(), item.getTypeLabel());
+        assertEquals(saved.getTypeTone(), item.getTypeTone());
+        assertEquals(saved.getSource(), item.getSource());
+        assertEquals(saved.getObjectType(), item.getObjectType());
+        assertEquals(saved.getObjectName(), item.getObjectName());
+        assertEquals(saved.getLevel(), item.getLevel());
+        assertEquals(saved.getDescription(), item.getDescription());
+        assertEquals(saved.getLocation(), item.getLocation());
+        assertEquals(saved.getTime(), item.getTime());
+        assertEquals(saved.getFalseAlarm(), item.getFalseAlarm());
+        assertEquals(saved.getStatus(), item.getStatus());
+        assertEquals(saved.getRescueEventId(), item.getRescueEventId());
+        assertEquals(saved.getMonitorId(), item.getMonitorId());
+        assertEquals(saved.getMonitorLabel(), item.getMonitorLabel());
+        assertEquals(saved.getOnsiteMonitorId(), item.getOnsiteMonitorId());
+        assertEquals(saved.getOnsiteMonitorLabel(), item.getOnsiteMonitorLabel());
+        assertEquals(saved.getTitle(), item.getTitle());
+        assertEquals(saved.getHandleResult(), item.getHandleResult());
+        assertEquals(saved.getHandleTime(), item.getHandleTime());
+        assertEquals(saved.getDispatchPersonnel(), item.getDispatchPersonnel());
+        assertEquals(saved.getNotifyMethod(), item.getNotifyMethod());
     }
 }

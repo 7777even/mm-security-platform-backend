@@ -1,18 +1,24 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.dto.FireAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.FireAlarmItem;
 import com.sinopec.mmsecurity.dto.FireAlarmPageResult;
 import com.sinopec.mmsecurity.service.FireAlarmService;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -68,5 +74,49 @@ class FireAlarmControllerTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.total").value(0))
                 .andExpect(jsonPath("$.data.list").isEmpty());
+    }
+
+    /* ==================== 新增 create ==================== */
+
+    @Test
+    void create_returnsItem() throws Exception {
+        FireAlarmItem item = new FireAlarmItem();
+        item.setAlarmId("FA-20261001-ABC123456789");
+        item.setTitle("联动测试报警");
+        item.setStatus("ACTIVE");
+        when(service.create(any(FireAlarmCreateRequest.class))).thenReturn(item);
+
+        mockMvc.perform(post("/api/v1/fire-alarms")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"联动测试报警\",\"time\":\"2026-10-01 21:00:00\","
+                                + "\"typeLabel\":\"火灾报警\",\"typeTone\":\"fire\","
+                                + "\"location\":\"化工区-测试\",\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.alarmId").value("FA-20261001-ABC123456789"));
+    }
+
+    /**
+     * 缺 title（@NotBlank 触发）→ 走 GlobalExceptionHandler 收敛到 B3 包络。
+     * 约定：参数类错误返回 HTTP 200 + code=100（PARAM_INVALID），由前端按 code 判定，并非 400。
+     */
+    @Test
+    void create_missingTitle_returnsParamInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/fire-alarms")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"time\":\"2026-10-01 21:00:00\"}"))  // 缺 title
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(100))
+                .andExpect(jsonPath("$.code").isNotEmpty());
+    }
+
+    /* ==================== 删除 delete ==================== */
+
+    @Test
+    void delete_existing_returnsOk() throws Exception {
+        doNothing().when(service).delete("FA-DEL-001");
+        mockMvc.perform(delete("/api/v1/fire-alarms/FA-DEL-001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
     }
 }
