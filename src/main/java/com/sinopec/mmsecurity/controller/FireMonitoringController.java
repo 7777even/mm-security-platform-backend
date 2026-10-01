@@ -12,8 +12,11 @@ import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.FireMonitoringService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -72,5 +75,28 @@ public class FireMonitoringController {
     public Result<PatrolExecutionView> createPatrolExecution(
             @RequestBody PatrolExecutionWriteRequest payload) {
         return Result.ok(businessWriteService.createPatrolExecution(payload));
+    }
+
+    /**
+     * 修改一条巡更执行记录（管理端台账编辑，仅覆盖传入的非空字段）。
+     * 需权限码 {@code fire-alarm:patrol:write}；成功触发 fire.patrol 实时广播。
+     */
+    @PutMapping("/patrol-executions/{id}")
+    @RequireAuth(perm = "fire-alarm:patrol:write")
+    public Result<PatrolExecutionView> updatePatrolExecution(
+            @PathVariable Long id,
+            @RequestBody PatrolExecutionWriteRequest payload) {
+        return Result.ok(businessWriteService.updatePatrolExecution(id, payload));
+    }
+
+    /**
+     * 删除一条巡更执行记录（物理删除）。需权限码 {@code fire-alarm:patrol:write}；
+     * 成功触发 fire.patrol 实时广播。
+     */
+    @DeleteMapping("/patrol-executions/{id}")
+    @RequireAuth(perm = "fire-alarm:patrol:write")
+    public Result<Void> deletePatrolExecution(@PathVariable Long id) {
+        businessWriteService.deletePatrolExecution(id);
+        return Result.ok(null);
     }
 }

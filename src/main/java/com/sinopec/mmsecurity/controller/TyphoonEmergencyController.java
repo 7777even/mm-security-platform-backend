@@ -12,8 +12,11 @@ import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.TyphoonEmergencyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -69,5 +72,28 @@ public class TyphoonEmergencyController {
     public Result<TyphoonDispatchOrderView> createDispatchOrder(
             @RequestBody TyphoonDispatchOrderWriteRequest payload) {
         return Result.ok(businessWriteService.createDispatchOrder(payload));
+    }
+
+    /**
+     * 修改一条资源调度单（管理端台账编辑，仅覆盖传入的非空字段）。
+     * 需权限码 {@code typhoon:dispatch:write}；成功触发 typhoon.dispatch 实时广播。
+     */
+    @PutMapping("/dispatch-orders/{id}")
+    @RequireAuth(perm = "typhoon:dispatch:write")
+    public Result<TyphoonDispatchOrderView> updateDispatchOrder(
+            @PathVariable Long id,
+            @RequestBody TyphoonDispatchOrderWriteRequest payload) {
+        return Result.ok(businessWriteService.updateDispatchOrder(id, payload));
+    }
+
+    /**
+     * 删除一条资源调度单（物理删除）。需权限码 {@code typhoon:dispatch:write}；
+     * 成功触发 typhoon.dispatch 实时广播。
+     */
+    @DeleteMapping("/dispatch-orders/{id}")
+    @RequireAuth(perm = "typhoon:dispatch:write")
+    public Result<Void> deleteDispatchOrder(@PathVariable Long id) {
+        businessWriteService.deleteDispatchOrder(id);
+        return Result.ok(null);
     }
 }

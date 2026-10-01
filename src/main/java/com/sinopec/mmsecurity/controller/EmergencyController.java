@@ -21,6 +21,7 @@ import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.BusinessWriteService;
 import com.sinopec.mmsecurity.service.EmergencyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -137,6 +138,29 @@ public class EmergencyController {
         return Result.ok(businessWriteService.createCommandRecord(payload));
     }
 
+    /**
+     * 修改一条应急指令记录（管理端台账编辑，仅覆盖传入的非空字段）。
+     * 需权限码 {@code emergency:command:write}；成功触发 emergency.command 实时广播。
+     */
+    @PutMapping("/command-records/{id}")
+    @RequireAuth(perm = "emergency:command:write")
+    public Result<EmergencyCommandRecordView> updateCommandRecord(
+            @PathVariable Long id,
+            @RequestBody EmergencyCommandRecordWriteRequest payload) {
+        return Result.ok(businessWriteService.updateCommandRecord(id, payload));
+    }
+
+    /**
+     * 删除一条应急指令记录（物理删除）。需权限码 {@code emergency:command:write}；
+     * 成功触发 emergency.command 实时广播。
+     */
+    @DeleteMapping("/command-records/{id}")
+    @RequireAuth(perm = "emergency:command:write")
+    public Result<Void> deleteCommandRecord(@PathVariable Long id) {
+        businessWriteService.deleteCommandRecord(id);
+        return Result.ok(null);
+    }
+
     /** 值班签到 / 签退记录列表。 */
     @GetMapping("/duty-sign-ins")
     public Result<List<DutySignInView>> dutySignIns() {
@@ -148,5 +172,28 @@ public class EmergencyController {
     @RequireAuth(perm = "emergency:duty:write")
     public Result<DutySignInView> createDutySignIn(@RequestBody DutySignInWriteRequest payload) {
         return Result.ok(businessWriteService.createDutySignIn(payload));
+    }
+
+    /**
+     * 修改一条值班签到记录（管理端台账编辑，仅覆盖传入的非空字段）。
+     * 需权限码 {@code emergency:duty:write}；成功触发 emergency.duty 实时广播。
+     */
+    @PutMapping("/duty-sign-ins/{id}")
+    @RequireAuth(perm = "emergency:duty:write")
+    public Result<DutySignInView> updateDutySignIn(
+            @PathVariable Long id,
+            @RequestBody DutySignInWriteRequest payload) {
+        return Result.ok(businessWriteService.updateDutySignIn(id, payload));
+    }
+
+    /**
+     * 删除一条值班签到记录（物理删除）。需权限码 {@code emergency:duty:write}；
+     * 成功触发 emergency.duty 实时广播。
+     */
+    @DeleteMapping("/duty-sign-ins/{id}")
+    @RequireAuth(perm = "emergency:duty:write")
+    public Result<Void> deleteDutySignIn(@PathVariable Long id) {
+        businessWriteService.deleteDutySignIn(id);
+        return Result.ok(null);
     }
 }

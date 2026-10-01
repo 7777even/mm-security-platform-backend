@@ -131,6 +131,49 @@ public class BusinessWriteService {
         return page.getRecords().stream().map(BusinessWriteService::toCommandView).toList();
     }
 
+    /**
+     * 修改一条应急指令记录（管理端台账编辑）：仅覆盖传入的非空字段（read-modify-write）。
+     * 记录不存在返回 B3 NOT_FOUND。成功触发 emergency.command 实时广播。
+     */
+    @RealtimeSync(domain = "emergency.command")
+    public EmergencyCommandRecordView updateCommandRecord(Long id, EmergencyCommandRecordWriteRequest req) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "指令记录 id 不能为空");
+        }
+        FacEmergencyCommandRecord e = commandRecordMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急指令记录不存在：" + id);
+        }
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "修改内容不能为空");
+        }
+        if (StringUtils.hasText(req.getCommandCode())) e.setCommandCode(req.getCommandCode().trim());
+        if (StringUtils.hasText(req.getCommandName())) e.setCommandName(req.getCommandName().trim());
+        if (StringUtils.hasText(req.getCommandKind())) e.setCommandKind(req.getCommandKind());
+        if (StringUtils.hasText(req.getCurrStatus())) e.setCurrStatus(req.getCurrStatus().trim());
+        if (StringUtils.hasText(req.getDispatchMode())) e.setDispatchMode(req.getDispatchMode());
+        if (StringUtils.hasText(req.getTarget())) e.setTarget(req.getTarget());
+        if (StringUtils.hasText(req.getRemark())) e.setRemark(req.getRemark());
+        e.setUpdatedAt(LocalDateTime.now());
+        commandRecordMapper.updateById(e);
+        audit.record("emergency", "emergency.command.update", detail("id", id));
+        return toCommandView(e);
+    }
+
+    /** 删除一条应急指令记录（物理删除）。不存在返回 B3 NOT_FOUND，成功触发 emergency.command 广播。 */
+    @RealtimeSync(domain = "emergency.command")
+    public void deleteCommandRecord(Long id) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "指令记录 id 不能为空");
+        }
+        FacEmergencyCommandRecord e = commandRecordMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急指令记录不存在：" + id);
+        }
+        commandRecordMapper.deleteById(id);
+        audit.record("emergency", "emergency.command.delete", detail("id", id));
+    }
+
     /* ==================== 2) 台风资源调度 ==================== */
 
     /** 登记一条资源调度单（指派 / 确认 / 释放），orderNo 由服务端生成。 */
@@ -181,6 +224,54 @@ public class BusinessWriteService {
                 new LambdaQueryWrapper<FacTyphoonDispatchOrder>()
                         .orderByDesc(FacTyphoonDispatchOrder::getId));
         return page.getRecords().stream().map(BusinessWriteService::toDispatchView).toList();
+    }
+
+    /**
+     * 修改一条资源调度单（管理端台账编辑）：仅覆盖传入的非空字段。
+     * dispatchAction 取值须在 ASSIGN / CONFIRM / RELEASE 内，否则 B3 PARAM_INVALID。
+     */
+    @RealtimeSync(domain = "typhoon.dispatch")
+    public TyphoonDispatchOrderView updateDispatchOrder(Long id, TyphoonDispatchOrderWriteRequest req) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "调度单 id 不能为空");
+        }
+        FacTyphoonDispatchOrder e = dispatchOrderMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "资源调度单不存在：" + id);
+        }
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "修改内容不能为空");
+        }
+        if (StringUtils.hasText(req.getResourceCode())) e.setResourceCode(req.getResourceCode().trim());
+        if (StringUtils.hasText(req.getResourceName())) e.setResourceName(req.getResourceName().trim());
+        if (StringUtils.hasText(req.getDispatchAction())) {
+            String action = req.getDispatchAction().trim();
+            if (!DISPATCH_ACTIONS.contains(action)) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "非法调度动作：" + action);
+            }
+            e.setDispatchAction(action);
+        }
+        if (StringUtils.hasText(req.getAssignee())) e.setAssignee(req.getAssignee());
+        if (req.getQuantity() != null) e.setQuantity(req.getQuantity());
+        if (StringUtils.hasText(req.getRemark())) e.setRemark(req.getRemark());
+        e.setUpdatedAt(LocalDateTime.now());
+        dispatchOrderMapper.updateById(e);
+        audit.record("typhoon", "typhoon.dispatch.update", detail("id", id));
+        return toDispatchView(e);
+    }
+
+    /** 删除一条资源调度单（物理删除）。不存在返回 B3 NOT_FOUND，成功触发 typhoon.dispatch 广播。 */
+    @RealtimeSync(domain = "typhoon.dispatch")
+    public void deleteDispatchOrder(Long id) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "调度单 id 不能为空");
+        }
+        FacTyphoonDispatchOrder e = dispatchOrderMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "资源调度单不存在：" + id);
+        }
+        dispatchOrderMapper.deleteById(id);
+        audit.record("typhoon", "typhoon.dispatch.delete", detail("id", id));
     }
 
     /* ==================== 3) 巡更执行上报 ==================== */
@@ -234,6 +325,56 @@ public class BusinessWriteService {
         return page.getRecords().stream().map(BusinessWriteService::toPatrolView).toList();
     }
 
+    /**
+     * 修改一条巡更执行记录（管理端台账编辑）：仅覆盖传入的非空字段。
+     * execResult 取值须在 NORMAL / ABNORMAL 内，否则 B3 PARAM_INVALID。
+     */
+    @RealtimeSync(domain = "fire.patrol")
+    public PatrolExecutionView updatePatrolExecution(Long id, PatrolExecutionWriteRequest req) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "巡更记录 id 不能为空");
+        }
+        FacPatrolExecution e = patrolExecutionMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "巡更执行记录不存在：" + id);
+        }
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "修改内容不能为空");
+        }
+        if (StringUtils.hasText(req.getPatrolDate())) e.setPatrolDate(req.getPatrolDate().trim());
+        if (StringUtils.hasText(req.getShiftName())) e.setShiftName(req.getShiftName());
+        if (StringUtils.hasText(req.getDutyPerson())) e.setDutyPerson(req.getDutyPerson());
+        if (req.getPatrolCount() != null) e.setPatrolCount(req.getPatrolCount());
+        if (StringUtils.hasText(req.getLocation())) e.setLocation(req.getLocation());
+        if (StringUtils.hasText(req.getExecResult())) {
+            String result = req.getExecResult().trim();
+            if (!PATROL_RESULTS.contains(result)) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "非法巡更结果：" + result);
+            }
+            e.setExecResult(result);
+        }
+        if (StringUtils.hasText(req.getFinding())) e.setFinding(req.getFinding());
+        if (StringUtils.hasText(req.getWorkOrderNo())) e.setWorkOrderNo(req.getWorkOrderNo());
+        e.setUpdatedAt(LocalDateTime.now());
+        patrolExecutionMapper.updateById(e);
+        audit.record("fire", "fire.patrol.update", detail("id", id));
+        return toPatrolView(e);
+    }
+
+    /** 删除一条巡更执行记录（物理删除）。不存在返回 B3 NOT_FOUND，成功触发 fire.patrol 广播。 */
+    @RealtimeSync(domain = "fire.patrol")
+    public void deletePatrolExecution(Long id) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "巡更记录 id 不能为空");
+        }
+        FacPatrolExecution e = patrolExecutionMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "巡更执行记录不存在：" + id);
+        }
+        patrolExecutionMapper.deleteById(id);
+        audit.record("fire", "fire.patrol.delete", detail("id", id));
+    }
+
     /* ==================== 4) 值班签到 ==================== */
 
     /** 登记一条值班签到 / 签退记录，signTime 为空时按当前时间填充。 */
@@ -283,6 +424,53 @@ public class BusinessWriteService {
                 new LambdaQueryWrapper<FacDutySignIn>()
                         .orderByDesc(FacDutySignIn::getId));
         return page.getRecords().stream().map(BusinessWriteService::toDutyView).toList();
+    }
+
+    /**
+     * 修改一条值班签到记录（管理端台账编辑）：仅覆盖传入的非空字段。
+     * signAction 取值须在 SIGN_IN / SIGN_OUT 内，否则 B3 PARAM_INVALID。
+     */
+    @RealtimeSync(domain = "emergency.duty")
+    public DutySignInView updateDutySignIn(Long id, DutySignInWriteRequest req) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "签到记录 id 不能为空");
+        }
+        FacDutySignIn e = dutySignInMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "值班签到记录不存在：" + id);
+        }
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "修改内容不能为空");
+        }
+        if (StringUtils.hasText(req.getDutyDate())) e.setDutyDate(req.getDutyDate().trim());
+        if (StringUtils.hasText(req.getShiftName())) e.setShiftName(req.getShiftName());
+        if (StringUtils.hasText(req.getDepartment())) e.setDepartment(req.getDepartment());
+        if (StringUtils.hasText(req.getPersonName())) e.setPersonName(req.getPersonName());
+        if (StringUtils.hasText(req.getSignAction())) {
+            String action = req.getSignAction().trim();
+            if (!SIGN_ACTIONS.contains(action)) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "非法签到动作：" + action);
+            }
+            e.setSignAction(action);
+        }
+        if (StringUtils.hasText(req.getRemark())) e.setRemark(req.getRemark());
+        dutySignInMapper.updateById(e);
+        audit.record("emergency", "emergency.duty.update", detail("id", id));
+        return toDutyView(e);
+    }
+
+    /** 删除一条值班签到记录（物理删除）。不存在返回 B3 NOT_FOUND，成功触发 emergency.duty 广播。 */
+    @RealtimeSync(domain = "emergency.duty")
+    public void deleteDutySignIn(Long id) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "签到记录 id 不能为空");
+        }
+        FacDutySignIn e = dutySignInMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "值班签到记录不存在：" + id);
+        }
+        dutySignInMapper.deleteById(id);
+        audit.record("emergency", "emergency.duty.delete", detail("id", id));
     }
 
     /* ==================== 内部工具 ==================== */
