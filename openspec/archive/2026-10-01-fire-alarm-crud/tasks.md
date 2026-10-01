@@ -22,4 +22,4 @@
 - [x] 前端 `docs/api/fire-alarm.openapi.json` 扩展 POST/DELETE + 全字段 PUT（Task 6 已提交）
 
 ## 收尾（跨端）
-- [ ] 双仓推送 `feature/fire-alarm-crud` / `feature/scaffold-rebuild` 与三端联调验证（Task 12，待前端 8–11 完成后一并执行）
+- [x] 双仓推送 `feature/fire-alarm-crud` / `feature/scaffold-rebuild` 与三端联调验证（Task 12，待前端 8–11 完成后一并执行）
