@@ -8,4 +8,4 @@
 - [x] 契约守门 `check-api-contract.mjs --strict` 0 差异
 - [x] 单测：`EmergencyServiceTest` 知识库写侧 6 例
 - [x] 真机对拍：8787 直连知识库 CRUD 全路径（16/16 通过）
-- [ ] 双仓提交推送并归档
+- [x] 双仓提交推送并归档
