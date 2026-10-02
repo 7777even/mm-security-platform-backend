@@ -9,4 +9,4 @@
 - [x] 契约守门 `check-api-contract.mjs --strict` 0 差异
 - [x] 单测：RescueResourceServiceTest 写侧 16 例
 - [x] 真机对拍：8787 直连四台账 CRUD 全路径（41/41 通过）
-- [ ] 双仓提交推送并归档
+- [x] 双仓提交推送并归档
