@@ -20,6 +20,9 @@ import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
 import com.sinopec.mmsecurity.dto.PhoneWriteRequest;
+import com.sinopec.mmsecurity.dto.EmergencyCaseItem;
+import com.sinopec.mmsecurity.dto.EmergencyCaseList;
+import com.sinopec.mmsecurity.dto.EmergencyCaseWriteRequest;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.BusinessWriteService;
@@ -141,6 +144,41 @@ public class EmergencyController {
     @RequireAuth(perm = "emergency:phone:write")
     public Result<Void> deletePhone(@PathVariable Long id) {
         emergencyService.deletePhone(id);
+        return Result.ok(null);
+    }
+
+    /** 事故案例库列表（可编辑台账，区别于 fac_alarm 自动归档的只读结案聚合）。 */
+    @GetMapping("/cases")
+    public Result<EmergencyCaseList> emergencyCases() {
+        return Result.ok(emergencyService.caseList());
+    }
+
+    /**
+     * 新增事故案例。需权限码 {@code emergency:case:write}；成功触发 emergency.case 实时广播。
+     */
+    @PostMapping("/cases")
+    @RequireAuth(perm = "emergency:case:write")
+    public Result<EmergencyCaseItem> createCase(@RequestBody EmergencyCaseWriteRequest payload) {
+        return Result.ok(emergencyService.createCase(payload));
+    }
+
+    /**
+     * 编辑事故案例（局部更新）。需权限码 {@code emergency:case:write}；成功触发 emergency.case 实时广播。
+     */
+    @PutMapping("/cases/{id}")
+    @RequireAuth(perm = "emergency:case:write")
+    public Result<EmergencyCaseItem> updateCase(
+            @PathVariable Long id, @RequestBody EmergencyCaseWriteRequest payload) {
+        return Result.ok(emergencyService.updateCase(id, payload));
+    }
+
+    /**
+     * 删除事故案例（物理删除）。需权限码 {@code emergency:case:write}；成功触发 emergency.case 实时广播。
+     */
+    @DeleteMapping("/cases/{id}")
+    @RequireAuth(perm = "emergency:case:write")
+    public Result<Void> deleteCase(@PathVariable Long id) {
+        emergencyService.deleteCase(id);
         return Result.ok(null);
     }
 

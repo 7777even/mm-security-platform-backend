@@ -29,6 +29,9 @@ import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
+import com.sinopec.mmsecurity.dto.EmergencyCaseItem;
+import com.sinopec.mmsecurity.dto.EmergencyCaseList;
+import com.sinopec.mmsecurity.dto.EmergencyCaseWriteRequest;
 import com.sinopec.mmsecurity.dto.PhoneWriteRequest;
 import com.sinopec.mmsecurity.dto.NodeGuidance;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
@@ -51,6 +54,7 @@ import com.sinopec.mmsecurity.entity.SysEmergencyPhone;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrengthItem;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
+import com.sinopec.mmsecurity.entity.FacEmergencyCase;
 import com.sinopec.mmsecurity.entity.FacFireFacilityLedger;
 import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
 import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
@@ -78,11 +82,14 @@ import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthItemMapper;
 import com.sinopec.mmsecurity.mapper.FacFireFacilityLedgerMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyCaseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -123,6 +130,7 @@ public class EmergencyService {
     private final FacBrigadeTeamMapper brigadeTeamMapper;
     private final SysEmergencyPhoneMapper phoneMapper;
     private final SysKnowledgeItemMapper knowledgeMapper;
+    private final FacEmergencyCaseMapper caseMapper;
     private final SysDutyMemberMapper dutyMapper;
     private final FacDispatchPersonnelMapper dispatchPersonnelMapper;
     private final FacEmergencyCmdMapper cmdMapper;
@@ -513,6 +521,100 @@ public class EmergencyService {
         it.setIcon(r.getIcon());
         it.setDescription(r.getDescription());
         return it;
+    }
+
+    /* ==================== 写侧：事故案例库（案例台账，可编辑） ==================== */
+
+    /** 事故案例库列表（按发生时间倒序）。 */
+    public EmergencyCaseList caseList() {
+        List<FacEmergencyCase> rows = caseMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyCase>().orderByDesc(FacEmergencyCase::getOccurredAt));
+        EmergencyCaseList list = new EmergencyCaseList();
+        list.setItems(rows.stream().map(EmergencyService::toCaseItem).collect(Collectors.toList()));
+        return list;
+    }
+
+    /**
+     * 新增事故案例。title 必填；id 取 max(id)+1（避免种子显式插 id 导致的自增序列滞后撞主键）。
+     * 广播 {@code emergency.case}，管理端 / 大屏订阅方自动重拉。
+     */
+    @RealtimeSync(domain = "emergency.case")
+    public EmergencyCaseItem createCase(EmergencyCaseWriteRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "请求体不能为空");
+        }
+        requireText(req.getTitle(), "事故名称 title");
+        FacEmergencyCase row = new FacEmergencyCase();
+        row.setId(LedgerIdSupport.nextId(caseMapper, FacEmergencyCase::getId, FacEmergencyCase::getId));
+        row.setTitle(req.getTitle().trim());
+        row.setAccidentType(req.getAccidentType());
+        row.setLocation(req.getLocation());
+        row.setOccurredAt(parseCaseTime(req.getOccurredAt()));
+        row.setSummary(req.getSummary());
+        row.setLessons(req.getLessons());
+        row.setCreateTime(LocalDateTime.now());
+        caseMapper.insert(row);
+        return toCaseItem(row);
+    }
+
+    /** 编辑事故案例：局部更新（字段为 null 表示不修改）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.case")
+    public EmergencyCaseItem updateCase(Long id, EmergencyCaseWriteRequest req) {
+        FacEmergencyCase row = caseMapper.selectById(id);
+        if (row == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "事故案例不存在：id=" + id);
+        }
+        if (req.getTitle() != null) {
+            row.setTitle(req.getTitle());
+        }
+        if (req.getAccidentType() != null) {
+            row.setAccidentType(req.getAccidentType());
+        }
+        if (req.getLocation() != null) {
+            row.setLocation(req.getLocation());
+        }
+        if (req.getOccurredAt() != null) {
+            row.setOccurredAt(parseCaseTime(req.getOccurredAt()));
+        }
+        if (req.getSummary() != null) {
+            row.setSummary(req.getSummary());
+        }
+        if (req.getLessons() != null) {
+            row.setLessons(req.getLessons());
+        }
+        caseMapper.updateById(row);
+        return toCaseItem(row);
+    }
+
+    /** 删除事故案例（物理删除）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.case")
+    public void deleteCase(Long id) {
+        if (caseMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "事故案例不存在：id=" + id);
+        }
+        caseMapper.deleteById(id);
+    }
+
+    private static final DateTimeFormatter CASE_TIME_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static EmergencyCaseItem toCaseItem(FacEmergencyCase r) {
+        EmergencyCaseItem it = new EmergencyCaseItem();
+        it.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+        it.setTitle(r.getTitle());
+        it.setAccidentType(r.getAccidentType());
+        it.setLocation(r.getLocation());
+        it.setOccurredAt(r.getOccurredAt() == null ? null : r.getOccurredAt().format(CASE_TIME_FMT));
+        it.setSummary(r.getSummary());
+        it.setLessons(r.getLessons());
+        return it;
+    }
+
+    private static LocalDateTime parseCaseTime(String s) {
+        if (s == null || !StringUtils.hasText(s.trim())) {
+            return null;
+        }
+        return LocalDateTime.parse(s.trim(), CASE_TIME_FMT);
     }
 
     /* ==================== 写侧：应急通讯录（电话台账） ==================== */
