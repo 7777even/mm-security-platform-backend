@@ -7,6 +7,7 @@ import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
+import com.sinopec.mmsecurity.dto.PersonSearchWriteRequest;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
@@ -14,8 +15,10 @@ import com.sinopec.mmsecurity.dto.SecurityTrackSummary;
 import com.sinopec.mmsecurity.dto.SecurityTrackTimelineItem;
 import com.sinopec.mmsecurity.dto.VehicleSearchDetail;
 import com.sinopec.mmsecurity.dto.VehicleSearchResult;
+import com.sinopec.mmsecurity.dto.VehicleSearchWriteRequest;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.SecurityService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -23,6 +26,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -99,6 +103,50 @@ public class SecurityController {
         return Result.ok(securityService.personDetail(id));
     }
 
+    @PostMapping("/security/search/person")
+    @RequireAuth(perm = "security:person-write")
+    public Result<PersonSearchDetail> createPerson(
+            @Valid @RequestBody PersonSearchWriteRequest req) {
+        return Result.ok(securityService.createPerson(req));
+    }
+
+    @PutMapping("/security/search/person/{id}")
+    @RequireAuth(perm = "security:person-write")
+    public Result<PersonSearchDetail> updatePerson(
+            @PathVariable Long id,
+            @Valid @RequestBody PersonSearchWriteRequest req) {
+        return Result.ok(securityService.updatePerson(id, req));
+    }
+
+    @DeleteMapping("/security/search/person/{id}")
+    @RequireAuth(perm = "security:person-write")
+    public Result<Void> deletePerson(@PathVariable Long id) {
+        securityService.deletePerson(id);
+        return Result.ok(null);
+    }
+
+    @PostMapping("/security/search/vehicle")
+    @RequireAuth(perm = "security:vehicle-write")
+    public Result<VehicleSearchDetail> createVehicle(
+            @Valid @RequestBody VehicleSearchWriteRequest req) {
+        return Result.ok(securityService.createVehicle(req));
+    }
+
+    @PutMapping("/security/search/vehicle/{id}")
+    @RequireAuth(perm = "security:vehicle-write")
+    public Result<VehicleSearchDetail> updateVehicle(
+            @PathVariable Long id,
+            @Valid @RequestBody VehicleSearchWriteRequest req) {
+        return Result.ok(securityService.updateVehicle(id, req));
+    }
+
+    @DeleteMapping("/security/search/vehicle/{id}")
+    @RequireAuth(perm = "security:vehicle-write")
+    public Result<Void> deleteVehicle(@PathVariable Long id) {
+        securityService.deleteVehicle(id);
+        return Result.ok(null);
+    }
+
     /**
      * 最新一条周界入侵告警（按告警时间倒序）。表为空时 data=null，前端按「无告警」渲染。
      * 替代前端 SecurityStatusPanel 的 demo 常量 resolveDemoAlarmDetailById('demo-intrusion-1')。
@@ -148,5 +196,12 @@ public class SecurityController {
     public Result<PerimeterAlarmDetail> createPerimeterAlarm(
             @RequestBody PerimeterAlarmCreateRequest req) {
         return Result.ok(securityService.createPerimeterAlarm(req));
+    }
+
+    @DeleteMapping("/security/perimeter-alarms/{id}")
+    @RequireAuth(perm = "security:perimeter-delete")
+    public Result<Void> deletePerimeterAlarm(@PathVariable Long id) {
+        securityService.deletePerimeterAlarm(id);
+        return Result.ok(null);
     }
 }

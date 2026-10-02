@@ -1,23 +1,33 @@
 package com.sinopec.mmsecurity.controller;
 
+import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.BollardItem;
 import com.sinopec.mmsecurity.dto.GateControlItem;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
+import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
+import com.sinopec.mmsecurity.dto.VehicleSearchDetail;
 import com.sinopec.mmsecurity.dto.VehicleSearchResult;
 import com.sinopec.mmsecurity.service.SecurityService;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -183,5 +193,112 @@ class SecurityControllerTest {
 
         mockMvc.perform(get("/api/v1/security/perimeter-alarms/9/snapshot"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createPerson_returnsDetail() throws Exception {
+        PersonSearchDetail detail = new PersonSearchDetail();
+        detail.setId(11L);
+        detail.setName("张三");
+        when(service.createPerson(any())).thenReturn(detail);
+
+        mockMvc.perform(post("/api/v1/security/search/person")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"张三\",\"gate\":\"东门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(11))
+                .andExpect(jsonPath("$.data.name").value("张三"));
+    }
+
+    @Test
+    void createPerson_missingName_returnsB3ParamInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/security/search/person")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"gate\":\"东门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID));
+    }
+
+    @Test
+    void deletePerson_returnsOk() throws Exception {
+        mockMvc.perform(delete("/api/v1/security/search/person/11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deletePerson(11L);
+    }
+
+    @Test
+    void deletePerson_notFound_returnsB3NotFound() throws Exception {
+        doThrow(new BusinessException(ResultCode.NOT_FOUND, "人员登记不存在：99"))
+                .when(service).deletePerson(99L);
+
+        mockMvc.perform(delete("/api/v1/security/search/person/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.NOT_FOUND));
+    }
+
+    @Test
+    void createVehicle_returnsDetail() throws Exception {
+        VehicleSearchDetail detail = new VehicleSearchDetail();
+        detail.setId(21L);
+        detail.setPlate("粤K12345");
+        when(service.createVehicle(any())).thenReturn(detail);
+
+        mockMvc.perform(post("/api/v1/security/search/vehicle")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"plate\":\"粤K12345\",\"gate\":\"南门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(21))
+                .andExpect(jsonPath("$.data.plate").value("粤K12345"));
+    }
+
+    @Test
+    void createVehicle_missingPlate_returnsB3ParamInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/security/search/vehicle")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"gate\":\"南门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID));
+    }
+
+    @Test
+    void deleteVehicle_returnsOk() throws Exception {
+        mockMvc.perform(delete("/api/v1/security/search/vehicle/21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deleteVehicle(21L);
+    }
+
+    @Test
+    void deleteVehicle_notFound_returnsB3NotFound() throws Exception {
+        doThrow(new BusinessException(ResultCode.NOT_FOUND, "车辆登记不存在：99"))
+                .when(service).deleteVehicle(99L);
+
+        mockMvc.perform(delete("/api/v1/security/search/vehicle/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.NOT_FOUND));
+    }
+
+    @Test
+    void deletePerimeterAlarm_returnsOk() throws Exception {
+        mockMvc.perform(delete("/api/v1/security/perimeter-alarms/31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deletePerimeterAlarm(31L);
+    }
+
+    @Test
+    void deletePerimeterAlarm_notFound_returnsB3NotFound() throws Exception {
+        doThrow(new BusinessException(ResultCode.NOT_FOUND, "周界入侵告警不存在：99"))
+                .when(service).deletePerimeterAlarm(99L);
+
+        mockMvc.perform(delete("/api/v1/security/perimeter-alarms/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.NOT_FOUND));
     }
 }

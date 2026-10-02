@@ -16,11 +16,13 @@ import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmUpdateRequest;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchResult;
+import com.sinopec.mmsecurity.dto.PersonSearchWriteRequest;
 import com.sinopec.mmsecurity.dto.SecurityEvent;
 import com.sinopec.mmsecurity.dto.SecurityTrackSummary;
 import com.sinopec.mmsecurity.dto.SecurityTrackTimelineItem;
 import com.sinopec.mmsecurity.dto.VehicleSearchDetail;
 import com.sinopec.mmsecurity.dto.VehicleSearchResult;
+import com.sinopec.mmsecurity.dto.VehicleSearchWriteRequest;
 import com.sinopec.mmsecurity.config.PerimeterAlarmSnapshotRenderer;
 import com.sinopec.mmsecurity.entity.FacBollard;
 import com.sinopec.mmsecurity.entity.FacGateControl;
@@ -178,6 +180,73 @@ public class SecurityService {
         if (id == null) return null;
         FacPersonSearch e = personSearchMapper.selectById(id);
         return e == null ? null : toPersonDetail(e);
+    }
+
+    @RealtimeSync(domain = "security.person-search")
+    public PersonSearchDetail createPerson(PersonSearchWriteRequest req) {
+        FacPersonSearch e = new FacPersonSearch();
+        applyPersonRequest(e, req);
+        e.setVersion(0L);
+        personSearchMapper.insert(e);
+        return toPersonDetail(e);
+    }
+
+    @RealtimeSync(domain = "security.person-search")
+    public PersonSearchDetail updatePerson(Long id, PersonSearchWriteRequest req) {
+        FacPersonSearch e = personSearchMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "人员登记不存在：" + id);
+        }
+        applyPersonRequest(e, req);
+        personSearchMapper.updateById(e);
+        return toPersonDetail(e);
+    }
+
+    @RealtimeSync(domain = "security.person-search")
+    public void deletePerson(Long id) {
+        FacPersonSearch e = personSearchMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "人员登记不存在：" + id);
+        }
+        personSearchMapper.deleteById(id);
+    }
+
+    @RealtimeSync(domain = "security.vehicle-search")
+    public VehicleSearchDetail createVehicle(VehicleSearchWriteRequest req) {
+        FacVehicleSearch e = new FacVehicleSearch();
+        applyVehicleRequest(e, req);
+        e.setVersion(0L);
+        vehicleSearchMapper.insert(e);
+        return toVehicleDetail(e);
+    }
+
+    @RealtimeSync(domain = "security.vehicle-search")
+    public VehicleSearchDetail updateVehicle(Long id, VehicleSearchWriteRequest req) {
+        FacVehicleSearch e = vehicleSearchMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "车辆登记不存在：" + id);
+        }
+        applyVehicleRequest(e, req);
+        vehicleSearchMapper.updateById(e);
+        return toVehicleDetail(e);
+    }
+
+    @RealtimeSync(domain = "security.vehicle-search")
+    public void deleteVehicle(Long id) {
+        FacVehicleSearch e = vehicleSearchMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "车辆登记不存在：" + id);
+        }
+        vehicleSearchMapper.deleteById(id);
+    }
+
+    @RealtimeSync(domain = "security.perimeter-alarm")
+    public void deletePerimeterAlarm(Long id) {
+        FacPerimeterAlarm e = perimeterAlarmMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "周界入侵告警不存在：" + id);
+        }
+        perimeterAlarmMapper.deleteById(id);
     }
 
     /**
@@ -361,6 +430,40 @@ public class SecurityService {
         d.setTime(e.getTrackTime());
         d.setCaptureHint(e.getCaptureHint());
         return d;
+    }
+
+    private void applyPersonRequest(FacPersonSearch e, PersonSearchWriteRequest req) {
+        e.setName(req.getName());
+        e.setGate(req.getGate());
+        e.setStatus(req.getStatus());
+        e.setDate(req.getDate());
+        e.setGender(req.getGender());
+        e.setPhone(req.getPhone());
+        e.setCompany(req.getCompany());
+        e.setIdNumber(req.getIdNumber());
+        e.setAppointmentNo(req.getAppointmentNo());
+        e.setAppointmentTime(req.getAppointmentTime());
+        e.setVisitPurpose(req.getVisitPurpose());
+        e.setSpecialOperation(req.getSpecialOperation());
+        e.setOperationArea(req.getOperationArea());
+    }
+
+    private void applyVehicleRequest(FacVehicleSearch e, VehicleSearchWriteRequest req) {
+        e.setPlate(req.getPlate());
+        e.setConfidence(req.getConfidence());
+        e.setGate(req.getGate());
+        e.setStatus(req.getStatus());
+        e.setTime(req.getTime());
+        e.setVehicleType(req.getVehicleType());
+        e.setDriverName(req.getDriverName());
+        e.setDriverPhone(req.getDriverPhone());
+        e.setCompany(req.getCompany());
+        e.setAppointmentNo(req.getAppointmentNo());
+        e.setAppointmentTime(req.getAppointmentTime());
+        e.setVisitPurpose(req.getVisitPurpose());
+        e.setWaybillNo(req.getWaybillNo());
+        e.setCargo(req.getCargo());
+        e.setDestination(req.getDestination());
     }
 
     private VehicleSearchDetail toVehicleDetail(FacVehicleSearch e) {
