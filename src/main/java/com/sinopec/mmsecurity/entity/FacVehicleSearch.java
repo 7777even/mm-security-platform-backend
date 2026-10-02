@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 /**
@@ -27,4 +28,7 @@ public class FacVehicleSearch {
     private String waybillNo;
     private String cargo;
     private String destination;
+
+    @Version
+    private Long version;
 }

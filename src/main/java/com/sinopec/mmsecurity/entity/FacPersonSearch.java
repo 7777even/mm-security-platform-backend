@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 /**
@@ -25,4 +26,7 @@ public class FacPersonSearch {
     private String visitPurpose;
     private String specialOperation;
     private String operationArea;
+
+    @Version
+    private Long version;
 }
