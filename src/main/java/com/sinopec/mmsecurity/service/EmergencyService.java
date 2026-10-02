@@ -29,6 +29,7 @@ import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
+import com.sinopec.mmsecurity.dto.PhoneWriteRequest;
 import com.sinopec.mmsecurity.dto.NodeGuidance;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
@@ -511,6 +512,69 @@ public class EmergencyService {
         it.setCount(r.getCount());
         it.setIcon(r.getIcon());
         it.setDescription(r.getDescription());
+        return it;
+    }
+
+    /* ==================== 写侧：应急通讯录（电话台账） ==================== */
+
+    /**
+     * 新增通讯录条目。name / number 必填；id 取 max(id)+1（V8 种子显式插 id 致序列滞后，走 {@link LedgerIdSupport}）。
+     * 广播 {@code emergency.phone}，管理端 / 大屏订阅方自动重拉。
+     */
+    @RealtimeSync(domain = "emergency.phone")
+    public EmergencyPhone createPhone(PhoneWriteRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "请求体不能为空");
+        }
+        requireText(req.getName(), "名称 name");
+        requireText(req.getNumber(), "号码 number");
+        SysEmergencyPhone row = new SysEmergencyPhone();
+        row.setId(LedgerIdSupport.nextId(phoneMapper, SysEmergencyPhone::getId, SysEmergencyPhone::getId));
+        row.setName(req.getName().trim());
+        row.setNumber(req.getNumber().trim());
+        row.setCategory(req.getCategory());
+        phoneMapper.insert(row);
+        phoneCache.invalidateAll();
+        return toEmergencyPhone(row);
+    }
+
+    /** 编辑通讯录条目：局部更新（字段为 null 表示不修改）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.phone")
+    public EmergencyPhone updatePhone(Long id, PhoneWriteRequest req) {
+        SysEmergencyPhone row = phoneMapper.selectById(id);
+        if (row == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "通讯录条目不存在：id=" + id);
+        }
+        if (req.getName() != null) {
+            row.setName(req.getName());
+        }
+        if (req.getNumber() != null) {
+            row.setNumber(req.getNumber());
+        }
+        if (req.getCategory() != null) {
+            row.setCategory(req.getCategory());
+        }
+        phoneMapper.updateById(row);
+        phoneCache.invalidateAll();
+        return toEmergencyPhone(row);
+    }
+
+    /** 删除通讯录条目（物理删除：sys_emergency_phone 无 deleted 列）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.phone")
+    public void deletePhone(Long id) {
+        if (phoneMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "通讯录条目不存在：id=" + id);
+        }
+        phoneMapper.deleteById(id);
+        phoneCache.invalidateAll();
+    }
+
+    private static EmergencyPhone toEmergencyPhone(SysEmergencyPhone r) {
+        EmergencyPhone it = new EmergencyPhone();
+        it.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+        it.setName(r.getName());
+        it.setNumber(r.getNumber());
+        it.setCategory(r.getCategory());
         return it;
     }
 

@@ -9,6 +9,7 @@ import com.sinopec.mmsecurity.dto.DutySignInWriteRequest;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
 import com.sinopec.mmsecurity.dto.EmergencyCommandRecordView;
 import com.sinopec.mmsecurity.dto.EmergencyCommandRecordWriteRequest;
+import com.sinopec.mmsecurity.dto.EmergencyPhone;
 import com.sinopec.mmsecurity.dto.EmergencyPhoneBook;
 import com.sinopec.mmsecurity.dto.EmergencyProcessGuidance;
 import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
@@ -18,6 +19,7 @@ import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
 import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
+import com.sinopec.mmsecurity.dto.PhoneWriteRequest;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.BusinessWriteService;
@@ -110,6 +112,35 @@ public class EmergencyController {
     @RequireAuth(perm = "emergency:knowledge:write")
     public Result<Void> deleteKnowledge(@PathVariable Long id) {
         emergencyService.deleteKnowledge(id);
+        return Result.ok(null);
+    }
+
+    /**
+     * 新增通讯录条目。需权限码 {@code emergency:phone:write}；成功触发 emergency.phone 实时广播。
+     */
+    @PostMapping("/phones")
+    @RequireAuth(perm = "emergency:phone:write")
+    public Result<EmergencyPhone> createPhone(@RequestBody PhoneWriteRequest payload) {
+        return Result.ok(emergencyService.createPhone(payload));
+    }
+
+    /**
+     * 编辑通讯录条目（局部更新）。需权限码 {@code emergency:phone:write}；成功触发 emergency.phone 实时广播。
+     */
+    @PutMapping("/phones/{id}")
+    @RequireAuth(perm = "emergency:phone:write")
+    public Result<EmergencyPhone> updatePhone(
+            @PathVariable Long id, @RequestBody PhoneWriteRequest payload) {
+        return Result.ok(emergencyService.updatePhone(id, payload));
+    }
+
+    /**
+     * 删除通讯录条目（物理删除）。需权限码 {@code emergency:phone:write}；成功触发 emergency.phone 实时广播。
+     */
+    @DeleteMapping("/phones/{id}")
+    @RequireAuth(perm = "emergency:phone:write")
+    public Result<Void> deletePhone(@PathVariable Long id) {
+        emergencyService.deletePhone(id);
         return Result.ok(null);
     }
 

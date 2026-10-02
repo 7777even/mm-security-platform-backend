@@ -9,6 +9,8 @@ import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
+import com.sinopec.mmsecurity.dto.EmergencyPhone;
+import com.sinopec.mmsecurity.dto.PhoneWriteRequest;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
@@ -776,6 +778,93 @@ class EmergencyServiceTest {
         when(knowledgeMapper.selectById(99L)).thenReturn(null);
         BusinessException ex = assertThrows(BusinessException.class,
                 () -> service.deleteKnowledge(99L));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+    }
+
+    // ===== 应急通讯录台账写侧（POST / PUT / DELETE） =====
+
+    private static PhoneWriteRequest phoneReq(String name, String number, String category) {
+        PhoneWriteRequest r = new PhoneWriteRequest();
+        r.setName(name);
+        r.setNumber(number);
+        r.setCategory(category);
+        return r;
+    }
+
+    private static SysEmergencyPhone phoneRow(long id, String name, String number, String category) {
+        SysEmergencyPhone r = new SysEmergencyPhone();
+        r.setId(id);
+        r.setName(name);
+        r.setNumber(number);
+        r.setCategory(category);
+        return r;
+    }
+
+    @Test
+    void createPhone_assignsNextIdAndInvalidatesCache() {
+        when(phoneMapper.selectOne(any())).thenReturn(phoneRow(7L, "旧条目", "000", "消防"));
+        ArgumentCaptor<SysEmergencyPhone> captor = ArgumentCaptor.forClass(SysEmergencyPhone.class);
+
+        EmergencyPhone created = service.createPhone(phoneReq("  消防报警  ", "119", "消防"));
+
+        verify(phoneMapper).insert(captor.capture());
+        SysEmergencyPhone saved = captor.getValue();
+        assertEquals(8L, saved.getId(), "id = max(existing)+1 = 8");
+        assertEquals("消防报警", saved.getName(), "name 前后空白被 trim");
+        assertEquals("119", saved.getNumber());
+        assertEquals("消防", saved.getCategory());
+        assertEquals("8", created.getId());
+        assertEquals("消防报警", created.getName());
+    }
+
+    @Test
+    void createPhone_rejectsBlankNameOrNumber() {
+        BusinessException ex1 = assertThrows(BusinessException.class,
+                () -> service.createPhone(phoneReq("   ", "119", "消防")));
+        assertEquals(ResultCode.PARAM_INVALID, ex1.getCode());
+        BusinessException ex2 = assertThrows(BusinessException.class,
+                () -> service.createPhone(phoneReq("消防报警", "  ", "消防")));
+        assertEquals(ResultCode.PARAM_INVALID, ex2.getCode());
+    }
+
+    @Test
+    void updatePhone_appliesPartialFieldsOnly() {
+        when(phoneMapper.selectById(8L)).thenReturn(phoneRow(8L, "旧名称", "000", "医疗"));
+        ArgumentCaptor<SysEmergencyPhone> captor = ArgumentCaptor.forClass(SysEmergencyPhone.class);
+
+        // 只传 name，number/category 为 null → 不修改
+        EmergencyPhone updated = service.updatePhone(8L, phoneReq("新名称", null, null));
+
+        verify(phoneMapper).updateById(captor.capture());
+        SysEmergencyPhone saved = captor.getValue();
+        assertEquals(8L, saved.getId());
+        assertEquals("新名称", saved.getName());
+        assertEquals("000", saved.getNumber(), "未传 number，保留原值");
+        assertEquals("医疗", saved.getCategory(), "未传 category，保留原值");
+        assertEquals("8", updated.getId());
+        assertEquals("新名称", updated.getName());
+    }
+
+    @Test
+    void updatePhone_notFoundThrows() {
+        when(phoneMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updatePhone(99L, phoneReq("任意", "119", null)));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+    }
+
+    @Test
+    void deletePhone_physicalDeletesWhenExists() {
+        when(phoneMapper.selectById(8L)).thenReturn(phoneRow(8L, "名称", "119", "消防"));
+        service.deletePhone(8L);
+        verify(phoneMapper).deleteById(8L);
+    }
+
+    @Test
+    void deletePhone_notFoundThrows() {
+        when(phoneMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.deletePhone(99L));
         assertEquals(ResultCode.NOT_FOUND, ex.getCode());
     }
 }
