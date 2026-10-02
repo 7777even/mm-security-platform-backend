@@ -7,5 +7,5 @@
 - [x] 补齐三个控制器缺失的 DeleteMapping / PutMapping / PathVariable import
 - [x] `mvn compile` 通过
 - [x] 契约守门 `check-api-contract.mjs --strict`：路由 209 / 差异 0 / schema 漂移 0
-- [ ] 单测：BusinessWriteService 的 update/delete 用例
-- [ ] 双仓提交推送并归档
+- [x] 单测：BusinessWriteService 的 update/delete 用例
+- [x] 双仓提交推送并归档
