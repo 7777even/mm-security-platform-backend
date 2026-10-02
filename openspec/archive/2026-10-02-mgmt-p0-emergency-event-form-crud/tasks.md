@@ -13,4 +13,4 @@
 - [x] 单测：EmergencyEventServiceTest 补 update（4 例）/ delete（2 例），Controller 补路由用例 2 例
 - [x] 单测：新增 FormRecordServiceTest（create 主键分配 3 例 + delete 2 例）
 - [x] 真机对拍：8787 直连 18/18 通过（新增/编辑/非法状态/不存在/删除/重复删除/列表回正/填报增删）
-- [ ] 双仓提交推送并归档
+- [x] 双仓提交推送并归档
