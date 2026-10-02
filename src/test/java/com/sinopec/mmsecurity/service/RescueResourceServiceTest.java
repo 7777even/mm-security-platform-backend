@@ -396,6 +396,8 @@ class RescueResourceServiceTest {
         RescueBrigadeWriteRequest req = new RescueBrigadeWriteRequest();
         req.setName("化工特勤队");
         req.setArea("化工区");
+        req.setLeaderName("张三");
+        req.setLeaderPhone("13800000001");
         req.setMemberCount(32);
         FireBrigadeTeam team = service.createBrigade(req);
 
@@ -460,6 +462,12 @@ class RescueResourceServiceTest {
         RescueVehicleWriteRequest req = new RescueVehicleWriteRequest();
         req.setPlate("粤K12345");
         req.setType("泡沫消防车");
+        req.setSquadron("化工特勤一中队");
+        req.setLeaderName("张三");
+        req.setLeaderPhone("13800000001");
+        req.setStatus("出动");
+        req.setBusinessName("粤K12345 泡沫车");
+        req.setVehicleTypeFull("泡沫消防车");
         RescueVehicleItem item = service.createVehicle(req);
 
         ArgumentCaptor<FacRescueVehicle> cap = ArgumentCaptor.forClass(FacRescueVehicle.class);
@@ -522,6 +530,9 @@ class RescueResourceServiceTest {
         req.setCategory("防护装备");
         req.setUnit("具");
         req.setQuantity(40);
+        req.setLeaderName("张三");
+        req.setLeaderPhone("13800000001");
+        req.setModel("RHZKF6.8/30");
         RescueEquipmentItem item = service.createEquipment(req);
 
         ArgumentCaptor<FacRescueEquipment> cap = ArgumentCaptor.forClass(FacRescueEquipment.class);
