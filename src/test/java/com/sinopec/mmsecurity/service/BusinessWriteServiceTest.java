@@ -276,6 +276,245 @@ class BusinessWriteServiceTest {
         assertEquals("unknown", service.createCommandRecord(req).getOperator());
     }
 
+    /* ==================== update / delete 用例（任务：BusinessWriteService update/delete 单测） ==================== */
+
+    /* ---- 应急指令 update / delete ---- */
+    @Test
+    void updateCommandRecord_overwritesOnlyNonBlankFieldsAndAudits() {
+        FacEmergencyCommandRecord existing = new FacEmergencyCommandRecord();
+        existing.setId(9L);
+        existing.setCommandCode("w1");
+        existing.setCommandName("旧指令名");
+        existing.setCurrStatus("待执行");
+        Mockito.when(commandRecordMapper.selectById(9L)).thenReturn(existing);
+        Mockito.when(commandRecordMapper.updateById(ArgumentMatchers.any(FacEmergencyCommandRecord.class))).thenReturn(1);
+
+        EmergencyCommandRecordWriteRequest req = new EmergencyCommandRecordWriteRequest();
+        req.setCurrStatus("执行中"); // 只改状态，不传指令名
+        EmergencyCommandRecordView v = service.updateCommandRecord(9L, req);
+        assertEquals("执行中", v.getCurrStatus());
+        assertEquals("旧指令名", v.getCommandName(), "未传入的字段不应被覆盖");
+        assertEquals("w1", v.getCommandCode());
+        Mockito.verify(commandRecordMapper).updateById(ArgumentMatchers.any(FacEmergencyCommandRecord.class));
+        Mockito.verify(audit).record(ArgumentMatchers.eq("emergency"),
+                ArgumentMatchers.eq("emergency.command.update"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateCommandRecord_notFound_throwsNotFound() {
+        Mockito.when(commandRecordMapper.selectById(99L)).thenReturn(null);
+        EmergencyCommandRecordWriteRequest req = new EmergencyCommandRecordWriteRequest();
+        req.setCurrStatus("执行中");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateCommandRecord(99L, req));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    @Test
+    void updateCommandRecord_nullId_throwsParamInvalid() {
+        EmergencyCommandRecordWriteRequest req = new EmergencyCommandRecordWriteRequest();
+        req.setCurrStatus("执行中");
+        assertThrows(BusinessException.class, () -> service.updateCommandRecord(null, req));
+    }
+
+    @Test
+    void deleteCommandRecord_callsDeleteAndAudits() {
+        FacEmergencyCommandRecord existing = new FacEmergencyCommandRecord();
+        existing.setId(9L);
+        Mockito.when(commandRecordMapper.selectById(9L)).thenReturn(existing);
+        Mockito.when(commandRecordMapper.deleteById(9L)).thenReturn(1);
+        service.deleteCommandRecord(9L);
+        Mockito.verify(commandRecordMapper).deleteById(9L);
+        Mockito.verify(audit).record(ArgumentMatchers.eq("emergency"),
+                ArgumentMatchers.eq("emergency.command.delete"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void deleteCommandRecord_notFound_throwsNotFound() {
+        Mockito.when(commandRecordMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteCommandRecord(99L));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    /* ---- 台风调度 update / delete ---- */
+    @Test
+    void updateDispatchOrder_overwritesFieldsAndAudits() {
+        FacTyphoonDispatchOrder existing = new FacTyphoonDispatchOrder();
+        existing.setId(7L);
+        existing.setResourceCode("TEAM-FX-01");
+        existing.setResourceName("旧名");
+        existing.setDispatchAction("ASSIGN");
+        Mockito.when(dispatchOrderMapper.selectById(7L)).thenReturn(existing);
+        Mockito.when(dispatchOrderMapper.updateById(ArgumentMatchers.any(FacTyphoonDispatchOrder.class))).thenReturn(1);
+
+        TyphoonDispatchOrderWriteRequest req = new TyphoonDispatchOrderWriteRequest();
+        req.setResourceName("炼油防汛抢险一组");
+        req.setDispatchAction("CONFIRM");
+        TyphoonDispatchOrderView v = service.updateDispatchOrder(7L, req);
+        assertEquals("炼油防汛抢险一组", v.getResourceName());
+        assertEquals("CONFIRM", v.getDispatchAction());
+        assertEquals("TEAM-FX-01", v.getResourceCode(), "未传入的字段不应被覆盖");
+        Mockito.verify(audit).record(ArgumentMatchers.eq("typhoon"),
+                ArgumentMatchers.eq("typhoon.dispatch.update"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateDispatchOrder_rejectsIllegalAction() {
+        FacTyphoonDispatchOrder existing = new FacTyphoonDispatchOrder();
+        existing.setId(7L);
+        Mockito.when(dispatchOrderMapper.selectById(7L)).thenReturn(existing);
+        TyphoonDispatchOrderWriteRequest req = new TyphoonDispatchOrderWriteRequest();
+        req.setDispatchAction("DELETE"); // 不在 ASSIGN/CONFIRM/RELEASE
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateDispatchOrder(7L, req));
+        assertTrue(ex.getMessage().contains("非法调度动作"));
+    }
+
+    @Test
+    void updateDispatchOrder_notFound_throwsNotFound() {
+        Mockito.when(dispatchOrderMapper.selectById(99L)).thenReturn(null);
+        TyphoonDispatchOrderWriteRequest req = new TyphoonDispatchOrderWriteRequest();
+        req.setDispatchAction("CONFIRM");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateDispatchOrder(99L, req));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    @Test
+    void deleteDispatchOrder_callsDeleteAndAudits() {
+        FacTyphoonDispatchOrder existing = new FacTyphoonDispatchOrder();
+        existing.setId(7L);
+        Mockito.when(dispatchOrderMapper.selectById(7L)).thenReturn(existing);
+        Mockito.when(dispatchOrderMapper.deleteById(7L)).thenReturn(1);
+        service.deleteDispatchOrder(7L);
+        Mockito.verify(dispatchOrderMapper).deleteById(7L);
+        Mockito.verify(audit).record(ArgumentMatchers.eq("typhoon"),
+                ArgumentMatchers.eq("typhoon.dispatch.delete"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void deleteDispatchOrder_notFound_throwsNotFound() {
+        Mockito.when(dispatchOrderMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteDispatchOrder(99L));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    /* ---- 巡更执行 update / delete ---- */
+    @Test
+    void updatePatrolExecution_overwritesFieldsAndAudits() {
+        FacPatrolExecution existing = new FacPatrolExecution();
+        existing.setId(3L);
+        existing.setDutyPerson("李强");
+        existing.setExecResult("NORMAL");
+        Mockito.when(patrolExecutionMapper.selectById(3L)).thenReturn(existing);
+        Mockito.when(patrolExecutionMapper.updateById(ArgumentMatchers.any(FacPatrolExecution.class))).thenReturn(1);
+
+        PatrolExecutionWriteRequest req = new PatrolExecutionWriteRequest();
+        req.setExecResult("ABNORMAL");
+        req.setFinding("罐区A 消防栓被遮挡");
+        PatrolExecutionView v = service.updatePatrolExecution(3L, req);
+        assertEquals("ABNORMAL", v.getExecResult());
+        assertEquals("罐区A 消防栓被遮挡", v.getFinding());
+        assertEquals("李强", v.getDutyPerson(), "未传入的字段不应被覆盖");
+        Mockito.verify(audit).record(ArgumentMatchers.eq("fire"),
+                ArgumentMatchers.eq("fire.patrol.update"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void updatePatrolExecution_rejectsIllegalResult() {
+        FacPatrolExecution existing = new FacPatrolExecution();
+        existing.setId(3L);
+        Mockito.when(patrolExecutionMapper.selectById(3L)).thenReturn(existing);
+        PatrolExecutionWriteRequest req = new PatrolExecutionWriteRequest();
+        req.setExecResult("UNKNOWN");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updatePatrolExecution(3L, req));
+        assertTrue(ex.getMessage().contains("非法巡更结果"));
+    }
+
+    @Test
+    void updatePatrolExecution_notFound_throwsNotFound() {
+        Mockito.when(patrolExecutionMapper.selectById(99L)).thenReturn(null);
+        PatrolExecutionWriteRequest req = new PatrolExecutionWriteRequest();
+        req.setExecResult("NORMAL");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updatePatrolExecution(99L, req));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    @Test
+    void deletePatrolExecution_callsDeleteAndAudits() {
+        FacPatrolExecution existing = new FacPatrolExecution();
+        existing.setId(3L);
+        Mockito.when(patrolExecutionMapper.selectById(3L)).thenReturn(existing);
+        Mockito.when(patrolExecutionMapper.deleteById(3L)).thenReturn(1);
+        service.deletePatrolExecution(3L);
+        Mockito.verify(patrolExecutionMapper).deleteById(3L);
+        Mockito.verify(audit).record(ArgumentMatchers.eq("fire"),
+                ArgumentMatchers.eq("fire.patrol.delete"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void deletePatrolExecution_notFound_throwsNotFound() {
+        Mockito.when(patrolExecutionMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deletePatrolExecution(99L));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    /* ---- 值班签到 update / delete ---- */
+    @Test
+    void updateDutySignIn_overwritesFieldsAndAudits() {
+        FacDutySignIn existing = new FacDutySignIn();
+        existing.setId(5L);
+        existing.setPersonName("杨恒朋");
+        existing.setSignAction("SIGN_IN");
+        Mockito.when(dutySignInMapper.selectById(5L)).thenReturn(existing);
+        Mockito.when(dutySignInMapper.updateById(ArgumentMatchers.any(FacDutySignIn.class))).thenReturn(1);
+
+        DutySignInWriteRequest req = new DutySignInWriteRequest();
+        req.setPersonName("杨恒朋");
+        req.setSignAction("SIGN_OUT");
+        DutySignInView v = service.updateDutySignIn(5L, req);
+        assertEquals("SIGN_OUT", v.getSignAction());
+        assertEquals("杨恒朋", v.getPersonName());
+        Mockito.verify(audit).record(ArgumentMatchers.eq("emergency"),
+                ArgumentMatchers.eq("emergency.duty.update"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateDutySignIn_rejectsIllegalAction() {
+        FacDutySignIn existing = new FacDutySignIn();
+        existing.setId(5L);
+        Mockito.when(dutySignInMapper.selectById(5L)).thenReturn(existing);
+        DutySignInWriteRequest req = new DutySignInWriteRequest();
+        req.setSignAction("CHECK");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateDutySignIn(5L, req));
+        assertTrue(ex.getMessage().contains("非法签到动作"));
+    }
+
+    @Test
+    void updateDutySignIn_notFound_throwsNotFound() {
+        Mockito.when(dutySignInMapper.selectById(99L)).thenReturn(null);
+        DutySignInWriteRequest req = new DutySignInWriteRequest();
+        req.setSignAction("SIGN_IN");
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateDutySignIn(99L, req));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
+    @Test
+    void deleteDutySignIn_callsDeleteAndAudits() {
+        FacDutySignIn existing = new FacDutySignIn();
+        existing.setId(5L);
+        Mockito.when(dutySignInMapper.selectById(5L)).thenReturn(existing);
+        Mockito.when(dutySignInMapper.deleteById(5L)).thenReturn(1);
+        service.deleteDutySignIn(5L);
+        Mockito.verify(dutySignInMapper).deleteById(5L);
+        Mockito.verify(audit).record(ArgumentMatchers.eq("emergency"),
+                ArgumentMatchers.eq("emergency.duty.delete"), ArgumentMatchers.any());
+    }
+
+    @Test
+    void deleteDutySignIn_notFound_throwsNotFound() {
+        Mockito.when(dutySignInMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteDutySignIn(99L));
+        assertTrue(ex.getMessage().contains("不存在"));
+    }
+
     /* ==================== 工具 ==================== */
 
     private void stubCommandPage(List<FacEmergencyCommandRecord> rows) {
