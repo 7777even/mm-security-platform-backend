@@ -1,6 +1,8 @@
 package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -26,6 +28,7 @@ import com.sinopec.mmsecurity.dto.StrengthItem;
 import com.sinopec.mmsecurity.dto.GuidanceDutyRoster;
 import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
+import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
 import com.sinopec.mmsecurity.dto.NodeGuidance;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
@@ -441,6 +444,80 @@ public class EmergencyService {
         k.setItems(items);
         return k;
         });
+    }
+
+    /* ==================== 写侧：应急知识库（知识库台账） ==================== */
+
+    /**
+     * 新增知识库条目。title 必填（对应表内 title 列，无 NOT NULL 约束但为业务主键语义）。
+     * id 取 max(id)+1（避免种子显式插 id 导致的自增序列滞后撞主键，见 {@link LedgerIdSupport}）。
+     * 广播 {@code emergency.knowledge}，管理端 / 大屏订阅方自动重拉。
+     */
+    @RealtimeSync(domain = "emergency.knowledge")
+    public KnowledgeItem createKnowledge(KnowledgeWriteRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "请求体不能为空");
+        }
+        requireText(req.getTitle(), "知识标题 title");
+        SysKnowledgeItem row = new SysKnowledgeItem();
+        row.setId(LedgerIdSupport.nextId(knowledgeMapper, SysKnowledgeItem::getId, SysKnowledgeItem::getId));
+        row.setTitle(req.getTitle().trim());
+        row.setCount(req.getCount());
+        row.setIcon(req.getIcon());
+        row.setDescription(req.getDescription());
+        knowledgeMapper.insert(row);
+        knowledgeCache.invalidateAll();
+        return toKnowledgeItem(row);
+    }
+
+    /** 编辑知识库条目：局部更新（字段为 null 表示不修改）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.knowledge")
+    public KnowledgeItem updateKnowledge(Long id, KnowledgeWriteRequest req) {
+        SysKnowledgeItem row = knowledgeMapper.selectById(id);
+        if (row == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "知识库条目不存在：id=" + id);
+        }
+        if (req.getTitle() != null) {
+            row.setTitle(req.getTitle());
+        }
+        if (req.getCount() != null) {
+            row.setCount(req.getCount());
+        }
+        if (req.getIcon() != null) {
+            row.setIcon(req.getIcon());
+        }
+        if (req.getDescription() != null) {
+            row.setDescription(req.getDescription());
+        }
+        knowledgeMapper.updateById(row);
+        knowledgeCache.invalidateAll();
+        return toKnowledgeItem(row);
+    }
+
+    /** 删除知识库条目（物理删除：sys_knowledge_item 无 deleted 列）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.knowledge")
+    public void deleteKnowledge(Long id) {
+        if (knowledgeMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "知识库条目不存在：id=" + id);
+        }
+        knowledgeMapper.deleteById(id);
+        knowledgeCache.invalidateAll();
+    }
+
+    private static KnowledgeItem toKnowledgeItem(SysKnowledgeItem r) {
+        KnowledgeItem it = new KnowledgeItem();
+        it.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+        it.setTitle(r.getTitle());
+        it.setCount(r.getCount());
+        it.setIcon(r.getIcon());
+        it.setDescription(r.getDescription());
+        return it;
+    }
+
+    private static void requireText(String value, String field) {
+        if (!StringUtils.hasText(value)) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, field + " 不能为空");
+        }
     }
 
     /**

@@ -7,6 +7,8 @@ import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
 import com.sinopec.mmsecurity.dto.EmergencyResource;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
+import com.sinopec.mmsecurity.dto.KnowledgeItem;
+import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.dto.NodePhaseDuty;
 import com.sinopec.mmsecurity.dto.NodePhaseMapCamera;
@@ -52,6 +54,8 @@ import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthItemMapper;
 import com.sinopec.mmsecurity.mapper.FacFireFacilityLedgerMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -682,5 +687,95 @@ class EmergencyServiceTest {
         verify(dutyMapper).selectList(null);
         verify(phoneMapper).selectList(null);
         verify(knowledgeMapper).selectList(null);
+    }
+
+    // ===== 知识库台账写侧（POST / PUT / DELETE） =====
+
+    private static KnowledgeWriteRequest kwReq(String title, Integer count, String icon, String desc) {
+        KnowledgeWriteRequest r = new KnowledgeWriteRequest();
+        r.setTitle(title);
+        r.setCount(count);
+        r.setIcon(icon);
+        r.setDescription(desc);
+        return r;
+    }
+
+    private static SysKnowledgeItem kRow(long id, String title, Integer count, String icon, String desc) {
+        SysKnowledgeItem r = new SysKnowledgeItem();
+        r.setId(id);
+        r.setTitle(title);
+        r.setCount(count);
+        r.setIcon(icon);
+        r.setDescription(desc);
+        return r;
+    }
+
+    @Test
+    void createKnowledge_assignsNextIdAndInvalidatesCache() {
+        // LedgerIdSupport.nextId 取 max(id)+1：模拟当前最大 id=3
+        when(knowledgeMapper.selectOne(any())).thenReturn(kRow(3L, "旧条目", 1, "Doc", "x"));
+        ArgumentCaptor<SysKnowledgeItem> captor = ArgumentCaptor.forClass(SysKnowledgeItem.class);
+
+        KnowledgeItem created = service.createKnowledge(
+                kwReq("  岗位应急处置卡  ", 158, "Document", "说明文案"));
+
+        verify(knowledgeMapper).insert(captor.capture());
+        SysKnowledgeItem saved = captor.getValue();
+        assertEquals(4L, saved.getId(), "id = max(existing)+1 = 4");
+        assertEquals("岗位应急处置卡", saved.getTitle(), "title 前后空白被 trim");
+        assertEquals(158, saved.getCount());
+        assertEquals("Document", saved.getIcon());
+        assertEquals("说明文案", saved.getDescription());
+        assertEquals("4", created.getId());
+        assertEquals("岗位应急处置卡", created.getTitle());
+    }
+
+    @Test
+    void createKnowledge_rejectsBlankTitle() {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.createKnowledge(kwReq("   ", 1, null, null)));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+    }
+
+    @Test
+    void updateKnowledge_appliesPartialFieldsOnly() {
+        when(knowledgeMapper.selectById(4L)).thenReturn(kRow(4L, "旧标题", 10, "Old", "旧说明"));
+        ArgumentCaptor<SysKnowledgeItem> captor = ArgumentCaptor.forClass(SysKnowledgeItem.class);
+
+        // 只传 title 与 icon，count/description 为 null → 不修改
+        KnowledgeItem updated = service.updateKnowledge(4L, kwReq("新标题", null, "New", null));
+
+        verify(knowledgeMapper).updateById(captor.capture());
+        SysKnowledgeItem saved = captor.getValue();
+        assertEquals(4L, saved.getId());
+        assertEquals("新标题", saved.getTitle());
+        assertEquals(10, saved.getCount(), "未传 count，保留原值");
+        assertEquals("New", saved.getIcon());
+        assertEquals("旧说明", saved.getDescription(), "未传 description，保留原值");
+        assertEquals("4", updated.getId());
+        assertEquals("新标题", updated.getTitle());
+    }
+
+    @Test
+    void updateKnowledge_notFoundThrows() {
+        when(knowledgeMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateKnowledge(99L, kwReq("任意", 1, null, null)));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+    }
+
+    @Test
+    void deleteKnowledge_physicalDeletesWhenExists() {
+        when(knowledgeMapper.selectById(4L)).thenReturn(kRow(4L, "标题", 1, "Doc", "x"));
+        service.deleteKnowledge(4L);
+        verify(knowledgeMapper).deleteById(4L);
+    }
+
+    @Test
+    void deleteKnowledge_notFoundThrows() {
+        when(knowledgeMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.deleteKnowledge(99L));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
     }
 }

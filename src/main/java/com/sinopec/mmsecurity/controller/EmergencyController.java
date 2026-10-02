@@ -15,7 +15,9 @@ import com.sinopec.mmsecurity.dto.EmergencyProcessPanorama;
 import com.sinopec.mmsecurity.dto.EmergencyStrength;
 import com.sinopec.mmsecurity.dto.CommandActionDetail;
 import com.sinopec.mmsecurity.dto.EmergencyCommandGroup;
+import com.sinopec.mmsecurity.dto.KnowledgeItem;
 import com.sinopec.mmsecurity.dto.KnowledgeList;
+import com.sinopec.mmsecurity.dto.KnowledgeWriteRequest;
 import com.sinopec.mmsecurity.dto.NodePhaseConfig;
 import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.BusinessWriteService;
@@ -77,6 +79,38 @@ public class EmergencyController {
     @GetMapping("/knowledge")
     public Result<KnowledgeList> knowledge() {
         return Result.ok(emergencyService.knowledge());
+    }
+
+    /**
+     * 新增知识库条目。需权限码 {@code emergency:knowledge:write}；
+     * 成功触发 emergency.knowledge 实时广播。
+     */
+    @PostMapping("/knowledge")
+    @RequireAuth(perm = "emergency:knowledge:write")
+    public Result<KnowledgeItem> createKnowledge(@RequestBody KnowledgeWriteRequest payload) {
+        return Result.ok(emergencyService.createKnowledge(payload));
+    }
+
+    /**
+     * 编辑知识库条目（局部更新）。需权限码 {@code emergency:knowledge:write}；
+     * 成功触发 emergency.knowledge 实时广播。
+     */
+    @PutMapping("/knowledge/{id}")
+    @RequireAuth(perm = "emergency:knowledge:write")
+    public Result<KnowledgeItem> updateKnowledge(
+            @PathVariable Long id, @RequestBody KnowledgeWriteRequest payload) {
+        return Result.ok(emergencyService.updateKnowledge(id, payload));
+    }
+
+    /**
+     * 删除知识库条目（物理删除）。需权限码 {@code emergency:knowledge:write}；
+     * 成功触发 emergency.knowledge 实时广播。
+     */
+    @DeleteMapping("/knowledge/{id}")
+    @RequireAuth(perm = "emergency:knowledge:write")
+    public Result<Void> deleteKnowledge(@PathVariable Long id) {
+        emergencyService.deleteKnowledge(id);
+        return Result.ok(null);
     }
 
     @GetMapping("/commands")
