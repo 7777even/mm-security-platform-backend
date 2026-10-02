@@ -1,6 +1,8 @@
 package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.sinopec.mmsecurity.dto.DeleteResult;
@@ -20,6 +22,10 @@ import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogSummary;
 import com.sinopec.mmsecurity.dto.EmergencyPlanDetailField;
 import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSection;
 import com.sinopec.mmsecurity.dto.EmergencyPlanDetailSummary;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogRow;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogWriteRequest;
+import com.sinopec.mmsecurity.dto.EmergencyPlanMetaItem;
+import com.sinopec.mmsecurity.dto.EmergencyPlanMetaWriteRequest;
 import com.sinopec.mmsecurity.dto.PlanInvokeRequest;
 import com.sinopec.mmsecurity.dto.PlanInvokeResult;
 import com.sinopec.mmsecurity.entity.FacEmergencyPlan;
@@ -47,6 +53,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -433,5 +440,158 @@ public class EmergencyPlanService {
         dto.setStatus(entity.getCardStatus());
         dto.setIsGlobal(entity.getIsGlobal());
         return dto;
+    }
+
+    /* ==================== 写侧：应急预案目录（扁平台账，管理端编辑） ==================== */
+
+    /** 预案目录扁平行列表（按 sort_no 升序），管理端台账编辑用。 */
+    public List<EmergencyPlanCatalogRow> planCatalogRows() {
+        List<FacEmergencyPlanCatalog> rows = planCatalogMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyPlanCatalog>().orderByAsc(FacEmergencyPlanCatalog::getSortNo));
+        return rows.stream().map(EmergencyPlanService::toCatalogRow).collect(Collectors.toList());
+    }
+
+    /**
+     * 新增预案目录行。label 必填；id 取 max(id)+1（避免种子显式插 id 导致的自增序列滞后撞主键）。
+     * 广播 {@code emergency.plan-catalog}，管理端 / 大屏订阅方自动重拉。
+     */
+    @RealtimeSync(domain = "emergency.plan-catalog")
+    public EmergencyPlanCatalogRow createPlanCatalogRow(EmergencyPlanCatalogWriteRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "请求体不能为空");
+        }
+        requireText(req.getLabel(), "层级标签 label");
+        FacEmergencyPlanCatalog row = new FacEmergencyPlanCatalog();
+        row.setId(LedgerIdSupport.nextId(planCatalogMapper, FacEmergencyPlanCatalog::getId, FacEmergencyPlanCatalog::getId));
+        row.setPlanCode(req.getPlanCode());
+        row.setLabel(req.getLabel().trim());
+        row.setPlanName(req.getPlanName());
+        row.setCanSwitch(req.getCanSwitch() == null ? 0 : req.getCanSwitch());
+        row.setIsCurrent(req.getIsCurrent() == null ? 0 : req.getIsCurrent());
+        row.setSortNo(req.getSortNo());
+        planCatalogMapper.insert(row);
+        return toCatalogRow(row);
+    }
+
+    /** 编辑预案目录行：局部更新（字段为 null 表示不修改）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.plan-catalog")
+    public EmergencyPlanCatalogRow updatePlanCatalogRow(Long id, EmergencyPlanCatalogWriteRequest req) {
+        FacEmergencyPlanCatalog row = planCatalogMapper.selectById(id);
+        if (row == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "预案目录行不存在：id=" + id);
+        }
+        if (req.getPlanCode() != null) row.setPlanCode(req.getPlanCode());
+        if (req.getLabel() != null) row.setLabel(req.getLabel());
+        if (req.getPlanName() != null) row.setPlanName(req.getPlanName());
+        if (req.getCanSwitch() != null) row.setCanSwitch(req.getCanSwitch());
+        if (req.getIsCurrent() != null) row.setIsCurrent(req.getIsCurrent());
+        if (req.getSortNo() != null) row.setSortNo(req.getSortNo());
+        planCatalogMapper.updateById(row);
+        return toCatalogRow(row);
+    }
+
+    /** 删除预案目录行（物理删除）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.plan-catalog")
+    public void deletePlanCatalogRow(Long id) {
+        if (planCatalogMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "预案目录行不存在：id=" + id);
+        }
+        planCatalogMapper.deleteById(id);
+    }
+
+    private static EmergencyPlanCatalogRow toCatalogRow(FacEmergencyPlanCatalog r) {
+        EmergencyPlanCatalogRow it = new EmergencyPlanCatalogRow();
+        it.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+        it.setPlanCode(r.getPlanCode());
+        it.setLabel(r.getLabel());
+        it.setPlanName(r.getPlanName());
+        it.setCanSwitch(r.getCanSwitch());
+        it.setIsCurrent(r.getIsCurrent());
+        it.setSortNo(r.getSortNo());
+        return it;
+    }
+
+    /* ==================== 写侧：应急预案主记录（台账，管理端编辑） ==================== */
+
+    /** 应急预案主记录列表（按 sort_no 升序），管理端台账编辑用（区别于 /options /matrix 大屏视图）。 */
+    public List<EmergencyPlanMetaItem> planMetaList() {
+        List<FacEmergencyPlan> rows = emergencyPlanMapper.selectList(
+                new LambdaQueryWrapper<FacEmergencyPlan>().orderByAsc(FacEmergencyPlan::getSortNo));
+        return rows.stream().map(EmergencyPlanService::toPlanMeta).collect(Collectors.toList());
+    }
+
+    /**
+     * 新增应急预案主记录。planName 必填；id 取 max(id)+1。广播 {@code emergency.plan}。
+     */
+    @RealtimeSync(domain = "emergency.plan")
+    public EmergencyPlanMetaItem createPlan(EmergencyPlanMetaWriteRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "请求体不能为空");
+        }
+        requireText(req.getPlanName(), "预案名称 planName");
+        FacEmergencyPlan row = new FacEmergencyPlan();
+        row.setId(LedgerIdSupport.nextId(emergencyPlanMapper, FacEmergencyPlan::getId, FacEmergencyPlan::getId));
+        row.setTabKey(req.getTabKey());
+        row.setPlanName(req.getPlanName().trim());
+        row.setAccidentType(req.getAccidentType());
+        row.setFacility(req.getFacility());
+        row.setDomain(req.getDomain());
+        row.setNuclear(req.getNuclear());
+        row.setIsActive(req.getIsActive());
+        row.setSortNo(req.getSortNo());
+        row.setInvokeCount(0);
+        emergencyPlanMapper.insert(row);
+        return toPlanMeta(row);
+    }
+
+    /** 编辑应急预案主记录：局部更新（字段为 null 表示不修改）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.plan")
+    public EmergencyPlanMetaItem updatePlan(Long id, EmergencyPlanMetaWriteRequest req) {
+        FacEmergencyPlan row = emergencyPlanMapper.selectById(id);
+        if (row == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急预案不存在：id=" + id);
+        }
+        if (req.getPlanName() != null) row.setPlanName(req.getPlanName());
+        if (req.getAccidentType() != null) row.setAccidentType(req.getAccidentType());
+        if (req.getFacility() != null) row.setFacility(req.getFacility());
+        if (req.getDomain() != null) row.setDomain(req.getDomain());
+        if (req.getNuclear() != null) row.setNuclear(req.getNuclear());
+        if (req.getIsActive() != null) row.setIsActive(req.getIsActive());
+        if (req.getSortNo() != null) row.setSortNo(req.getSortNo());
+        emergencyPlanMapper.updateById(row);
+        return toPlanMeta(row);
+    }
+
+    /** 删除应急预案主记录（物理删除）。不存在抛 B3 NOT_FOUND。 */
+    @RealtimeSync(domain = "emergency.plan")
+    public void deletePlan(Long id) {
+        if (emergencyPlanMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "应急预案不存在：id=" + id);
+        }
+        emergencyPlanMapper.deleteById(id);
+    }
+
+    private static final DateTimeFormatter PLAN_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private static EmergencyPlanMetaItem toPlanMeta(FacEmergencyPlan r) {
+        EmergencyPlanMetaItem it = new EmergencyPlanMetaItem();
+        it.setId(r.getId() == null ? null : String.valueOf(r.getId()));
+        it.setTabKey(r.getTabKey());
+        it.setPlanName(r.getPlanName());
+        it.setAccidentType(r.getAccidentType());
+        it.setFacility(r.getFacility());
+        it.setDomain(r.getDomain());
+        it.setNuclear(r.getNuclear());
+        it.setIsActive(r.getIsActive());
+        it.setInvokeCount(r.getInvokeCount());
+        it.setLastInvokedAt(r.getLastInvokedAt() == null ? null : r.getLastInvokedAt().format(PLAN_FMT));
+        return it;
+    }
+
+    private static void requireText(String v, String name) {
+        if (v == null || v.isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, name + " 不能为空");
+        }
     }
 }

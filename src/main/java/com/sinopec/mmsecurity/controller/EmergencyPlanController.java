@@ -11,7 +11,12 @@ import com.sinopec.mmsecurity.dto.PlanActionCardUpdate;
 import com.sinopec.mmsecurity.dto.PlanInstance;
 import com.sinopec.mmsecurity.dto.PlanInvokeRequest;
 import com.sinopec.mmsecurity.dto.PlanInvokeResult;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogRow;
+import com.sinopec.mmsecurity.dto.EmergencyPlanCatalogWriteRequest;
+import com.sinopec.mmsecurity.dto.EmergencyPlanMetaItem;
+import com.sinopec.mmsecurity.dto.EmergencyPlanMetaWriteRequest;
 import com.sinopec.mmsecurity.security.RequireAuth;
+import java.util.List;
 import com.sinopec.mmsecurity.service.EmergencyPlanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -91,5 +96,79 @@ public class EmergencyPlanController {
     public Result<DeleteResult> deleteActionCard(
             @PathVariable String planId, @PathVariable String cardId) {
         return Result.ok(emergencyPlanService.deleteActionCard(planId, cardId));
+    }
+
+    /* ==================== 管理端台账：预案目录（扁平台账） ==================== */
+
+    /** 预案目录扁平行列表（管理端编辑用，区别于 /catalog 层次化摘要）。 */
+    @GetMapping("/catalog-items")
+    public Result<List<EmergencyPlanCatalogRow>> catalogItems() {
+        return Result.ok(emergencyPlanService.planCatalogRows());
+    }
+
+    /**
+     * 新增预案目录行。需权限码 {@code emergency:plan-catalog:write}；成功触发 emergency.plan-catalog 实时广播。
+     */
+    @PostMapping("/catalog-items")
+    @RequireAuth(perm = "emergency:plan-catalog:write")
+    public Result<EmergencyPlanCatalogRow> createCatalogItem(@RequestBody EmergencyPlanCatalogWriteRequest payload) {
+        return Result.ok(emergencyPlanService.createPlanCatalogRow(payload));
+    }
+
+    /**
+     * 编辑预案目录行（局部更新）。需权限码 {@code emergency:plan-catalog:write}；成功触发 emergency.plan-catalog 实时广播。
+     */
+    @PutMapping("/catalog-items/{id}")
+    @RequireAuth(perm = "emergency:plan-catalog:write")
+    public Result<EmergencyPlanCatalogRow> updateCatalogItem(
+            @PathVariable Long id, @RequestBody EmergencyPlanCatalogWriteRequest payload) {
+        return Result.ok(emergencyPlanService.updatePlanCatalogRow(id, payload));
+    }
+
+    /**
+     * 删除预案目录行（物理删除）。需权限码 {@code emergency:plan-catalog:write}；成功触发 emergency.plan-catalog 实时广播。
+     */
+    @DeleteMapping("/catalog-items/{id}")
+    @RequireAuth(perm = "emergency:plan-catalog:write")
+    public Result<Void> deleteCatalogItem(@PathVariable Long id) {
+        emergencyPlanService.deletePlanCatalogRow(id);
+        return Result.ok(null);
+    }
+
+    /* ==================== 管理端台账：应急预案主记录 ==================== */
+
+    /** 应急预案主记录列表（管理端编辑用，区别于 /options /matrix 大屏视图）。 */
+    @GetMapping
+    public Result<List<EmergencyPlanMetaItem>> plans() {
+        return Result.ok(emergencyPlanService.planMetaList());
+    }
+
+    /**
+     * 新增应急预案主记录。需权限码 {@code emergency:plan:write}；成功触发 emergency.plan 实时广播。
+     */
+    @PostMapping
+    @RequireAuth(perm = "emergency:plan:write")
+    public Result<EmergencyPlanMetaItem> createPlan(@RequestBody EmergencyPlanMetaWriteRequest payload) {
+        return Result.ok(emergencyPlanService.createPlan(payload));
+    }
+
+    /**
+     * 编辑应急预案主记录（局部更新）。需权限码 {@code emergency:plan:write}；成功触发 emergency.plan 实时广播。
+     */
+    @PutMapping("/{id}")
+    @RequireAuth(perm = "emergency:plan:write")
+    public Result<EmergencyPlanMetaItem> updatePlan(
+            @PathVariable Long id, @RequestBody EmergencyPlanMetaWriteRequest payload) {
+        return Result.ok(emergencyPlanService.updatePlan(id, payload));
+    }
+
+    /**
+     * 删除应急预案主记录（物理删除）。需权限码 {@code emergency:plan:write}；成功触发 emergency.plan 实时广播。
+     */
+    @DeleteMapping("/{id}")
+    @RequireAuth(perm = "emergency:plan:write")
+    public Result<Void> deletePlan(@PathVariable Long id) {
+        emergencyPlanService.deletePlan(id);
+        return Result.ok(null);
     }
 }
