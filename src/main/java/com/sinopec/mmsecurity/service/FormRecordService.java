@@ -127,10 +127,7 @@ public class FormRecordService {
 
     /** 取下一个主键：max(id)+1（见 create 内关于自增序列滞后的说明）。 */
     private long nextId() {
-        FacFormRecord last = formRecordMapper.selectOne(new LambdaQueryWrapper<FacFormRecord>()
-                .orderByDesc(FacFormRecord::getId)
-                .last("LIMIT 1"));
-        return last == null || last.getId() == null ? 1L : last.getId() + 1;
+        return LedgerIdSupport.nextId(formRecordMapper, FacFormRecord::getId, FacFormRecord::getId);
     }
 
     /**

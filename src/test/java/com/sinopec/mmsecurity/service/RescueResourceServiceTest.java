@@ -5,10 +5,14 @@ import com.sinopec.mmsecurity.dto.FireBrigadeList;
 import com.sinopec.mmsecurity.dto.FireBrigadeTeam;
 import com.sinopec.mmsecurity.dto.RescueEquipmentItem;
 import com.sinopec.mmsecurity.dto.RescueEquipmentList;
+import com.sinopec.mmsecurity.dto.RescueBrigadeWriteRequest;
+import com.sinopec.mmsecurity.dto.RescueEquipmentWriteRequest;
 import com.sinopec.mmsecurity.dto.RescuePersonnelItem;
 import com.sinopec.mmsecurity.dto.RescuePersonnelList;
+import com.sinopec.mmsecurity.dto.RescuePersonnelWriteRequest;
 import com.sinopec.mmsecurity.dto.RescueVehicleItem;
 import com.sinopec.mmsecurity.dto.RescueVehicleList;
+import com.sinopec.mmsecurity.dto.RescueVehicleWriteRequest;
 import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
 import com.sinopec.mmsecurity.entity.FacRescueEquipment;
 import com.sinopec.mmsecurity.entity.FacRescueOption;
@@ -28,6 +32,7 @@ import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.security.DataScopeResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -294,5 +299,273 @@ class RescueResourceServiceTest {
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.brigadeDetail(66L));
         assertEquals(404, ex.getCode());
+    }
+
+    /* ==================== 写侧：救援人员 ==================== */
+
+    @Test
+    void createPersonnel_persistsAndDerivesSortNoFromMax() {
+        FacRescuePersonnel last = new FacRescuePersonnel();
+        last.setSortNo(7);
+        when(personnelMapper.selectOne(any())).thenReturn(last);
+
+        RescuePersonnelWriteRequest req = new RescuePersonnelWriteRequest();
+        req.setName("王强");
+        req.setSquadron("炼油中队");
+        req.setRole("指挥员");
+        req.setPhone("13800000001");
+        req.setDutyStatus("在岗");
+        RescuePersonnelItem item = service.createPersonnel(req);
+
+        ArgumentCaptor<FacRescuePersonnel> cap = ArgumentCaptor.forClass(FacRescuePersonnel.class);
+        verify(personnelMapper).insert(cap.capture());
+        assertEquals("王强", cap.getValue().getPersonName());
+        assertEquals("指挥员", cap.getValue().getPersonRole());
+        assertEquals(8, cap.getValue().getSortNo());
+        assertEquals("王强", item.getName());
+        assertEquals("13800000001", item.getPhone());
+    }
+
+    @Test
+    void createPersonnel_blankNameThrowsParamInvalid() {
+        RescuePersonnelWriteRequest req = new RescuePersonnelWriteRequest();
+        req.setName("  ");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPersonnel(req));
+        assertTrue(ex.getMessage().contains("name"));
+        verify(personnelMapper, never()).insert(any());
+    }
+
+    @Test
+    void updatePersonnel_partialUpdateKeepsUntouchedFields() {
+        FacRescuePersonnel existing = new FacRescuePersonnel();
+        existing.setId(5L);
+        existing.setPersonName("原名");
+        existing.setSquadron("乙烯中队");
+        existing.setPersonRole("战斗员");
+        when(personnelMapper.selectById(5L)).thenReturn(existing);
+
+        RescuePersonnelWriteRequest req = new RescuePersonnelWriteRequest();
+        req.setDutyStatus("休整");
+        RescuePersonnelItem item = service.updatePersonnel(5L, req);
+
+        ArgumentCaptor<FacRescuePersonnel> cap = ArgumentCaptor.forClass(FacRescuePersonnel.class);
+        verify(personnelMapper).updateById(cap.capture());
+        assertEquals("休整", cap.getValue().getDutyStatus());
+        // 未传字段保持原值（局部更新语义，不能被 null 覆盖）
+        assertEquals("原名", cap.getValue().getPersonName());
+        assertEquals("乙烯中队", cap.getValue().getSquadron());
+        assertEquals("休整", item.getDutyStatus());
+    }
+
+    @Test
+    void updatePersonnel_notFoundThrows404() {
+        when(personnelMapper.selectById(404L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updatePersonnel(404L, new RescuePersonnelWriteRequest()));
+        assertEquals(404, ex.getCode());
+        verify(personnelMapper, never()).updateById(any());
+    }
+
+    @Test
+    void deletePersonnel_removesRow() {
+        when(personnelMapper.selectById(5L)).thenReturn(new FacRescuePersonnel());
+
+        service.deletePersonnel(5L);
+
+        verify(personnelMapper).deleteById(5L);
+    }
+
+    @Test
+    void deletePersonnel_notFoundThrows404() {
+        when(personnelMapper.selectById(404L)).thenReturn(null);
+
+        assertThrows(BusinessException.class, () -> service.deletePersonnel(404L));
+        verify(personnelMapper, never()).deleteById(any());
+    }
+
+    /* ==================== 写侧：消防队伍 ==================== */
+
+    @Test
+    void createBrigade_persistsAndAssemblesChildren() {
+        when(vehicleMapper.selectList(any())).thenReturn(List.of());
+        when(personnelMapper.selectList(any())).thenReturn(List.of());
+        when(equipmentMapper.selectList(any())).thenReturn(List.of());
+
+        RescueBrigadeWriteRequest req = new RescueBrigadeWriteRequest();
+        req.setName("化工特勤队");
+        req.setArea("化工区");
+        req.setMemberCount(32);
+        FireBrigadeTeam team = service.createBrigade(req);
+
+        ArgumentCaptor<FacBrigadeTeam> cap = ArgumentCaptor.forClass(FacBrigadeTeam.class);
+        verify(brigadeTeamMapper).insert(cap.capture());
+        assertEquals("化工特勤队", cap.getValue().getTeamName());
+        assertEquals("化工区", cap.getValue().getArea());
+        // 空表新增 → sort_no 从 1 起
+        assertEquals(1, cap.getValue().getSortNo());
+        assertEquals("化工特勤队", team.getName());
+        assertEquals(0, team.getVehicles().size());
+    }
+
+    @Test
+    void createBrigade_blankNameThrowsParamInvalid() {
+        RescueBrigadeWriteRequest req = new RescueBrigadeWriteRequest();
+        req.setName("");
+
+        assertThrows(BusinessException.class, () -> service.createBrigade(req));
+        verify(brigadeTeamMapper, never()).insert(any());
+    }
+
+    @Test
+    void updateBrigade_partialUpdateKeepsUntouchedFields() {
+        FacBrigadeTeam existing = new FacBrigadeTeam();
+        existing.setId(3L);
+        existing.setTeamName("原队名");
+        existing.setArea("炼油区");
+        when(brigadeTeamMapper.selectById(3L)).thenReturn(existing);
+        when(vehicleMapper.selectList(any())).thenReturn(List.of());
+        when(personnelMapper.selectList(any())).thenReturn(List.of());
+        when(equipmentMapper.selectList(any())).thenReturn(List.of());
+
+        RescueBrigadeWriteRequest req = new RescueBrigadeWriteRequest();
+        req.setLeaderName("李队");
+        FireBrigadeTeam team = service.updateBrigade(3L, req);
+
+        ArgumentCaptor<FacBrigadeTeam> cap = ArgumentCaptor.forClass(FacBrigadeTeam.class);
+        verify(brigadeTeamMapper).updateById(cap.capture());
+        assertEquals("李队", cap.getValue().getLeaderName());
+        assertEquals("原队名", cap.getValue().getTeamName());
+        assertEquals("炼油区", cap.getValue().getArea());
+        assertEquals("原队名", team.getName());
+    }
+
+    @Test
+    void deleteBrigade_notFoundThrows404() {
+        when(brigadeTeamMapper.selectById(404L)).thenReturn(null);
+
+        assertThrows(BusinessException.class, () -> service.deleteBrigade(404L));
+        verify(brigadeTeamMapper, never()).deleteById(any());
+    }
+
+    /* ==================== 写侧：救援车辆 ==================== */
+
+    @Test
+    void createVehicle_plateIsRequiredAndSortNoStartsFromOne() {
+        when(vehicleCrewMapper.selectList(any())).thenReturn(List.of());
+        when(vehicleEquipmentMapper.selectList(any())).thenReturn(List.of());
+        when(vehicleKvMapper.selectList(any())).thenReturn(List.of());
+
+        RescueVehicleWriteRequest req = new RescueVehicleWriteRequest();
+        req.setPlate("粤K12345");
+        req.setType("泡沫消防车");
+        RescueVehicleItem item = service.createVehicle(req);
+
+        ArgumentCaptor<FacRescueVehicle> cap = ArgumentCaptor.forClass(FacRescueVehicle.class);
+        verify(vehicleMapper).insert(cap.capture());
+        assertEquals("粤K12345", cap.getValue().getPlate());
+        assertEquals("泡沫消防车", cap.getValue().getVehicleType());
+        assertEquals(1, cap.getValue().getSortNo());
+        assertEquals("粤K12345", item.getPlate());
+    }
+
+    @Test
+    void createVehicle_blankPlateThrowsParamInvalid() {
+        RescueVehicleWriteRequest req = new RescueVehicleWriteRequest();
+        req.setType("泡沫消防车");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createVehicle(req));
+        assertTrue(ex.getMessage().contains("plate"));
+        verify(vehicleMapper, never()).insert(any());
+    }
+
+    @Test
+    void updateVehicle_partialUpdateKeepsUntouchedFields() {
+        FacRescueVehicle existing = new FacRescueVehicle();
+        existing.setId(9L);
+        existing.setPlate("粤K00000");
+        existing.setVehicleType("水罐车");
+        when(vehicleMapper.selectById(9L)).thenReturn(existing);
+        when(vehicleCrewMapper.selectList(any())).thenReturn(List.of());
+        when(vehicleEquipmentMapper.selectList(any())).thenReturn(List.of());
+        when(vehicleKvMapper.selectList(any())).thenReturn(List.of());
+
+        RescueVehicleWriteRequest req = new RescueVehicleWriteRequest();
+        req.setStatus("维修");
+        RescueVehicleItem item = service.updateVehicle(9L, req);
+
+        ArgumentCaptor<FacRescueVehicle> cap = ArgumentCaptor.forClass(FacRescueVehicle.class);
+        verify(vehicleMapper).updateById(cap.capture());
+        assertEquals("维修", cap.getValue().getVehicleStatus());
+        assertEquals("粤K00000", cap.getValue().getPlate());
+        assertEquals("水罐车", cap.getValue().getVehicleType());
+        assertEquals("维修", item.getStatus());
+    }
+
+    @Test
+    void deleteVehicle_removesRow() {
+        when(vehicleMapper.selectById(9L)).thenReturn(new FacRescueVehicle());
+
+        service.deleteVehicle(9L);
+
+        verify(vehicleMapper).deleteById(9L);
+    }
+
+    /* ==================== 写侧：救援装备 ==================== */
+
+    @Test
+    void createEquipment_persistsCategoryAndUnit() {
+        RescueEquipmentWriteRequest req = new RescueEquipmentWriteRequest();
+        req.setName("正压式空气呼吸器");
+        req.setSquadron("炼油中队");
+        req.setCategory("防护装备");
+        req.setUnit("具");
+        req.setQuantity(40);
+        RescueEquipmentItem item = service.createEquipment(req);
+
+        ArgumentCaptor<FacRescueEquipment> cap = ArgumentCaptor.forClass(FacRescueEquipment.class);
+        verify(equipmentMapper).insert(cap.capture());
+        assertEquals("正压式空气呼吸器", cap.getValue().getEquipName());
+        assertEquals("防护装备", cap.getValue().getCategory());
+        assertEquals("具", cap.getValue().getUnit());
+        assertEquals(1, cap.getValue().getSortNo());
+        assertEquals("防护装备", item.getCategory());
+        assertEquals("具", item.getUnit());
+    }
+
+    @Test
+    void createEquipment_blankNameThrowsParamInvalid() {
+        RescueEquipmentWriteRequest req = new RescueEquipmentWriteRequest();
+        req.setCategory("防护装备");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createEquipment(req));
+        assertTrue(ex.getMessage().contains("name"));
+        verify(equipmentMapper, never()).insert(any());
+    }
+
+    @Test
+    void updateEquipment_partialUpdateKeepsUntouchedFields() {
+        FacRescueEquipment existing = equipment(11L, "原装备", "乙烯中队");
+        when(equipmentMapper.selectById(11L)).thenReturn(existing);
+
+        RescueEquipmentWriteRequest req = new RescueEquipmentWriteRequest();
+        req.setStockQuantity(18);
+        RescueEquipmentItem item = service.updateEquipment(11L, req);
+
+        ArgumentCaptor<FacRescueEquipment> cap = ArgumentCaptor.forClass(FacRescueEquipment.class);
+        verify(equipmentMapper).updateById(cap.capture());
+        assertEquals(18, cap.getValue().getStockQuantity());
+        assertEquals("原装备", cap.getValue().getEquipName());
+        assertEquals("乙烯中队", cap.getValue().getSquadron());
+        assertEquals(18, item.getStockQuantity());
+    }
+
+    @Test
+    void deleteEquipment_notFoundThrows404() {
+        when(equipmentMapper.selectById(404L)).thenReturn(null);
+
+        assertThrows(BusinessException.class, () -> service.deleteEquipment(404L));
+        verify(equipmentMapper, never()).deleteById(any());
     }
 }

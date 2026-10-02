@@ -11,6 +11,10 @@ public class RescueEquipmentItem {
     private Long id;
     private String name;
     private String squadron;
+    /** 装备类别（防护装备 / 堵漏器材 等）；与 RescueEquipmentWriteRequest.category 同源。 */
+    private String category;
+    /** 计量单位（具 / 套 / 吨 等）。 */
+    private String unit;
     private Integer quantity;
     private String leaderName;
     private String leaderPhone;
