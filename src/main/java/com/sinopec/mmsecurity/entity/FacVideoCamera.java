@@ -35,6 +35,10 @@ public class FacVideoCamera implements Serializable {
 
     private Integer sortNo;
 
+    /** 乐观锁版本（V103 加列，默认 0），供 @Version 与实时广播使用。 */
+    @com.baomidou.mybatisplus.annotation.Version
+    private Long version;
+
     /** 静态截图字节（演示占位图，dev seeder 生成；后续接真流时替换为媒体网关转发的流地址/截图）。 */
     @com.baomidou.mybatisplus.annotation.TableField("snapshot_bytes")
     private byte[] snapshotBytes;

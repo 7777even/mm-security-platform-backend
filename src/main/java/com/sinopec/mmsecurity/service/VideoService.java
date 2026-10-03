@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.VideoCameraItem;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
+import com.sinopec.mmsecurity.dto.VideoCameraWriteRequest;
 import com.sinopec.mmsecurity.dto.ImportantVideoFeed;
 import com.sinopec.mmsecurity.dto.ImportantVideoGroup;
 import com.sinopec.mmsecurity.dto.ImportantVideoGroups;
@@ -40,6 +41,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -268,6 +270,55 @@ public class VideoService {
     public byte[] getSnapshotBytes(Long id) {
         FacVideoCamera camera = cameraMapper.selectById(id);
         return camera == null ? null : camera.getSnapshotBytes();
+    }
+
+    /** 新建摄像头台账；id 与 sort_no 由 LedgerIdSupport 分配，广播 video.camera 实时通道。 */
+    @RealtimeSync(domain = "video.camera")
+    @Transactional
+    public VideoCameraItem createCamera(VideoCameraWriteRequest in) {
+        FacVideoCamera camera = new FacVideoCamera();
+        camera.setId(LedgerIdSupport.nextId(cameraMapper, FacVideoCamera::getId, FacVideoCamera::getId));
+        camera.setSortNo(LedgerIdSupport.nextSortNo(cameraMapper, FacVideoCamera::getSortNo, FacVideoCamera::getSortNo));
+        applyCameraFields(camera, in);
+        camera.setVersion(0L);
+        cameraMapper.insert(camera);
+        return toCameraItem(camera);
+    }
+
+    /** 更新摄像头台账（按 id）；未命中返回 null。广播 video.camera 实时通道。 */
+    @RealtimeSync(domain = "video.camera")
+    @Transactional
+    public VideoCameraItem updateCamera(Long id, VideoCameraWriteRequest in) {
+        FacVideoCamera camera = cameraMapper.selectById(id);
+        if (camera == null) {
+            return null;
+        }
+        applyCameraFields(camera, in);
+        cameraMapper.updateById(camera);
+        return toCameraItem(camera);
+    }
+
+    /** 删除摄像头台账（按 id）；未命中 ok=false。广播 video.camera 实时通道。 */
+    @RealtimeSync(domain = "video.camera")
+    @Transactional
+    public DeleteResult deleteCamera(Long id) {
+        DeleteResult result = new DeleteResult();
+        FacVideoCamera camera = cameraMapper.selectById(id);
+        if (camera == null) {
+            result.setOk(false);
+            return result;
+        }
+        result.setOk(cameraMapper.deleteById(id) > 0);
+        return result;
+    }
+
+    private void applyCameraFields(FacVideoCamera camera, VideoCameraWriteRequest in) {
+        camera.setName(in.getName());
+        camera.setCameraType(in.getCameraType());
+        camera.setLocation(in.getLocation());
+        camera.setStatusName(in.getStatusName());
+        camera.setHd(in.getHd());
+        camera.setThumbIndex(in.getThumbIndex());
     }
 
     private VideoCameraItem toCameraItem(FacVideoCamera camera) {

@@ -2,6 +2,8 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.DeleteResult;
+import com.sinopec.mmsecurity.dto.VideoCameraItem;
+import com.sinopec.mmsecurity.dto.VideoCameraWriteRequest;
 import com.sinopec.mmsecurity.dto.ImportantVideoGroups;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
@@ -63,6 +65,27 @@ public class VideoController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "9") int size) {
         return Result.ok(videoService.cameras(page, size));
+    }
+
+    /** 新建摄像头台账（id 与 sort_no 由服务端分配）。 */
+    @PostMapping("/cameras")
+    @RequireAuth(role = "ADMIN")
+    public Result<VideoCameraItem> createCamera(@Valid @RequestBody VideoCameraWriteRequest payload) {
+        return Result.ok(videoService.createCamera(payload));
+    }
+
+    /** 更新摄像头台账（按 id）。 */
+    @PutMapping("/cameras/{id}")
+    @RequireAuth(role = "ADMIN")
+    public Result<VideoCameraItem> updateCamera(@PathVariable Long id, @Valid @RequestBody VideoCameraWriteRequest payload) {
+        return Result.ok(videoService.updateCamera(id, payload));
+    }
+
+    /** 删除摄像头台账（按 id）。 */
+    @DeleteMapping("/cameras/{id}")
+    @RequireAuth(role = "ADMIN")
+    public Result<DeleteResult> deleteCamera(@PathVariable Long id) {
+        return Result.ok(videoService.deleteCamera(id));
     }
 
     /**
