@@ -60,14 +60,14 @@ public class HazardController {
 
     /** 新建重大危险源（id 由服务端分配）。 */
     @PostMapping("/hazards")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "hazard:write")
     public Result<MajorHazardItem> createHazard(@Valid @RequestBody MajorHazardWriteRequest payload) {
         return Result.ok(hazardService.createHazard(payload));
     }
 
     /** 更新重大危险源（按 id）；未命中 data 为 null。 */
     @PutMapping("/hazards/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "hazard:write")
     public Result<MajorHazardItem> updateHazard(@PathVariable Long id,
                                                 @Valid @RequestBody MajorHazardWriteRequest payload) {
         return Result.ok(hazardService.updateHazard(id, payload));
@@ -75,21 +75,21 @@ public class HazardController {
 
     /** 删除重大危险源（按 id）；未命中 ok=false。 */
     @DeleteMapping("/hazards/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "hazard:write")
     public Result<DeleteResult> deleteHazard(@PathVariable Long id) {
         return Result.ok(hazardService.deleteHazard(id));
     }
 
     /** 新建监测点位（id 为字符串主键，由请求体给定；重复返回 409）。 */
     @PostMapping("/monitoring/points")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "hazard:point-write")
     public Result<MonitoringPoint> createPoint(@Valid @RequestBody MonitoringPointWriteRequest payload) {
         return Result.ok(hazardService.createPoint(payload));
     }
 
     /** 更新监测点位（按 id）；未命中 data 为 null。 */
     @PutMapping("/monitoring/points/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "hazard:point-write")
     public Result<MonitoringPoint> updatePoint(@PathVariable String id,
                                                @Valid @RequestBody MonitoringPointWriteRequest payload) {
         return Result.ok(hazardService.updatePoint(id, payload));
@@ -97,7 +97,7 @@ public class HazardController {
 
     /** 删除监测点位（按 id）；未命中 ok=false。 */
     @DeleteMapping("/monitoring/points/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "hazard:point-write")
     public Result<DeleteResult> deletePoint(@PathVariable String id) {
         return Result.ok(hazardService.deletePoint(id));
     }
