@@ -6,7 +6,9 @@ import com.sinopec.mmsecurity.dto.FireFacilityFaultCreateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
+import com.sinopec.mmsecurity.dto.FireFacilityLedgerItem;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
+import com.sinopec.mmsecurity.dto.FireFacilityLedgerWriteRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorResult;
 import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderResult;
@@ -55,6 +57,41 @@ public class FireFacilityController {
     public Result<FireFacilityLedgerResult> ledger(
             @RequestParam(value = "facilityType", required = false) String facilityType) {
         return Result.ok(fireFacilityService.ledger(facilityType));
+    }
+
+    /**
+     * 消防设施台账新增（管理端录入）：落库 fac_fire_facility_ledger，返回新建台账条目（含 id）。
+     * 需权限码 {@code fire-facility:ledger:write}（V99 已登记并授权 ADMIN 及岗位角色）。
+     * 成功触发 fire-facility.ledger 实时广播，供大屏与管理端即时刷新。
+     */
+    @PostMapping("/ledger")
+    @RequireAuth(perm = "fire-facility:ledger:write")
+    public Result<FireFacilityLedgerItem> createLedger(
+            @RequestBody FireFacilityLedgerWriteRequest req) {
+        return Result.ok(fireFacilityService.createLedger(req));
+    }
+
+    /**
+     * 消防设施台账编辑（局部更新）：按 id 取当前记录，仅覆盖传入字段，返回更新后的台账条目。
+     * 需权限码 {@code fire-facility:ledger:write}。成功触发 fire-facility.ledger 实时广播。
+     */
+    @PutMapping("/ledger/{id}")
+    @RequireAuth(perm = "fire-facility:ledger:write")
+    public Result<FireFacilityLedgerItem> updateLedger(
+            @PathVariable Long id,
+            @RequestBody FireFacilityLedgerWriteRequest req) {
+        return Result.ok(fireFacilityService.updateLedger(id, req));
+    }
+
+    /**
+     * 消防设施台账删除：级联清理历史维保记录后物理删除（真删除）。
+     * 需权限码 {@code fire-facility:ledger:write}。成功触发 fire-facility.ledger 实时广播。
+     */
+    @DeleteMapping("/ledger/{id}")
+    @RequireAuth(perm = "fire-facility:ledger:write")
+    public Result<Void> deleteLedger(@PathVariable Long id) {
+        fireFacilityService.deleteLedger(id);
+        return Result.ok(null);
     }
 
     /** 故障工单：faultLevel / faultStatus 可选过滤，每条含故障时间线。 */

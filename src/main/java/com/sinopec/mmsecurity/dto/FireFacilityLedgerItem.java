@@ -10,6 +10,8 @@ import java.util.List;
 public class FireFacilityLedgerItem implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    private Long id;
+
     private String facilityCode;
     private String facilityName;
     private String facilityType;

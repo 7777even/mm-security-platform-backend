@@ -14,6 +14,7 @@ import com.sinopec.mmsecurity.dto.FireFacilityFaultTimelineCreate;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerItem;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
+import com.sinopec.mmsecurity.dto.FireFacilityLedgerWriteRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMaintenanceRecord;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorParam;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportItem;
@@ -266,6 +267,112 @@ public class FireFacilityService {
             return item;
         }).collect(Collectors.toList()));
         return result;
+    }
+
+    /**
+     * 消防设施台账新增（管理端录入）：落库 fac_fire_facility_ledger，返回新建台账条目（含 id）。
+     *
+     * <p>必填：facilityCode（自然键，重复 → B3 CONFLICT）/ facilityName / facilityType。
+     * enabled 不传默认 true；sort_no 接续现有最大值。成功触发 fire-facility.ledger 实时广播。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.ledger")
+    public FireFacilityLedgerItem createLedger(FireFacilityLedgerWriteRequest req) {
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "新增台账请求体不可为空");
+        }
+        String facilityCode = blankToNull(req.getFacilityCode());
+        if (facilityCode == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "设施编码 facilityCode 必填");
+        }
+        if (blankToNull(req.getFacilityName()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "设施名称 facilityName 必填");
+        }
+        if (blankToNull(req.getFacilityType()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "设施类型 facilityType 必填");
+        }
+        Long dup = ledgerMapper.selectCount(new LambdaQueryWrapper<FacFireFacilityLedger>()
+                .eq(FacFireFacilityLedger::getFacilityCode, facilityCode));
+        if (dup != null && dup > 0) {
+            throw new BusinessException(ResultCode.CONFLICT, "设施编码已存在：" + facilityCode);
+        }
+        int maxSort = ledgerMapper.selectList(null).stream()
+                .mapToInt(r -> r.getSortNo() == null ? 0 : r.getSortNo())
+                .max().orElse(0);
+
+        FacFireFacilityLedger e = new FacFireFacilityLedger();
+        e.setFacilityCode(facilityCode);
+        e.setFacilityName(req.getFacilityName());
+        e.setFacilityType(req.getFacilityType());
+        e.setLocationName(req.getLocation());
+        e.setDeviceName(req.getDevice());
+        e.setMaintainerName(req.getMaintainerName());
+        e.setMaintainerPhone(req.getMaintainerPhone());
+        e.setEnabledFlag(req.getEnabled() != null ? req.getEnabled() : Boolean.TRUE);
+        e.setSortNo(maxSort + 1);
+        ledgerMapper.insert(e);
+        return toLedgerItem(e);
+    }
+
+    /**
+     * 消防设施台账编辑（局部更新）：按 id 取当前记录，仅在传入字段非空时覆盖（read-modify-write），
+     * updateById 落库。id 非法 / 记录不存在 → B3 PARAM_INVALID / NOT_FOUND。
+     * 成功返回更新后的台账条目并触发 fire-facility.ledger 实时广播。
+     */
+    @RealtimeSync(domain = "fire-facility.ledger")
+    public FireFacilityLedgerItem updateLedger(Long id, FireFacilityLedgerWriteRequest req) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "台账 id 不可为空");
+        }
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "编辑台账请求体不可为空");
+        }
+        FacFireFacilityLedger e = ledgerMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "消防设施台账不存在：" + id);
+        }
+        if (req.getFacilityCode() != null) e.setFacilityCode(req.getFacilityCode());
+        if (req.getFacilityName() != null) e.setFacilityName(req.getFacilityName());
+        if (req.getFacilityType() != null) e.setFacilityType(req.getFacilityType());
+        if (req.getLocation() != null) e.setLocationName(req.getLocation());
+        if (req.getDevice() != null) e.setDeviceName(req.getDevice());
+        if (req.getMaintainerName() != null) e.setMaintainerName(req.getMaintainerName());
+        if (req.getMaintainerPhone() != null) e.setMaintainerPhone(req.getMaintainerPhone());
+        if (req.getEnabled() != null) e.setEnabledFlag(req.getEnabled());
+        ledgerMapper.updateById(e);
+        return toLedgerItem(e);
+    }
+
+    /**
+     * 消防设施台账删除：级联清理该设施的历史维保记录（fac_fire_facility_maintenance.ledger_id）后物理删除。
+     * id 非法 / 记录不存在 → B3 PARAM_INVALID / NOT_FOUND。成功触发 fire-facility.ledger 实时广播。
+     */
+    @RealtimeSync(domain = "fire-facility.ledger")
+    public void deleteLedger(Long id) {
+        if (id == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "台账 id 不可为空");
+        }
+        FacFireFacilityLedger e = ledgerMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "消防设施台账不存在：" + id);
+        }
+        maintenanceMapper.delete(new LambdaQueryWrapper<FacFireFacilityMaintenance>()
+                .eq(FacFireFacilityMaintenance::getLedgerId, id));
+        ledgerMapper.deleteById(id);
+    }
+
+    private FireFacilityLedgerItem toLedgerItem(FacFireFacilityLedger e) {
+        FireFacilityLedgerItem item = new FireFacilityLedgerItem();
+        item.setId(e.getId());
+        item.setFacilityCode(e.getFacilityCode());
+        item.setFacilityName(e.getFacilityName());
+        item.setFacilityType(e.getFacilityType());
+        item.setLocation(e.getLocationName());
+        item.setDevice(e.getDeviceName());
+        item.setMaintainerName(e.getMaintainerName());
+        item.setMaintainerPhone(e.getMaintainerPhone());
+        item.setEnabled(e.getEnabledFlag());
+        item.setMaintenanceRecords(new ArrayList<>());
+        return item;
     }
 
     /** 故障工单列表：faultLevel / faultStatus 均为可选过滤，空值表示不过滤；每条含时间线。 */

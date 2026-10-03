@@ -8,7 +8,9 @@ import com.sinopec.mmsecurity.dto.FireFacilityFaultItem;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultResult;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultTimelineCreate;
 import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
+import com.sinopec.mmsecurity.dto.FireFacilityLedgerItem;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
+import com.sinopec.mmsecurity.dto.FireFacilityLedgerWriteRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorResult;
 import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderResult;
 import com.sinopec.mmsecurity.entity.FacFireFacilityFault;
@@ -480,5 +482,123 @@ class FireFacilityServiceTest {
         BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteFault("999"));
         assertEquals(ResultCode.NOT_FOUND, ex.getCode());
         verify(faultMapper, never()).deleteById(any());
+    }
+
+    /* ==================== 台账 createLedger / updateLedger / deleteLedger ==================== */
+
+    private static FacFireFacilityLedger ledger(Long id, String code, String name, int sortNo) {
+        FacFireFacilityLedger e = new FacFireFacilityLedger();
+        e.setId(id);
+        e.setFacilityCode(code);
+        e.setFacilityName(name);
+        e.setFacilityType("消防水泵");
+        e.setLocationName("炼油一部泵房");
+        e.setDeviceName("XBD8/30-150L");
+        e.setMaintainerName("张伟");
+        e.setMaintainerPhone("13800000001");
+        e.setEnabledFlag(true);
+        e.setSortNo(sortNo);
+        return e;
+    }
+
+    private static FireFacilityLedgerWriteRequest ledgerWriteReq(String code, String name) {
+        FireFacilityLedgerWriteRequest req = new FireFacilityLedgerWriteRequest();
+        req.setFacilityCode(code);
+        req.setFacilityName(name);
+        req.setFacilityType("消防水泵");
+        req.setLocation("炼油三部泵房");
+        req.setDevice("XBD8/30-200L");
+        req.setMaintainerName("王芳");
+        req.setMaintainerPhone("13800000099");
+        req.setEnabled(true);
+        return req;
+    }
+
+    @Test
+    void createLedger_valid_persistsAndAppendsSortNo() {
+        when(ledgerMapper.selectCount(any())).thenReturn(0L);
+        when(ledgerMapper.selectList(null)).thenReturn(List.of(ledger(1L, "FP-001", "1#消防水泵", 1)));
+
+        FireFacilityLedgerItem item = service.createLedger(ledgerWriteReq("FP-099", "99#消防水泵"));
+
+        ArgumentCaptor<FacFireFacilityLedger> captor = ArgumentCaptor.forClass(FacFireFacilityLedger.class);
+        verify(ledgerMapper).insert(captor.capture());
+        assertEquals("FP-099", captor.getValue().getFacilityCode());
+        assertEquals("炼油三部泵房", captor.getValue().getLocationName());
+        assertEquals("XBD8/30-200L", captor.getValue().getDeviceName());
+        assertEquals(Boolean.TRUE, captor.getValue().getEnabledFlag());
+        // sort_no 接续现有最大值（既有 1 → 新 2）
+        assertEquals(2, captor.getValue().getSortNo());
+        // id 由 DB 自增赋值（纯 Mockito 下 insert 不回填，仅校验映射字段完整）
+        assertEquals("FP-099", item.getFacilityCode());
+        assertEquals("炼油三部泵房", item.getLocation());
+        assertEquals(Boolean.TRUE, item.getEnabled());
+    }
+
+    @Test
+    void createLedger_missingFacilityCode_throwsParamInvalid() {
+        FireFacilityLedgerWriteRequest req = ledgerWriteReq("  ", "99#消防水泵");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createLedger(req));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(ledgerMapper, never()).insert(any());
+    }
+
+    @Test
+    void createLedger_duplicateCode_throwsConflict() {
+        when(ledgerMapper.selectCount(any())).thenReturn(1L);
+
+        BusinessException ex = assertThrows(
+                BusinessException.class, () -> service.createLedger(ledgerWriteReq("FP-001", "1#消防水泵")));
+        assertEquals(ResultCode.CONFLICT, ex.getCode());
+        verify(ledgerMapper, never()).insert(any());
+    }
+
+    @Test
+    void updateLedger_nullFields_keepExistingValues() {
+        FacFireFacilityLedger e = ledger(3L, "FP-003", "3#消防水泵", 3);
+        e.setMaintainerName("老维保");
+        when(ledgerMapper.selectById(3L)).thenReturn(e);
+        FireFacilityLedgerWriteRequest req = new FireFacilityLedgerWriteRequest();
+        req.setMaintainerPhone("13800000003");
+
+        FireFacilityLedgerItem item = service.updateLedger(3L, req);
+
+        ArgumentCaptor<FacFireFacilityLedger> captor = ArgumentCaptor.forClass(FacFireFacilityLedger.class);
+        verify(ledgerMapper).updateById(captor.capture());
+        assertEquals("13800000003", captor.getValue().getMaintainerPhone());
+        assertEquals("老维保", captor.getValue().getMaintainerName());
+        assertEquals("FP-003", captor.getValue().getFacilityCode());
+        assertEquals("13800000003", item.getMaintainerPhone());
+    }
+
+    @Test
+    void updateLedger_notFound_throwsNotFound() {
+        when(ledgerMapper.selectById(999L)).thenReturn(null);
+        FireFacilityLedgerWriteRequest req = new FireFacilityLedgerWriteRequest();
+        req.setFacilityName("x");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateLedger(999L, req));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(ledgerMapper, never()).updateById(any());
+    }
+
+    @Test
+    void deleteLedger_existing_cascadesMaintenanceThenDeletes() {
+        when(ledgerMapper.selectById(5L)).thenReturn(ledger(5L, "FP-005", "5#消防水泵", 5));
+
+        service.deleteLedger(5L);
+
+        verify(maintenanceMapper).delete(any());
+        verify(ledgerMapper).deleteById(5L);
+    }
+
+    @Test
+    void deleteLedger_notFound_throwsNotFound() {
+        when(ledgerMapper.selectById(999L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteLedger(999L));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(ledgerMapper, never()).deleteById(any());
     }
 }
