@@ -13,6 +13,8 @@ public class MgmtLedgerListResult {
     private List<MgmtLedgerFilterDto> filters;
     /** 行集合，每行是等长于 columns 的单元格数组 */
     private List<List<MgmtLedgerCellDto>> rows;
+    /** 与 rows 一一对应的行主键（筛选/分页后与显示行对齐），用于前端编辑/删除定位 */
+    private List<Long> rowIds;
     private long total;
     private int page;
     private int size;
