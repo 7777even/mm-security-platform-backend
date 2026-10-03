@@ -54,6 +54,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -333,6 +334,18 @@ public class SecurityService {
                         .orderByDesc(FacPerimeterAlarm::getAlarmTime)
                         .orderByDesc(FacPerimeterAlarm::getId));
         return rows.isEmpty() ? null : toPerimeterAlarmDetail(rows.get(0));
+    }
+
+    /**
+     * 周界入侵告警列表（管理端台账）：按告警时间倒序、时间相同按 id 倒序返回全部周界告警。
+     * 供管理端表格展示与检索；写回经 security.perimeter-alarm 广播，订阅方即时重拉。
+     */
+    public List<PerimeterAlarmDetail> listPerimeterAlarms() {
+        List<FacPerimeterAlarm> rows = perimeterAlarmMapper.selectList(
+                new LambdaQueryWrapper<FacPerimeterAlarm>()
+                        .orderByDesc(FacPerimeterAlarm::getAlarmTime)
+                        .orderByDesc(FacPerimeterAlarm::getId));
+        return rows.stream().map(this::toPerimeterAlarmDetail).collect(Collectors.toList());
     }
 
     /** 周界入侵告警详情；未找到返回 null。 */

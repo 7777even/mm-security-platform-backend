@@ -232,6 +232,15 @@ public class SecurityController {
     }
 
     /**
+     * 周界入侵告警列表（管理端台账）：按告警时间倒序返回全部周界告警，供表格展示与检索。
+     * 写回经 security.perimeter-alarm 广播，管理端订阅后即时重拉。
+     */
+    @GetMapping("/security/perimeter-alarms")
+    public Result<List<PerimeterAlarmDetail>> listPerimeterAlarms() {
+        return Result.ok(securityService.listPerimeterAlarms());
+    }
+
+    /**
      * 周界入侵告警写回：确认/派单/处置状态流转 + 误报标记 + 处置情况/时间/派单人员/通知方式局部更新。
      * 需权限码 {@code security:perimeter-ack}（V70 已登记并授权 ADMIN 及岗位角色）。
      * 成功返回更新后的 PerimeterAlarmDetail（B3 包络），供前端即时回填并触发 security.perimeter-alarm 实时广播。

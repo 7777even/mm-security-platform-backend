@@ -180,6 +180,33 @@ class SecurityControllerTest {
     }
 
     @Test
+    void listPerimeterAlarms_returnsAllAlarmsOrdered() throws Exception {
+        PerimeterAlarmDetail a1 = new PerimeterAlarmDetail();
+        a1.setId(1L);
+        a1.setAlarmCode("AL-20260820-007");
+        a1.setTitle("南门未经授权翻越");
+        a1.setStatus("未确认");
+        a1.setLevel("一级");
+        a1.setTime("2026-08-20 03:22:48");
+        PerimeterAlarmDetail a2 = new PerimeterAlarmDetail();
+        a2.setId(2L);
+        a2.setAlarmCode("AL-20260923-001");
+        a2.setTitle("周界红外对射触发");
+        a2.setStatus("已处理");
+        a2.setLevel("二级");
+        a2.setTime("2026-09-23 17:30:00");
+        when(service.listPerimeterAlarms()).thenReturn(List.of(a2, a1));
+
+        mockMvc.perform(get("/api/v1/security/perimeter-alarms"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].alarmCode").value("AL-20260923-001"))
+                .andExpect(jsonPath("$.data[1].alarmCode").value("AL-20260820-007"));
+    }
+
+    @Test
     void perimeterAlarmSnapshot_returnsJpegBytes() throws Exception {
         when(service.perimeterAlarmSnapshot(1L)).thenReturn(new byte[] { (byte) 0xFF, (byte) 0xD8, 1 });
 
