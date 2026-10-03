@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
 /** 防火巡查记录（一次班次巡查，替代大屏硬编码 firePatrolRecords）。 */
@@ -12,6 +13,9 @@ public class FacFirePatrol {
 
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    @Version
+    private Long version;
 
     private String patrolDate;
     private String shiftName;

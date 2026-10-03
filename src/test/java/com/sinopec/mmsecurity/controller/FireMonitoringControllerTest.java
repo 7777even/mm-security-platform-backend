@@ -1,8 +1,11 @@
 package com.sinopec.mmsecurity.controller;
 
+import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
+import com.sinopec.mmsecurity.dto.FirePatrolWriteRequest;
 import com.sinopec.mmsecurity.dto.PatrolExecutionView;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
@@ -17,8 +20,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Collections;
 import java.util.List;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -155,5 +160,66 @@ class FireMonitoringControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.execResult").value("NORMAL"));
+    }
+
+    /* ==================== A3 防火巡查记录台账（fire.patrol-record） ==================== */
+
+    @Test
+    void patrols_postCreatesRecord() throws Exception {
+        FirePatrolRecord rec = new FirePatrolRecord();
+        rec.setId(20L);
+        rec.setPatrolDate("2026-10-03");
+        rec.setShift("上午");
+        rec.setDutyPerson("王六");
+        Mockito.when(service.createFirePatrol(Mockito.any())).thenReturn(rec);
+
+        mvc.perform(post("/api/v1/fire/patrols")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patrolDate\":\"2026-10-03\",\"shift\":\"上午\",\"dutyPerson\":\"王六\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(20))
+                .andExpect(jsonPath("$.data.patrolDate").value("2026-10-03"))
+                .andExpect(jsonPath("$.data.shift").value("上午"))
+                .andExpect(jsonPath("$.data.dutyPerson").value("王六"));
+    }
+
+    @Test
+    void patrols_putUpdatesRecord() throws Exception {
+        FirePatrolRecord rec = new FirePatrolRecord();
+        rec.setId(20L);
+        rec.setPatrolDate("2026-10-03");
+        rec.setShift("下午");
+        Mockito.when(service.updateFirePatrol(Mockito.eq(20L), Mockito.any())).thenReturn(rec);
+
+        mvc.perform(put("/api/v1/fire/patrols/20")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patrolDate\":\"2026-10-03\",\"shift\":\"下午\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(20))
+                .andExpect(jsonPath("$.data.shift").value("下午"));
+    }
+
+    @Test
+    void patrols_deleteReturnsOk() throws Exception {
+        Mockito.doNothing().when(service).deleteFirePatrol(20L);
+
+        // DELETE 成功返回 B3 包络 code=0；data 为 null 时按 NON_NULL 规则省略（与 security 删除约定一致）
+        mvc.perform(delete("/api/v1/fire/patrols/20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
+    void patrols_deleteNotFoundReturnsB3Error() throws Exception {
+        Mockito.doThrow(new BusinessException(ResultCode.NOT_FOUND, "防火巡查记录不存在：999"))
+                .when(service).deleteFirePatrol(999L);
+
+        // B3 包络：HTTP 200 + code=404（非 4xx），与零下行控制 / B3 包络规范一致
+        mvc.perform(delete("/api/v1/fire/patrols/999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("不存在")));
     }
 }

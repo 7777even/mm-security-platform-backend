@@ -4,7 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.sinopec.mmsecurity.dto.FireEquipmentItem;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolCheckItem;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
+import com.sinopec.mmsecurity.dto.FirePatrolWriteRequest;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
 import com.sinopec.mmsecurity.entity.FacFireFacilityMonitor;
@@ -181,6 +185,76 @@ public class FireMonitoringService {
     /** 防火巡查记录：标准检查项逐条补齐，异常表覆盖处使用实际结果（带短 TTL 缓存）。 */
     public List<FirePatrolRecord> patrols() {
         return patrolsCache.get("PATROLS", k -> computePatrols());
+    }
+
+    /**
+     * 防火巡查记录新增（管理端台账，fire:patrol-write）：落 fac_fire_patrol，
+     * 写后清巡查缓存并广播 {@code fire.patrol-record}，各端订阅方自动重拉。
+     */
+    @RealtimeSync(domain = "fire.patrol-record")
+    public FirePatrolRecord createFirePatrol(FirePatrolWriteRequest req) {
+        FacFirePatrol e = new FacFirePatrol();
+        applyFirePatrolRequest(e, req);
+        e.setVersion(0L);
+        firePatrolMapper.insert(e);
+        patrolsCache.invalidateAll();
+        return toRecord(e);
+    }
+
+    /**
+     * 防火巡查记录编辑（管理端台账，fire:patrol-write）：按 id 局部覆盖传入字段，
+     * 写后清巡查缓存并广播 {@code fire.patrol-record}。记录不存在返回 B3 NOT_FOUND。
+     */
+    @RealtimeSync(domain = "fire.patrol-record")
+    public FirePatrolRecord updateFirePatrol(Long id, FirePatrolWriteRequest req) {
+        FacFirePatrol e = firePatrolMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "防火巡查记录不存在：" + id);
+        }
+        applyFirePatrolRequest(e, req);
+        firePatrolMapper.updateById(e);
+        patrolsCache.invalidateAll();
+        return toRecord(e);
+    }
+
+    /**
+     * 防火巡查记录删除（管理端台账，fire:patrol-write）：物理删除，写后清巡查缓存并广播
+     * {@code fire.patrol-record}。记录不存在返回 B3 NOT_FOUND。
+     */
+    @RealtimeSync(domain = "fire.patrol-record")
+    public void deleteFirePatrol(Long id) {
+        FacFirePatrol e = firePatrolMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "防火巡查记录不存在：" + id);
+        }
+        firePatrolMapper.deleteById(id);
+        patrolsCache.invalidateAll();
+    }
+
+    /** 局部覆盖：仅将请求中非空的字段写入实体（create 时实体为空，等同全量赋值）。 */
+    private void applyFirePatrolRequest(FacFirePatrol e, FirePatrolWriteRequest req) {
+        if (req.getPatrolDate() != null) e.setPatrolDate(req.getPatrolDate());
+        if (req.getShift() != null) e.setShiftName(req.getShift());
+        if (req.getDutyPerson() != null) e.setDutyPerson(req.getDutyPerson());
+        if (req.getPatrolCount() != null) e.setPatrolCount(req.getPatrolCount());
+        if (req.getLocations() != null) e.setLocations(String.join(",", req.getLocations()));
+        if (req.getCompleted() != null) e.setCompleted(req.getCompleted());
+        if (req.getWorkOrderNo() != null) e.setWorkOrderNo(req.getWorkOrderNo());
+    }
+
+    /** 将实体转为对外 FirePatrolRecord；检查项本轮只读，置空列表（保持前端契约结构）。 */
+    private FirePatrolRecord toRecord(FacFirePatrol e) {
+        FirePatrolRecord rec = new FirePatrolRecord();
+        rec.setId(e.getId());
+        rec.setPatrolDate(e.getPatrolDate());
+        rec.setShift(e.getShiftName());
+        rec.setDutyPerson(e.getDutyPerson());
+        rec.setPatrolCount(e.getPatrolCount());
+        rec.setLocations(splitLocations(e.getLocations()));
+        rec.setCompleted(Boolean.TRUE.equals(e.getCompleted()));
+        rec.setWorkOrderNo(e.getWorkOrderNo());
+        rec.setCheckItems(new ArrayList<>());
+        return rec;
     }
 
     private List<FirePatrolRecord> computePatrols() {

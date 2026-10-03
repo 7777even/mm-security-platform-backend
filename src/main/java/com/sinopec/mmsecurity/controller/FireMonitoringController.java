@@ -4,6 +4,7 @@ import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FireEquipmentItem;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
+import com.sinopec.mmsecurity.dto.FirePatrolWriteRequest;
 import com.sinopec.mmsecurity.dto.PatrolExecutionView;
 import com.sinopec.mmsecurity.dto.PatrolExecutionWriteRequest;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
@@ -51,6 +52,40 @@ public class FireMonitoringController {
     @GetMapping("/patrols")
     public Result<List<FirePatrolRecord>> patrols() {
         return Result.ok(fireMonitoringService.patrols());
+    }
+
+    /* ==================== A3 防火巡查记录台账（fire.patrol-record） ==================== */
+
+    /**
+     * 防火巡查记录新增（管理端台账编辑）。需权限码 {@code fire:patrol-write}。
+     * 成功触发 fire.patrol-record 实时广播。
+     */
+    @PostMapping("/patrols")
+    @RequireAuth(perm = "fire:patrol-write")
+    public Result<FirePatrolRecord> createFirePatrol(@RequestBody FirePatrolWriteRequest payload) {
+        return Result.ok(fireMonitoringService.createFirePatrol(payload));
+    }
+
+    /**
+     * 防火巡查记录编辑（管理端台账编辑，仅覆盖传入的非空字段）。需权限码 {@code fire:patrol-write}；
+     * 成功触发 fire.patrol-record 实时广播。记录不存在返回 B3 NOT_FOUND。
+     */
+    @PutMapping("/patrols/{id}")
+    @RequireAuth(perm = "fire:patrol-write")
+    public Result<FirePatrolRecord> updateFirePatrol(
+            @PathVariable Long id, @RequestBody FirePatrolWriteRequest payload) {
+        return Result.ok(fireMonitoringService.updateFirePatrol(id, payload));
+    }
+
+    /**
+     * 防火巡查记录删除（物理删除）。需权限码 {@code fire:patrol-write}；成功触发 fire.patrol-record 实时广播。
+     * 记录不存在返回 B3 NOT_FOUND。
+     */
+    @DeleteMapping("/patrols/{id}")
+    @RequireAuth(perm = "fire:patrol-write")
+    public Result<Void> deleteFirePatrol(@PathVariable Long id) {
+        fireMonitoringService.deleteFirePatrol(id);
+        return Result.ok(null);
     }
 
     @GetMapping("/equipment")

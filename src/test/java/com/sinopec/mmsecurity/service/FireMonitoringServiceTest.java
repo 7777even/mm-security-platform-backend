@@ -1,8 +1,12 @@
 package com.sinopec.mmsecurity.service;
 
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.FireEquipmentItem;
 import com.sinopec.mmsecurity.dto.FireEquipmentStatus;
 import com.sinopec.mmsecurity.dto.FirePatrolRecord;
+import com.sinopec.mmsecurity.dto.FirePatrolWriteRequest;
 import com.sinopec.mmsecurity.dto.RescueForceStat;
 import com.sinopec.mmsecurity.dto.SpecialOperationStat;
 import com.sinopec.mmsecurity.entity.FacFireFacilityMonitor;
@@ -23,15 +27,18 @@ import com.sinopec.mmsecurity.mapper.FacSpecialOperationStatMapper;
 import com.sinopec.mmsecurity.mapper.FacSpecialOperationTicketMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 消防监控服务逻辑校验（纯 Mockito，不起 Spring 上下文、不连 DB）。 */
@@ -237,5 +244,91 @@ class FireMonitoringServiceTest {
         assertEquals("火灾自动报警系统", out.get(0).getName());
         assertEquals(128, out.get(0).getCount(), "数量取自监测表 total_count（与 /fire-facility/monitors 同源）");
         assertEquals(100, out.get(1).getCount());
+    }
+
+    /* ==================== A3 业务写侧：防火巡查记录台账（fire.patrol-record） ==================== */
+
+    @Test
+    void createFirePatrol_insertsWithMappedFields() {
+        FirePatrolWriteRequest req = patrolWriteRequest();
+        FirePatrolRecord rec = service.createFirePatrol(req);
+
+        ArgumentCaptor<FacFirePatrol> captor = ArgumentCaptor.forClass(FacFirePatrol.class);
+        Mockito.verify(firePatrolMapper).insert(captor.capture());
+        FacFirePatrol saved = captor.getValue();
+        assertEquals("2026-10-03", saved.getPatrolDate());
+        assertEquals("上午", saved.getShiftName());
+        assertEquals("张三", saved.getDutyPerson());
+        assertEquals("第1次", saved.getPatrolCount());
+        assertEquals("1#联合装置,中央控制室", saved.getLocations(), "locations 列表逗号拼接落库");
+        assertEquals(Boolean.TRUE, saved.getCompleted());
+        assertEquals("WO-001", saved.getWorkOrderNo());
+        assertEquals(0L, saved.getVersion(), "新增默认版本 0（乐观锁列）");
+        assertEquals(Arrays.asList("1#联合装置", "中央控制室"), rec.getLocations(), "回写结构还原部位列表");
+        assertEquals(Collections.emptyList(), rec.getCheckItems(), "检查项本轮只读，置空列表");
+    }
+
+    @Test
+    void updateFirePatrol_updatesExistingFields() {
+        FacFirePatrol existing = new FacFirePatrol();
+        existing.setId(7L);
+        existing.setPatrolDate("2026-09-01");
+        existing.setShiftName("下午");
+        Mockito.when(firePatrolMapper.selectById(7L)).thenReturn(existing);
+
+        FirePatrolRecord rec = service.updateFirePatrol(7L, patrolWriteRequest());
+        Mockito.verify(firePatrolMapper).updateById(existing);
+        assertEquals("2026-10-03", existing.getPatrolDate(), "局部覆盖写入");
+        assertEquals("上午", existing.getShiftName());
+        assertEquals(7L, rec.getId());
+    }
+
+    @Test
+    void deleteFirePatrol_deletesExisting() {
+        FacFirePatrol existing = new FacFirePatrol();
+        existing.setId(9L);
+        Mockito.when(firePatrolMapper.selectById(9L)).thenReturn(existing);
+
+        service.deleteFirePatrol(9L);
+        Mockito.verify(firePatrolMapper).deleteById(9L);
+    }
+
+    @Test
+    void updateFirePatrol_missing_throwsB3NotFound() {
+        Mockito.when(firePatrolMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateFirePatrol(99L, patrolWriteRequest()));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode(), "B3 包络 NOT_FOUND=404");
+    }
+
+    @Test
+    void deleteFirePatrol_missing_throwsB3NotFound() {
+        Mockito.when(firePatrolMapper.selectById(99L)).thenReturn(null);
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteFirePatrol(99L));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode(), "B3 包络 NOT_FOUND=404");
+    }
+
+    @Test
+    void writeMethods_useExpectedRealtimeDomains() throws Exception {
+        assertRealtimeDomain("createFirePatrol", new Class<?>[] { FirePatrolWriteRequest.class }, "fire.patrol-record");
+        assertRealtimeDomain("updateFirePatrol", new Class<?>[] { Long.class, FirePatrolWriteRequest.class }, "fire.patrol-record");
+        assertRealtimeDomain("deleteFirePatrol", new Class<?>[] { Long.class }, "fire.patrol-record");
+    }
+
+    private void assertRealtimeDomain(String name, Class<?>[] parameterTypes, String domain) throws Exception {
+        Method method = FireMonitoringService.class.getMethod(name, parameterTypes);
+        assertEquals(domain, method.getAnnotation(RealtimeSync.class).domain());
+    }
+
+    private static FirePatrolWriteRequest patrolWriteRequest() {
+        FirePatrolWriteRequest req = new FirePatrolWriteRequest();
+        req.setPatrolDate("2026-10-03");
+        req.setShift("上午");
+        req.setDutyPerson("张三");
+        req.setPatrolCount("第1次");
+        req.setLocations(Arrays.asList("1#联合装置", "中央控制室"));
+        req.setCompleted(true);
+        req.setWorkOrderNo("WO-001");
+        return req;
     }
 }
