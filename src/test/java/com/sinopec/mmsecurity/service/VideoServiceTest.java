@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.ImportantVideoGroups;
+import com.sinopec.mmsecurity.dto.VideoCameraItem;
 import com.sinopec.mmsecurity.dto.VideoCameraPage;
+import com.sinopec.mmsecurity.dto.VideoCameraWriteRequest;
 import com.sinopec.mmsecurity.dto.VideoLinkageItem;
 import com.sinopec.mmsecurity.dto.VideoLinkageOptions;
 import com.sinopec.mmsecurity.dto.VideoLinkageRuleInput;
@@ -41,8 +43,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -132,6 +136,89 @@ class VideoServiceTest {
         assertArrayEquals("jpeg-bytes".getBytes(StandardCharsets.UTF_8),
                 service.getSnapshotBytes(2L));
         assertNull(service.getSnapshotBytes(404L));
+    }
+
+    // ---- 写端点（video.camera）----
+    // 主线：id / sort_no 走 LedgerIdSupport 的 max+1，避三方言自增序列滞后撞主键 409。
+
+    private static VideoCameraWriteRequest cameraRequest() {
+        VideoCameraWriteRequest in = new VideoCameraWriteRequest();
+        in.setName("炼油区-3");
+        in.setCameraType("枪机");
+        in.setLocation("中海壳牌");
+        in.setStatusName("live");
+        in.setHd(true);
+        in.setThumbIndex(4);
+        return in;
+    }
+
+    @Test
+    void createCamera_emptyTable_assignsIdOneSortNoOneAndVersionZero() {
+        when(cameraMapper.selectOne(any())).thenReturn(null);
+
+        VideoCameraItem created = service.createCamera(cameraRequest());
+
+        assertEquals("炼油区-3", created.getName());
+        ArgumentCaptor<FacVideoCamera> captor = ArgumentCaptor.forClass(FacVideoCamera.class);
+        verify(cameraMapper).insert(captor.capture());
+        assertEquals(1L, captor.getValue().getId());
+        assertEquals(1, captor.getValue().getSortNo());
+        assertEquals(0L, captor.getValue().getVersion());
+    }
+
+    @Test
+    void createCamera_existingRows_assignsMaxIdAndMaxSortNoPlusOne() {
+        FacVideoCamera last = camera("炼油区-2", "球机", "中海壳牌", "loading", true, 3);
+        last.setSortNo(7);
+        when(cameraMapper.selectOne(any())).thenReturn(last);
+
+        service.createCamera(cameraRequest());
+
+        ArgumentCaptor<FacVideoCamera> captor = ArgumentCaptor.forClass(FacVideoCamera.class);
+        verify(cameraMapper).insert(captor.capture());
+        assertEquals(3L, captor.getValue().getId());
+        assertEquals(8, captor.getValue().getSortNo());
+    }
+
+    @Test
+    void updateCamera_appliesFieldsWhenFound() {
+        FacVideoCamera existing = camera("炼油区-2", "球机", "中海壳牌", "loading", true, 3);
+        when(cameraMapper.selectById(2L)).thenReturn(existing);
+        VideoCameraWriteRequest in = cameraRequest();
+        in.setName("改名后点位");
+        in.setHd(false);
+
+        VideoCameraItem updated = service.updateCamera(2L, in);
+
+        assertEquals("改名后点位", updated.getName());
+        assertFalse(updated.getHd());
+        verify(cameraMapper).updateById(existing);
+    }
+
+    @Test
+    void updateCamera_notFound_returnsNull() {
+        when(cameraMapper.selectById(404L)).thenReturn(null);
+
+        assertNull(service.updateCamera(404L, cameraRequest()));
+    }
+
+    @Test
+    void deleteCamera_present_returnsOkTrue() {
+        when(cameraMapper.selectById(2L)).thenReturn(
+                camera("炼油区-2", "球机", "中海壳牌", "loading", true, 3));
+        when(cameraMapper.deleteById(2L)).thenReturn(1);
+
+        DeleteResult result = service.deleteCamera(2L);
+
+        assertTrue(result.getOk());
+    }
+
+    @Test
+    void deleteCamera_absent_returnsOkFalseAndSkipsDelete() {
+        when(cameraMapper.selectById(404L)).thenReturn(null);
+
+        assertFalse(service.deleteCamera(404L).getOk());
+        verify(cameraMapper, never()).deleteById(anyLong());
     }
 
     // ------------------------------------------------------------------ V37 视频墙导航
