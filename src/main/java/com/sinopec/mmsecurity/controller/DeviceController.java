@@ -52,14 +52,14 @@ public class DeviceController {
 
     /** 新建设备台账（deviceCode 为 20 位 MDM 编码，由请求体给定）。 */
     @PostMapping
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "device:write")
     public Result<FacDevice> create(@Valid @RequestBody DeviceWriteRequest payload) {
         return Result.ok(deviceService.createDevice(payload));
     }
 
     /** 更新设备台账（按 deviceCode）；未命中或已软删时 data 为 null。 */
     @PutMapping("/{code}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "device:write")
     public Result<FacDevice> update(@PathVariable @DeviceCode String code,
                                     @Valid @RequestBody DeviceWriteRequest payload) {
         return Result.ok(deviceService.updateDevice(code, payload));
@@ -67,7 +67,7 @@ public class DeviceController {
 
     /** 删除设备台账（软删除，置 deleted=1）；未命中 ok=false。 */
     @DeleteMapping("/{code}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "device:write")
     public Result<DeleteResult> delete(@PathVariable @DeviceCode String code) {
         return Result.ok(deviceService.deleteDevice(code));
     }
