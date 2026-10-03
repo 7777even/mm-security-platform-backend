@@ -69,21 +69,21 @@ public class VideoController {
 
     /** 新建摄像头台账（id 与 sort_no 由服务端分配）。 */
     @PostMapping("/cameras")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "video:camera-write")
     public Result<VideoCameraItem> createCamera(@Valid @RequestBody VideoCameraWriteRequest payload) {
         return Result.ok(videoService.createCamera(payload));
     }
 
     /** 更新摄像头台账（按 id）。 */
     @PutMapping("/cameras/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "video:camera-write")
     public Result<VideoCameraItem> updateCamera(@PathVariable Long id, @Valid @RequestBody VideoCameraWriteRequest payload) {
         return Result.ok(videoService.updateCamera(id, payload));
     }
 
     /** 删除摄像头台账（按 id）。 */
     @DeleteMapping("/cameras/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "video:camera-write")
     public Result<DeleteResult> deleteCamera(@PathVariable Long id) {
         return Result.ok(videoService.deleteCamera(id));
     }
