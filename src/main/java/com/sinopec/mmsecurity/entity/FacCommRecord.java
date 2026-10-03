@@ -50,4 +50,8 @@ public class FacCommRecord implements Serializable {
     private String direction;
 
     private String contentType;
+
+    /** 乐观锁版本（V104 加列，默认 0），供 @Version 与实时广播使用。 */
+    @com.baomidou.mybatisplus.annotation.Version
+    private Long version;
 }
