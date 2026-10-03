@@ -45,21 +45,21 @@ public class CommDeviceController {
 
     /** 新建通讯设备台账（id 与 sort_no 由服务端分配，deviceCode 为业务自然键）。 */
     @PostMapping("/devices")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "communication:device-write")
     public Result<CommunicationDevice> createDevice(@Valid @RequestBody CommDeviceWriteRequest payload) {
         return Result.ok(commDeviceService.createDevice(payload));
     }
 
     /** 更新通讯设备台账（按 deviceCode，与 GET 详情一致）。 */
     @PutMapping("/devices/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "communication:device-write")
     public Result<CommunicationDevice> updateDevice(@PathVariable("id") String id, @Valid @RequestBody CommDeviceWriteRequest payload) {
         return Result.ok(commDeviceService.updateDevice(id, payload));
     }
 
     /** 删除通讯设备台账（按 deviceCode）。 */
     @DeleteMapping("/devices/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "communication:device-write")
     public Result<DeleteResult> deleteDevice(@PathVariable("id") String id) {
         return Result.ok(commDeviceService.deleteDevice(id));
     }

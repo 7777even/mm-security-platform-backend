@@ -45,14 +45,14 @@ public class CommRecordController {
 
     /** 新建通讯通知记录（id 由服务端分配，recordNo 为业务自然键）。 */
     @PostMapping("/records")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "communication:record-write")
     public Result<CommunicationRecord> createRecord(@Valid @RequestBody CommRecordWriteRequest payload) {
         return Result.ok(commRecordService.createRecord(payload));
     }
 
     /** 更新通讯通知记录（按 recordNo）；未命中时 data 为 null。 */
     @PutMapping("/records/{recordNo}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "communication:record-write")
     public Result<CommunicationRecord> updateRecord(@PathVariable String recordNo,
                                                     @Valid @RequestBody CommRecordWriteRequest payload) {
         return Result.ok(commRecordService.updateRecord(recordNo, payload));
@@ -60,7 +60,7 @@ public class CommRecordController {
 
     /** 删除通讯通知记录（按 recordNo）；未命中 ok=false。 */
     @DeleteMapping("/records/{recordNo}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "communication:record-write")
     public Result<DeleteResult> deleteRecord(@PathVariable String recordNo) {
         return Result.ok(commRecordService.deleteRecord(recordNo));
     }
