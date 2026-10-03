@@ -34,4 +34,8 @@ public class FacMajorHazard {
     private String chemicalsJson;
     private String evacuationRoutesJson;
     private String operationsJson;
+
+    /** 乐观锁版本（V105 加列，默认 0），供 @Version 与实时广播使用。 */
+    @com.baomidou.mybatisplus.annotation.Version
+    private Long version;
 }

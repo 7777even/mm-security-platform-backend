@@ -1,11 +1,16 @@
 package com.sinopec.mmsecurity.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.FacilityDetailInfo;
 import com.sinopec.mmsecurity.dto.MajorHazardDetail;
 import com.sinopec.mmsecurity.dto.MajorHazardItem;
+import com.sinopec.mmsecurity.dto.MajorHazardWriteRequest;
 import com.sinopec.mmsecurity.dto.MonitoringAlarm;
 import com.sinopec.mmsecurity.dto.MonitoringPoint;
+import com.sinopec.mmsecurity.dto.MonitoringPointWriteRequest;
 import com.sinopec.mmsecurity.entity.FacFacilityDetail;
 import com.sinopec.mmsecurity.entity.FacMajorHazard;
 import com.sinopec.mmsecurity.entity.FacMonitoringAlarm;
@@ -16,20 +21,30 @@ import com.sinopec.mmsecurity.mapper.FacMonitoringAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacMonitoringPointMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * HazardService（纯 Mockito，不启动 Spring 上下文）：
  * 列表/详情字段映射、JSON 列解析为 List&lt;Map&gt;、按名称过滤、缺失与脏数据降级。
  * 使用真实 ObjectMapper 验证 JSON 列解析路径（与契约 MajorHazardDetail / FacilityDetailInfo 对齐）。
+ * <p>写端点部分额外校验：id 走 LedgerIdSupport 的 max+1、字符串主键重复抛 409、
+ * 以及<b>写后必须失效 Caffeine 缓存</b>（否则 REAL-TIME 订阅端重拉命中旧列表，表现为「改了没反应」）。
  */
 class HazardServiceTest {
 
@@ -219,5 +234,201 @@ class HazardServiceTest {
         assertTrue(d.getBasicFields().isEmpty());
         assertTrue(d.getChemicalFields().isEmpty());
         assertTrue(d.getArchives().isEmpty());
+    }
+
+    // ---- 写端点（hazard / hazard.point）----
+    // 两条主线：① 主键分配必须走 LedgerIdSupport 的 max+1（避三方言自增序列滞后撞主键 409）；
+    // ② 写后必须 invalidateAll 对应缓存（否则订阅端收到 .changed 重拉仍命中旧列表）。
+
+    private static MajorHazardWriteRequest hazardRequest() {
+        MajorHazardWriteRequest in = new MajorHazardWriteRequest();
+        in.setName("乙烯球罐区");
+        in.setLevel("一级");
+        in.setRValue(120.5);
+        in.setMonitorCount(12);
+        in.setVideoCount(3);
+        in.setEnterprise("某石化有限公司");
+        in.setCategory("压力容器");
+        in.setCode("HAZ-001");
+        in.setLongitude(121.5);
+        in.setLatitude(31.2);
+        return in;
+    }
+
+    private static MonitoringPointWriteRequest pointRequest() {
+        MonitoringPointWriteRequest in = new MonitoringPointWriteRequest();
+        in.setId("MP-01");
+        in.setName("罐区温度监测");
+        in.setCategory("温度");
+        in.setStatus("正常");
+        in.setLastTime("2026-09-08 10:00");
+        in.setOrg("储运车间");
+        in.setLongitude(121.4);
+        in.setLatitude(31.1);
+        return in;
+    }
+
+    private static FacMonitoringPoint samplePoint() {
+        FacMonitoringPoint p = new FacMonitoringPoint();
+        p.setId("MP-01");
+        p.setName("罐区温度监测");
+        p.setCategory("温度");
+        p.setStatus("正常");
+        p.setLastTime("2026-09-08 10:00");
+        p.setOrg("储运车间");
+        p.setLongitude(121.4);
+        p.setLatitude(31.1);
+        return p;
+    }
+
+    @Test
+    void createHazard_emptyTable_assignsIdOneAndVersionZero() {
+        when(majorHazardMapper.selectOne(any())).thenReturn(null);
+
+        MajorHazardItem created = service.createHazard(hazardRequest());
+
+        assertEquals(1L, created.getId());
+        assertEquals("HAZ-001", created.getCode());
+        ArgumentCaptor<FacMajorHazard> captor = ArgumentCaptor.forClass(FacMajorHazard.class);
+        verify(majorHazardMapper).insert(captor.capture());
+        assertEquals(0L, captor.getValue().getVersion());
+    }
+
+    @Test
+    void createHazard_existingRows_assignsMaxIdPlusOne() {
+        FacMajorHazard last = sampleHazard();
+        last.setId(41L);
+        when(majorHazardMapper.selectOne(any())).thenReturn(last);
+
+        MajorHazardItem created = service.createHazard(hazardRequest());
+
+        assertEquals(42L, created.getId());
+    }
+
+    @Test
+    void createHazard_invalidatesListCache() {
+        when(majorHazardMapper.selectList(null)).thenReturn(List.of(sampleHazard()));
+        assertEquals(1, service.listMajorHazards().size());
+
+        service.createHazard(hazardRequest());
+
+        FacMajorHazard added = sampleHazard();
+        added.setId(2L);
+        added.setName("新增球罐区");
+        when(majorHazardMapper.selectList(null)).thenReturn(List.of(sampleHazard(), added));
+        assertEquals(2, service.listMajorHazards().size());
+    }
+
+    @Test
+    void updateHazard_appliesFieldsAndInvalidatesCache() {
+        FacMajorHazard existing = sampleHazard();
+        when(majorHazardMapper.selectById(1L)).thenReturn(existing);
+        when(majorHazardMapper.selectList(null)).thenReturn(List.of(existing));
+        assertEquals("乙烯球罐区", service.listMajorHazards().get(0).getName());
+
+        MajorHazardWriteRequest in = hazardRequest();
+        in.setName("改名后球罐区");
+        in.setLevel("二级");
+        MajorHazardItem updated = service.updateHazard(1L, in);
+
+        assertEquals("改名后球罐区", updated.getName());
+        assertEquals("二级", updated.getLevel());
+        verify(majorHazardMapper).updateById(existing);
+        assertEquals("改名后球罐区", service.listMajorHazards().get(0).getName());
+    }
+
+    @Test
+    void updateHazard_notFound_returnsNull() {
+        when(majorHazardMapper.selectById(99L)).thenReturn(null);
+
+        assertNull(service.updateHazard(99L, hazardRequest()));
+    }
+
+    @Test
+    void deleteHazard_present_returnsOkTrue() {
+        when(majorHazardMapper.selectById(1L)).thenReturn(sampleHazard());
+        when(majorHazardMapper.deleteById(1L)).thenReturn(1);
+
+        DeleteResult result = service.deleteHazard(1L);
+
+        assertTrue(result.getOk());
+    }
+
+    @Test
+    void deleteHazard_absent_returnsOkFalseAndSkipsDelete() {
+        when(majorHazardMapper.selectById(99L)).thenReturn(null);
+
+        assertFalse(service.deleteHazard(99L).getOk());
+        verify(majorHazardMapper, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void createPoint_duplicateId_throwsConflict() {
+        when(monitoringPointMapper.selectById("MP-01")).thenReturn(samplePoint());
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.createPoint(pointRequest()));
+
+        assertEquals(ResultCode.CONFLICT, ex.getCode());
+        verify(monitoringPointMapper, never()).insert(any(FacMonitoringPoint.class));
+    }
+
+    @Test
+    void createPoint_insertsAndInvalidatesCache() {
+        when(monitoringPointMapper.selectById("MP-01")).thenReturn(null);
+        when(monitoringPointMapper.selectList(null)).thenReturn(List.of());
+        assertTrue(service.listMonitoringPoints().isEmpty());
+
+        MonitoringPoint created = service.createPoint(pointRequest());
+
+        assertEquals("MP-01", created.getId());
+        verify(monitoringPointMapper).insert(any(FacMonitoringPoint.class));
+
+        when(monitoringPointMapper.selectList(null)).thenReturn(List.of(samplePoint()));
+        assertEquals(1, service.listMonitoringPoints().size());
+    }
+
+    @Test
+    void updatePoint_bodyIdDoesNotOverridePathPrimaryKey() {
+        // PUT /monitoring/points/{id}：主键必须由路径决定。
+        // 若被请求体 id 覆盖，body 与 path 不一致时会 updateById 到另一行（改错数据或静默 0 行）。
+        FacMonitoringPoint existing = samplePoint();
+        when(monitoringPointMapper.selectById("MP-01")).thenReturn(existing);
+        MonitoringPointWriteRequest in = pointRequest();
+        in.setId("MP-OTHER");
+
+        service.updatePoint("MP-01", in);
+
+        assertEquals("MP-01", existing.getId());
+    }
+
+    @Test
+    void updatePoint_appliesFieldsAndInvalidatesCache() {
+        FacMonitoringPoint existing = samplePoint();
+        when(monitoringPointMapper.selectById("MP-01")).thenReturn(existing);
+        MonitoringPointWriteRequest in = pointRequest();
+        in.setStatus("离线");
+
+        MonitoringPoint updated = service.updatePoint("MP-01", in);
+
+        assertEquals("离线", updated.getStatus());
+        verify(monitoringPointMapper).updateById(existing);
+
+        when(monitoringPointMapper.selectList(null)).thenReturn(List.of(existing));
+        assertEquals("离线", service.listMonitoringPoints().get(0).getStatus());
+    }
+
+    @Test
+    void updatePoint_notFound_returnsNull() {
+        when(monitoringPointMapper.selectById("MP-404")).thenReturn(null);
+
+        assertNull(service.updatePoint("MP-404", pointRequest()));
+    }
+
+    @Test
+    void deletePoint_absent_returnsOkFalseAndSkipsDelete() {
+        when(monitoringPointMapper.selectById("MP-404")).thenReturn(null);
+
+        assertFalse(service.deletePoint("MP-404").getOk());
+        verify(monitoringPointMapper, never()).deleteById(anyString());
     }
 }
