@@ -9,7 +9,9 @@ import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.BollardItem;
+import com.sinopec.mmsecurity.dto.BollardWriteRequest;
 import com.sinopec.mmsecurity.dto.GateControlItem;
+import com.sinopec.mmsecurity.dto.GateControlWriteRequest;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmCreateRequest;
@@ -240,6 +242,78 @@ public class SecurityService {
         vehicleSearchMapper.deleteById(id);
     }
 
+    /**
+     * 道闸台账新增。status 为设备实时状态，仅读不写（零下行控制红线），写请求体不含该字段。
+     * 写后清 60s Caffeine 设备配置缓存，列表即刻跟随；经 @RealtimeSync 广播 security.gate-control。
+     */
+    @RealtimeSync(domain = "security.gate-control")
+    public GateControlItem createGate(GateControlWriteRequest req) {
+        FacGateControl e = new FacGateControl();
+        applyGateRequest(e, req);
+        e.setVersion(0L);
+        gateControlMapper.insert(e);
+        clearCaches();
+        return toGate(e);
+    }
+
+    @RealtimeSync(domain = "security.gate-control")
+    public GateControlItem updateGate(Long id, GateControlWriteRequest req) {
+        FacGateControl e = gateControlMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "道闸不存在：" + id);
+        }
+        applyGateRequest(e, req);
+        gateControlMapper.updateById(e);
+        clearCaches();
+        return toGate(e);
+    }
+
+    @RealtimeSync(domain = "security.gate-control")
+    public void deleteGate(Long id) {
+        FacGateControl e = gateControlMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "道闸不存在：" + id);
+        }
+        gateControlMapper.deleteById(id);
+        clearCaches();
+    }
+
+    /**
+     * 防恐柱台账新增。status 仅读不写（零下行控制红线）。
+     * 写后清缓存并广播 security.bollard。
+     */
+    @RealtimeSync(domain = "security.bollard")
+    public BollardItem createBollard(BollardWriteRequest req) {
+        FacBollard e = new FacBollard();
+        applyBollardRequest(e, req);
+        e.setVersion(0L);
+        bollardMapper.insert(e);
+        clearCaches();
+        return toBollard(e);
+    }
+
+    @RealtimeSync(domain = "security.bollard")
+    public BollardItem updateBollard(Long id, BollardWriteRequest req) {
+        FacBollard e = bollardMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "防恐柱不存在：" + id);
+        }
+        applyBollardRequest(e, req);
+        bollardMapper.updateById(e);
+        clearCaches();
+        return toBollard(e);
+    }
+
+    @RealtimeSync(domain = "security.bollard")
+    public void deleteBollard(Long id) {
+        FacBollard e = bollardMapper.selectById(id);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "防恐柱不存在：" + id);
+        }
+        bollardMapper.deleteById(id);
+        clearCaches();
+    }
+
     @RealtimeSync(domain = "security.perimeter-alarm")
     public void deletePerimeterAlarm(Long id) {
         FacPerimeterAlarm e = perimeterAlarmMapper.selectById(id);
@@ -464,6 +538,22 @@ public class SecurityService {
         e.setWaybillNo(req.getWaybillNo());
         e.setCargo(req.getCargo());
         e.setDestination(req.getDestination());
+    }
+
+    /** 道闸台账写请求应用（字段白名单，不含 status 设备实时状态）。 */
+    private void applyGateRequest(FacGateControl e, GateControlWriteRequest req) {
+        e.setName(req.getName());
+        e.setLocation(req.getLocation());
+        e.setLongitude(req.getLongitude());
+        e.setLatitude(req.getLatitude());
+    }
+
+    /** 防恐柱台账写请求应用（字段白名单，不含 status 设备实时状态）。 */
+    private void applyBollardRequest(FacBollard e, BollardWriteRequest req) {
+        e.setName(req.getName());
+        e.setZone(req.getZone());
+        e.setLongitude(req.getLongitude());
+        e.setLatitude(req.getLatitude());
     }
 
     private VehicleSearchDetail toVehicleDetail(FacVehicleSearch e) {

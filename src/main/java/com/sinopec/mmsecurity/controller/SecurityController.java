@@ -2,7 +2,9 @@ package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
 import com.sinopec.mmsecurity.dto.BollardItem;
+import com.sinopec.mmsecurity.dto.BollardWriteRequest;
 import com.sinopec.mmsecurity.dto.GateControlItem;
+import com.sinopec.mmsecurity.dto.GateControlWriteRequest;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
@@ -60,6 +62,58 @@ public class SecurityController {
     @GetMapping("/security/bollards")
     public Result<List<BollardItem>> listBollards() {
         return Result.ok(securityService.listBollards());
+    }
+
+    /**
+     * 道闸台账新增。status 为设备实时状态，仅读不写（零下行控制红线），请求体不含该字段。
+     * 需权限码 {@code security:gate-write}（V101 登记并授权岗位角色），成功后广播 security.gate-control。
+     */
+    @PostMapping("/security/gate-controls")
+    @RequireAuth(perm = "security:gate-write")
+    public Result<GateControlItem> createGate(
+            @Valid @RequestBody GateControlWriteRequest req) {
+        return Result.ok(securityService.createGate(req));
+    }
+
+    @PutMapping("/security/gate-controls/{id}")
+    @RequireAuth(perm = "security:gate-write")
+    public Result<GateControlItem> updateGate(
+            @PathVariable Long id,
+            @Valid @RequestBody GateControlWriteRequest req) {
+        return Result.ok(securityService.updateGate(id, req));
+    }
+
+    @DeleteMapping("/security/gate-controls/{id}")
+    @RequireAuth(perm = "security:gate-write")
+    public Result<Void> deleteGate(@PathVariable Long id) {
+        securityService.deleteGate(id);
+        return Result.ok(null);
+    }
+
+    /**
+     * 防恐柱台账新增。status 仅读不写（零下行控制红线）。
+     * 需权限码 {@code security:bollard-write}（V101），成功后广播 security.bollard。
+     */
+    @PostMapping("/security/bollards")
+    @RequireAuth(perm = "security:bollard-write")
+    public Result<BollardItem> createBollard(
+            @Valid @RequestBody BollardWriteRequest req) {
+        return Result.ok(securityService.createBollard(req));
+    }
+
+    @PutMapping("/security/bollards/{id}")
+    @RequireAuth(perm = "security:bollard-write")
+    public Result<BollardItem> updateBollard(
+            @PathVariable Long id,
+            @Valid @RequestBody BollardWriteRequest req) {
+        return Result.ok(securityService.updateBollard(id, req));
+    }
+
+    @DeleteMapping("/security/bollards/{id}")
+    @RequireAuth(perm = "security:bollard-write")
+    public Result<Void> deleteBollard(@PathVariable Long id) {
+        securityService.deleteBollard(id);
+        return Result.ok(null);
     }
 
     @GetMapping("/security/search/vehicle")

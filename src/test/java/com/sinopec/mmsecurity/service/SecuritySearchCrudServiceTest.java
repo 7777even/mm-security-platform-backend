@@ -3,13 +3,21 @@ package com.sinopec.mmsecurity.service;
 import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
+import com.sinopec.mmsecurity.dto.BollardItem;
+import com.sinopec.mmsecurity.dto.BollardWriteRequest;
+import com.sinopec.mmsecurity.dto.GateControlItem;
+import com.sinopec.mmsecurity.dto.GateControlWriteRequest;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchWriteRequest;
 import com.sinopec.mmsecurity.dto.VehicleSearchDetail;
 import com.sinopec.mmsecurity.dto.VehicleSearchWriteRequest;
+import com.sinopec.mmsecurity.entity.FacBollard;
+import com.sinopec.mmsecurity.entity.FacGateControl;
 import com.sinopec.mmsecurity.entity.FacPerimeterAlarm;
 import com.sinopec.mmsecurity.entity.FacPersonSearch;
 import com.sinopec.mmsecurity.entity.FacVehicleSearch;
+import com.sinopec.mmsecurity.mapper.FacBollardMapper;
+import com.sinopec.mmsecurity.mapper.FacGateControlMapper;
 import com.sinopec.mmsecurity.mapper.FacPerimeterAlarmMapper;
 import com.sinopec.mmsecurity.mapper.FacPersonSearchMapper;
 import com.sinopec.mmsecurity.mapper.FacVehicleSearchMapper;
@@ -37,6 +45,12 @@ class SecuritySearchCrudServiceTest {
 
     @Mock
     private FacVehicleSearchMapper vehicleSearchMapper;
+
+    @Mock
+    private FacGateControlMapper gateControlMapper;
+
+    @Mock
+    private FacBollardMapper bollardMapper;
 
     @Mock
     private FacPerimeterAlarmMapper perimeterAlarmMapper;
@@ -201,6 +215,92 @@ class SecuritySearchCrudServiceTest {
     }
 
     @Test
+    void createGate_persistsWhitelistedFieldsAndVersion() {
+        GateControlWriteRequest req = gateRequest("1#门-道闸1");
+
+        GateControlItem result = service.createGate(req);
+
+        ArgumentCaptor<FacGateControl> captor = ArgumentCaptor.forClass(FacGateControl.class);
+        verify(gateControlMapper).insert(captor.capture());
+        FacGateControl saved = captor.getValue();
+        assertEquals("1#门-道闸1", saved.getName());
+        assertEquals("1#门", saved.getLocation());
+        assertEquals(0L, saved.getVersion());
+        assertEquals("1#门-道闸1", result.getName());
+    }
+
+    @Test
+    void updateGate_updatesExistingRowAndKeepsVersion() {
+        FacGateControl existing = new FacGateControl();
+        existing.setId(41L);
+        existing.setVersion(2L);
+        existing.setName("旧道闸");
+        when(gateControlMapper.selectById(41L)).thenReturn(existing);
+
+        GateControlItem result = service.updateGate(41L, gateRequest("新道闸"));
+
+        ArgumentCaptor<FacGateControl> captor = ArgumentCaptor.forClass(FacGateControl.class);
+        verify(gateControlMapper).updateById(captor.capture());
+        assertEquals(41L, captor.getValue().getId());
+        assertEquals(2L, captor.getValue().getVersion());
+        assertEquals("新道闸", captor.getValue().getName());
+        assertEquals("新道闸", result.getName());
+    }
+
+    @Test
+    void deleteGate_notFound_throwsNotFound() {
+        when(gateControlMapper.selectById(99L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteGate(99L));
+
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(gateControlMapper, never()).deleteById(any(Long.class));
+    }
+
+    @Test
+    void createBollard_persistsWhitelistedFieldsAndVersion() {
+        BollardWriteRequest req = bollardRequest("1#门防恐柱");
+
+        BollardItem result = service.createBollard(req);
+
+        ArgumentCaptor<FacBollard> captor = ArgumentCaptor.forClass(FacBollard.class);
+        verify(bollardMapper).insert(captor.capture());
+        FacBollard saved = captor.getValue();
+        assertEquals("1#门防恐柱", saved.getName());
+        assertEquals("1#门", saved.getZone());
+        assertEquals(0L, saved.getVersion());
+        assertEquals("1#门防恐柱", result.getName());
+    }
+
+    @Test
+    void updateBollard_updatesExistingRowAndKeepsVersion() {
+        FacBollard existing = new FacBollard();
+        existing.setId(51L);
+        existing.setVersion(5L);
+        existing.setName("旧防恐柱");
+        when(bollardMapper.selectById(51L)).thenReturn(existing);
+
+        BollardItem result = service.updateBollard(51L, bollardRequest("新防恐柱"));
+
+        ArgumentCaptor<FacBollard> captor = ArgumentCaptor.forClass(FacBollard.class);
+        verify(bollardMapper).updateById(captor.capture());
+        assertEquals(51L, captor.getValue().getId());
+        assertEquals(5L, captor.getValue().getVersion());
+        assertEquals("新防恐柱", captor.getValue().getName());
+        assertEquals("新防恐柱", result.getName());
+    }
+
+    @Test
+    void deleteBollard_notFound_throwsNotFound() {
+        when(bollardMapper.selectById(99L)).thenReturn(null);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.deleteBollard(99L));
+
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(bollardMapper, never()).deleteById(any(Long.class));
+    }
+
+    @Test
     void writeMethods_useExpectedRealtimeDomains() throws Exception {
         assertRealtimeDomain("createPerson", new Class<?>[] { PersonSearchWriteRequest.class }, "security.person-search");
         assertRealtimeDomain("updatePerson", new Class<?>[] { Long.class, PersonSearchWriteRequest.class }, "security.person-search");
@@ -209,6 +309,12 @@ class SecuritySearchCrudServiceTest {
         assertRealtimeDomain("updateVehicle", new Class<?>[] { Long.class, VehicleSearchWriteRequest.class }, "security.vehicle-search");
         assertRealtimeDomain("deleteVehicle", new Class<?>[] { Long.class }, "security.vehicle-search");
         assertRealtimeDomain("deletePerimeterAlarm", new Class<?>[] { Long.class }, "security.perimeter-alarm");
+        assertRealtimeDomain("createGate", new Class<?>[] { GateControlWriteRequest.class }, "security.gate-control");
+        assertRealtimeDomain("updateGate", new Class<?>[] { Long.class, GateControlWriteRequest.class }, "security.gate-control");
+        assertRealtimeDomain("deleteGate", new Class<?>[] { Long.class }, "security.gate-control");
+        assertRealtimeDomain("createBollard", new Class<?>[] { BollardWriteRequest.class }, "security.bollard");
+        assertRealtimeDomain("updateBollard", new Class<?>[] { Long.class, BollardWriteRequest.class }, "security.bollard");
+        assertRealtimeDomain("deleteBollard", new Class<?>[] { Long.class }, "security.bollard");
     }
 
     private void assertRealtimeDomain(String name, Class<?>[] parameterTypes, String domain) throws Exception {
@@ -251,6 +357,24 @@ class SecuritySearchCrudServiceTest {
         req.setWaybillNo("WB-001");
         req.setCargo("甲醇");
         req.setDestination("炼油一区装卸点");
+        return req;
+    }
+
+    private static GateControlWriteRequest gateRequest(String name) {
+        GateControlWriteRequest req = new GateControlWriteRequest();
+        req.setName(name);
+        req.setLocation("1#门");
+        req.setLongitude(110.123);
+        req.setLatitude(21.456);
+        return req;
+    }
+
+    private static BollardWriteRequest bollardRequest(String name) {
+        BollardWriteRequest req = new BollardWriteRequest();
+        req.setName(name);
+        req.setZone("1#门");
+        req.setLongitude(110.124);
+        req.setLatitude(21.457);
         return req;
     }
 }

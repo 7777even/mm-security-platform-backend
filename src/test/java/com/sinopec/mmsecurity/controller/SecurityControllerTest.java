@@ -4,7 +4,9 @@ import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.GlobalExceptionHandler;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.BollardItem;
+import com.sinopec.mmsecurity.dto.BollardWriteRequest;
 import com.sinopec.mmsecurity.dto.GateControlItem;
+import com.sinopec.mmsecurity.dto.GateControlWriteRequest;
 import com.sinopec.mmsecurity.dto.PatrolCameraItem;
 import com.sinopec.mmsecurity.dto.PerimeterAlarmDetail;
 import com.sinopec.mmsecurity.dto.PersonSearchDetail;
@@ -298,6 +300,96 @@ class SecurityControllerTest {
                 .when(service).deletePerimeterAlarm(99L);
 
         mockMvc.perform(delete("/api/v1/security/perimeter-alarms/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.NOT_FOUND));
+    }
+
+    @Test
+    void createGate_returnsItem() throws Exception {
+        GateControlItem item = new GateControlItem();
+        item.setId(41L);
+        item.setName("1#门-道闸1");
+        item.setLocation("1#门");
+        when(service.createGate(any())).thenReturn(item);
+
+        mockMvc.perform(post("/api/v1/security/gate-controls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"1#门-道闸1\",\"location\":\"1#门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(41))
+                .andExpect(jsonPath("$.data.name").value("1#门-道闸1"));
+    }
+
+    @Test
+    void createGate_missingName_returnsB3ParamInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/security/gate-controls")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"location\":\"1#门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID));
+    }
+
+    @Test
+    void deleteGate_returnsOk() throws Exception {
+        mockMvc.perform(delete("/api/v1/security/gate-controls/41"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deleteGate(41L);
+    }
+
+    @Test
+    void deleteGate_notFound_returnsB3NotFound() throws Exception {
+        doThrow(new BusinessException(ResultCode.NOT_FOUND, "道闸不存在：99"))
+                .when(service).deleteGate(99L);
+
+        mockMvc.perform(delete("/api/v1/security/gate-controls/99"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.NOT_FOUND));
+    }
+
+    @Test
+    void createBollard_returnsItem() throws Exception {
+        BollardItem item = new BollardItem();
+        item.setId(51L);
+        item.setName("1#门防恐柱");
+        item.setZone("1#门");
+        when(service.createBollard(any())).thenReturn(item);
+
+        mockMvc.perform(post("/api/v1/security/bollards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"1#门防恐柱\",\"zone\":\"1#门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(51))
+                .andExpect(jsonPath("$.data.name").value("1#门防恐柱"));
+    }
+
+    @Test
+    void createBollard_missingName_returnsB3ParamInvalid() throws Exception {
+        mockMvc.perform(post("/api/v1/security/bollards")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"zone\":\"1#门\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(ResultCode.PARAM_INVALID));
+    }
+
+    @Test
+    void deleteBollard_returnsOk() throws Exception {
+        mockMvc.perform(delete("/api/v1/security/bollards/51"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deleteBollard(51L);
+    }
+
+    @Test
+    void deleteBollard_notFound_returnsB3NotFound() throws Exception {
+        doThrow(new BusinessException(ResultCode.NOT_FOUND, "防恐柱不存在：99"))
+                .when(service).deleteBollard(99L);
+
+        mockMvc.perform(delete("/api/v1/security/bollards/99"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(ResultCode.NOT_FOUND));
     }
