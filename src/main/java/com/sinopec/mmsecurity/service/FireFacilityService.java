@@ -15,6 +15,7 @@ import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerItem;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerWriteRequest;
+import com.sinopec.mmsecurity.dto.FireFacilityMaintenanceWriteRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMaintenanceRecord;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorParam;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportItem;
@@ -360,6 +361,61 @@ public class FireFacilityService {
         ledgerMapper.deleteById(id);
     }
 
+    /**
+     * 消防设施台账维保记录新增：落库 fac_fire_facility_maintenance（ledger_id 关联台账条目）。
+     *
+     * <p>必填：date（维保日期）/ content（维保内容）；reportFile 可空。ledgerId 不存在 → B3 NOT_FOUND。
+     * sort_no 接续该台账下现有最大值。成功返回新建维保记录并触发 fire-facility.ledger 实时广播
+     * （维保记录内嵌于台账条目展示，广播后管理端重拉台账即带出新记录）。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.ledger")
+    public FireFacilityMaintenanceRecord createMaintenance(Long ledgerId, FireFacilityMaintenanceWriteRequest req) {
+        if (ledgerId == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "台账 id 不可为空");
+        }
+        if (req == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "维保记录请求体不可为空");
+        }
+        if (blankToNull(req.getDate()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "维保日期 date 必填");
+        }
+        if (blankToNull(req.getContent()) == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "维保内容 content 必填");
+        }
+        FacFireFacilityLedger ledger = ledgerMapper.selectById(ledgerId);
+        if (ledger == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "消防设施台账不存在：" + ledgerId);
+        }
+        int maxSort = maintenanceMapper.selectList(new LambdaQueryWrapper<FacFireFacilityMaintenance>()
+                        .eq(FacFireFacilityMaintenance::getLedgerId, ledgerId))
+                .stream().mapToInt(r -> r.getSortNo() == null ? 0 : r.getSortNo())
+                .max().orElse(0);
+        FacFireFacilityMaintenance e = new FacFireFacilityMaintenance();
+        e.setLedgerId(ledgerId);
+        e.setRecordDate(req.getDate());
+        e.setContentText(req.getContent());
+        e.setReportFile(req.getReportFile());
+        e.setSortNo(maxSort + 1);
+        maintenanceMapper.insert(e);
+        return toMaintenanceRecord(e);
+    }
+
+    /**
+     * 消防设施台账维保记录删除（按记录 id 物理删除）。
+     * 记录不存在 → B3 NOT_FOUND。成功触发 fire-facility.ledger 实时广播（管理端重拉台账即移除该记录）。
+     */
+    @RealtimeSync(domain = "fire-facility.ledger")
+    public void deleteMaintenance(Long recordId) {
+        if (recordId == null) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "维保记录 id 不可为空");
+        }
+        FacFireFacilityMaintenance e = maintenanceMapper.selectById(recordId);
+        if (e == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "维保记录不存在：" + recordId);
+        }
+        maintenanceMapper.deleteById(recordId);
+    }
+
     private FireFacilityLedgerItem toLedgerItem(FacFireFacilityLedger e) {
         FireFacilityLedgerItem item = new FireFacilityLedgerItem();
         item.setId(e.getId());
@@ -669,6 +725,8 @@ public class FireFacilityService {
 
     private FireFacilityMaintenanceRecord toMaintenanceRecord(FacFireFacilityMaintenance e) {
         FireFacilityMaintenanceRecord d = new FireFacilityMaintenanceRecord();
+        d.setId(e.getId());
+        d.setLedgerId(e.getLedgerId());
         d.setDate(e.getRecordDate());
         d.setContent(e.getContentText());
         d.setReportFile(e.getReportFile());

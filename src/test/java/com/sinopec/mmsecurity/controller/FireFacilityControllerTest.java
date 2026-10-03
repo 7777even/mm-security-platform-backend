@@ -292,4 +292,34 @@ class FireFacilityControllerTest {
 
         verify(service).deleteFault("7");
     }
+
+    @Test
+    void createMaintenance_returnsCreatedRecordWithLedgerBinding() throws Exception {
+        FireFacilityMaintenanceRecord record = new FireFacilityMaintenanceRecord();
+        record.setId(5L);
+        record.setLedgerId(1L);
+        record.setDate("2026-10-10");
+        record.setContent("更换密封圈");
+        when(service.createMaintenance(eq(1L), any())).thenReturn(record);
+
+        mvc().perform(post("/api/v1/fire-facility/ledger/1/maintenance")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"2026-10-10\",\"content\":\"更换密封圈\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(5))
+                .andExpect(jsonPath("$.data.ledgerId").value(1))
+                .andExpect(jsonPath("$.data.content").value("更换密封圈"));
+
+        verify(service).createMaintenance(eq(1L), any());
+    }
+
+    @Test
+    void deleteMaintenance_returnsOkEnvelopeAndDelegatesToService() throws Exception {
+        mvc().perform(delete("/api/v1/fire-facility/maintenance/9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        verify(service).deleteMaintenance(9L);
+    }
 }

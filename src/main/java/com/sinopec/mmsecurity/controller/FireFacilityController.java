@@ -9,6 +9,8 @@ import com.sinopec.mmsecurity.dto.FireFacilityFaultUpdateRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerItem;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerResult;
 import com.sinopec.mmsecurity.dto.FireFacilityLedgerWriteRequest;
+import com.sinopec.mmsecurity.dto.FireFacilityMaintenanceRecord;
+import com.sinopec.mmsecurity.dto.FireFacilityMaintenanceWriteRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorReportRequest;
 import com.sinopec.mmsecurity.dto.FireFacilityMonitorResult;
 import com.sinopec.mmsecurity.dto.FireFacilityWorkOrderResult;
@@ -91,6 +93,29 @@ public class FireFacilityController {
     @RequireAuth(perm = "fire-facility:ledger:write")
     public Result<Void> deleteLedger(@PathVariable Long id) {
         fireFacilityService.deleteLedger(id);
+        return Result.ok(null);
+    }
+
+    /**
+     * 消防设施台账维保记录新增：落库 fac_fire_facility_maintenance（ledger_id 关联台账条目）。
+     * 需权限码 {@code fire-facility:ledger:write}（V99 已登记并授权）。成功后广播 fire-facility.ledger。
+     */
+    @PostMapping("/ledger/{ledgerId}/maintenance")
+    @RequireAuth(perm = "fire-facility:ledger:write")
+    public Result<FireFacilityMaintenanceRecord> createMaintenance(
+            @PathVariable Long ledgerId,
+            @RequestBody FireFacilityMaintenanceWriteRequest req) {
+        return Result.ok(fireFacilityService.createMaintenance(ledgerId, req));
+    }
+
+    /**
+     * 消防设施台账维保记录删除（按记录 id 物理删除）。
+     * 需权限码 {@code fire-facility:ledger:write}。成功后广播 fire-facility.ledger。
+     */
+    @DeleteMapping("/maintenance/{recordId}")
+    @RequireAuth(perm = "fire-facility:ledger:write")
+    public Result<Void> deleteMaintenance(@PathVariable Long recordId) {
+        fireFacilityService.deleteMaintenance(recordId);
         return Result.ok(null);
     }
 
