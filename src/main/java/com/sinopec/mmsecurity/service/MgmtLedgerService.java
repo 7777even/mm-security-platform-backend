@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.dto.MgmtLedgerCellDto;
@@ -114,6 +115,7 @@ public class MgmtLedgerService {
      * 主键/排序号由 {@link LedgerIdSupport} 显式分配（max+1），规避自增序列滞后。
      */
     @Transactional
+    @RealtimeSync(domain = "mgmt-ledger")
     public long createRow(String domain, MgmtLedgerRowWriteRequest req) {
         List<String> columns = meta(domain).getColumns();
         MgmtLedgerRow row = new MgmtLedgerRow();
@@ -132,6 +134,7 @@ public class MgmtLedgerService {
      * 行本身不动（保持 rowNo/排序稳定），仅刷新单元格内容。
      */
     @Transactional
+    @RealtimeSync(domain = "mgmt-ledger")
     public void updateRow(String domain, long rowId, MgmtLedgerRowWriteRequest req) {
         MgmtLedgerRow row = rowMapper.selectById(rowId);
         if (row == null || !domain.equals(row.getDomain())) {
@@ -142,8 +145,9 @@ public class MgmtLedgerService {
         insertCells(rowId, columns, req.getCells());
     }
 
-    /** 删除台账行（含其单元格）。行不存在或不属于该 domain 返回 NOT_FOUND。 */
+    /** 删除台账行（含其单元格）。行不存在或不属于该 domain 返回 NOT_FOUND。广播 mgmt-ledger.changed 触发三端实时刷新。 */
     @Transactional
+    @RealtimeSync(domain = "mgmt-ledger")
     public void deleteRow(String domain, long rowId) {
         MgmtLedgerRow row = rowMapper.selectById(rowId);
         if (row == null || !domain.equals(row.getDomain())) {
