@@ -64,6 +64,7 @@ public class CommRecordService {
     public CommunicationRecord createRecord(CommRecordWriteRequest in) {
         FacCommRecord row = new FacCommRecord();
         row.setId(LedgerIdSupport.nextId(commRecordMapper, FacCommRecord::getId, FacCommRecord::getId));
+        row.setRecordNo(in.getRecordNo());
         applyRecordFields(row, in);
         row.setVersion(0L);
         commRecordMapper.insert(row);
@@ -104,7 +105,9 @@ public class CommRecordService {
     }
 
     private void applyRecordFields(FacCommRecord row, CommRecordWriteRequest in) {
-        row.setRecordNo(in.getRecordNo());
+        // ⚠️ 此处刻意不写 row.setRecordNo(in.getRecordNo())：更新是 PUT /communication/records/{recordNo}，
+        //    以 recordNo 为定位的业务自然键。若被请求体覆盖，body 与 path 不一致时会改掉记录编号，
+        //    资源随即从自己原来的 URL 下消失。新建分支由 createRecord 单独 setRecordNo。
         row.setRecordType(in.getRecordType());
         row.setOccurredAt(in.getOccurredAt());
         row.setCategory(in.getCategory());

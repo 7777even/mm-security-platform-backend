@@ -63,6 +63,7 @@ public class CommDeviceService {
         FacCommDevice device = new FacCommDevice();
         device.setId(LedgerIdSupport.nextId(commDeviceMapper, FacCommDevice::getId, FacCommDevice::getId));
         device.setSortNo(LedgerIdSupport.nextSortNo(commDeviceMapper, FacCommDevice::getSortNo, FacCommDevice::getSortNo));
+        device.setDeviceCode(in.getDeviceCode());
         applyDeviceFields(device, in);
         device.setVersion(0L);
         commDeviceMapper.insert(device);
@@ -104,7 +105,10 @@ public class CommDeviceService {
     }
 
     private void applyDeviceFields(FacCommDevice device, CommDeviceWriteRequest in) {
-        device.setDeviceCode(in.getDeviceCode());
+        // ⚠️ 此处刻意不写 device.setDeviceCode(in.getDeviceCode())：更新是 PUT /devices/{deviceCode}，
+        //    以 deviceCode 为定位的业务自然键。若被请求体覆盖，body 与 path 不一致时会把该设备的
+        //    编码改成另一个值 —— 资源随即从自己原来的 URL 下消失，后续同名 URL 也定位不到原记录。
+        //    新建分支由 createDevice 单独 setDeviceCode。
         device.setDeviceType(in.getDeviceType());
         device.setGroupKey(in.getGroupKey());
         device.setGroupLabel(in.getGroupLabel());
