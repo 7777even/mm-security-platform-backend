@@ -54,14 +54,14 @@ public class SpecialOperationController {
 
     /** 新建作业票（id 与 sort_no 由服务端分配）；只写主票表。 */
     @PostMapping
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "special-operation:write")
     public Result<SpecialOperationItem> create(@Valid @RequestBody SpecialOperationWriteRequest payload) {
         return Result.ok(specialOperationService.createTicket(payload));
     }
 
     /** 更新作业票（按 id）；未命中 data 为 null。 */
     @PutMapping("/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "special-operation:write")
     public Result<SpecialOperationItem> update(@PathVariable Long id,
                                                @Valid @RequestBody SpecialOperationWriteRequest payload) {
         return Result.ok(specialOperationService.updateTicket(id, payload));
@@ -69,7 +69,7 @@ public class SpecialOperationController {
 
     /** 删除作业票（按 id）；未命中 ok=false。 */
     @DeleteMapping("/{id}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "special-operation:write")
     public Result<DeleteResult> delete(@PathVariable Long id) {
         return Result.ok(specialOperationService.deleteTicket(id));
     }
