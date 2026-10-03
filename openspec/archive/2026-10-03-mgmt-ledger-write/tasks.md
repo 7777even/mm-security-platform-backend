@@ -12,4 +12,4 @@
 
 ## 验证（Task 3）
 - [x] `mvn -o compile` 通过
-- [ ] 双仓提交并按 scope 拆分推送（后端 common / 前端 mgmt + contract），关联本 Change 归档
+- [x] 双仓提交并按 scope 拆分推送（后端 common / 前端 mgmt + contract），关联本 Change 归档
