@@ -1,14 +1,18 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
 import com.sinopec.mmsecurity.dto.CommunicationDevice;
 import com.sinopec.mmsecurity.dto.CommunicationDeviceDetail;
+import com.sinopec.mmsecurity.dto.CommDeviceWriteRequest;
 import com.sinopec.mmsecurity.dto.CommunicationDeviceGroups;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.CommunicationGroup;
 import com.sinopec.mmsecurity.entity.FacCommDevice;
 import com.sinopec.mmsecurity.mapper.FacCommDeviceMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -50,6 +54,71 @@ public class CommDeviceService {
                 new LambdaQueryWrapper<FacCommDevice>()
                         .eq(FacCommDevice::getDeviceCode, deviceCode));
         return devices.stream().findFirst().map(this::toDevice).orElse(null);
+    }
+
+    /** 新建通讯设备台账；id 与 sort_no 由 LedgerIdSupport 分配，广播 communication.device 实时通道。 */
+    @RealtimeSync(domain = "communication.device")
+    @Transactional
+    public CommunicationDevice createDevice(CommDeviceWriteRequest in) {
+        FacCommDevice device = new FacCommDevice();
+        device.setId(LedgerIdSupport.nextId(commDeviceMapper, FacCommDevice::getId, FacCommDevice::getId));
+        device.setSortNo(LedgerIdSupport.nextSortNo(commDeviceMapper, FacCommDevice::getSortNo, FacCommDevice::getSortNo));
+        applyDeviceFields(device, in);
+        device.setVersion(0L);
+        commDeviceMapper.insert(device);
+        return toDevice(device);
+    }
+
+    /** 更新通讯设备台账（按 deviceCode）；未命中返回 null。广播 communication.device 实时通道。 */
+    @RealtimeSync(domain = "communication.device")
+    @Transactional
+    public CommunicationDevice updateDevice(String deviceCode, CommDeviceWriteRequest in) {
+        FacCommDevice device = findByCode(deviceCode);
+        if (device == null) {
+            return null;
+        }
+        applyDeviceFields(device, in);
+        commDeviceMapper.updateById(device);
+        return toDevice(device);
+    }
+
+    /** 删除通讯设备台账（按 deviceCode）；未命中 ok=false。广播 communication.device 实时通道。 */
+    @RealtimeSync(domain = "communication.device")
+    @Transactional
+    public DeleteResult deleteDevice(String deviceCode) {
+        DeleteResult result = new DeleteResult();
+        FacCommDevice device = findByCode(deviceCode);
+        if (device == null) {
+            result.setOk(false);
+            return result;
+        }
+        result.setOk(commDeviceMapper.deleteById(device.getId()) > 0);
+        return result;
+    }
+
+    private FacCommDevice findByCode(String deviceCode) {
+        return commDeviceMapper.selectList(
+                        new LambdaQueryWrapper<FacCommDevice>()
+                                .eq(FacCommDevice::getDeviceCode, deviceCode))
+                .stream().findFirst().orElse(null);
+    }
+
+    private void applyDeviceFields(FacCommDevice device, CommDeviceWriteRequest in) {
+        device.setDeviceCode(in.getDeviceCode());
+        device.setDeviceType(in.getDeviceType());
+        device.setGroupKey(in.getGroupKey());
+        device.setGroupLabel(in.getGroupLabel());
+        device.setDeviceName(in.getDeviceName());
+        device.setAreaName(in.getAreaName());
+        device.setLocationName(in.getLocationName());
+        device.setDeviceStatus(in.getDeviceStatus());
+        device.setLongitude(in.getLongitude());
+        device.setLatitude(in.getLatitude());
+        device.setCategoryName(in.getCategoryName());
+        device.setInstallTime(in.getInstallTime());
+        device.setOwnerName(in.getOwnerName());
+        device.setIpAddress(in.getIpAddress());
+        device.setLastCheckTime(in.getLastCheckTime());
     }
 
     private List<CommunicationGroup> groupByType(List<FacCommDevice> devices, String deviceType) {

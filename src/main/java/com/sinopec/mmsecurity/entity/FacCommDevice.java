@@ -52,5 +52,9 @@ public class FacCommDevice implements Serializable {
 
     private String lastCheckTime;
 
+    /** 乐观锁版本（V103 加列，默认 0），供 @Version 与实时广播使用。 */
+    @com.baomidou.mybatisplus.annotation.Version
+    private Long version;
+
     private Integer sortNo;
 }

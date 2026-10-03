@@ -1,12 +1,20 @@
 package com.sinopec.mmsecurity.controller;
 
 import com.sinopec.mmsecurity.common.Result;
+import com.sinopec.mmsecurity.dto.CommDeviceWriteRequest;
 import com.sinopec.mmsecurity.dto.CommunicationDevice;
 import com.sinopec.mmsecurity.dto.CommunicationDeviceGroups;
+import com.sinopec.mmsecurity.dto.DeleteResult;
+import com.sinopec.mmsecurity.security.RequireAuth;
 import com.sinopec.mmsecurity.service.CommDeviceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +41,27 @@ public class CommDeviceController {
     public Result<CommunicationDeviceGroups> devices(
             @RequestParam(value = "tab", required = false) String tab) {
         return Result.ok(commDeviceService.groups());
+    }
+
+    /** 新建通讯设备台账（id 与 sort_no 由服务端分配，deviceCode 为业务自然键）。 */
+    @PostMapping("/devices")
+    @RequireAuth(role = "ADMIN")
+    public Result<CommunicationDevice> createDevice(@Valid @RequestBody CommDeviceWriteRequest payload) {
+        return Result.ok(commDeviceService.createDevice(payload));
+    }
+
+    /** 更新通讯设备台账（按 deviceCode，与 GET 详情一致）。 */
+    @PutMapping("/devices/{id}")
+    @RequireAuth(role = "ADMIN")
+    public Result<CommunicationDevice> updateDevice(@PathVariable("id") String id, @Valid @RequestBody CommDeviceWriteRequest payload) {
+        return Result.ok(commDeviceService.updateDevice(id, payload));
+    }
+
+    /** 删除通讯设备台账（按 deviceCode）。 */
+    @DeleteMapping("/devices/{id}")
+    @RequireAuth(role = "ADMIN")
+    public Result<DeleteResult> deleteDevice(@PathVariable("id") String id) {
+        return Result.ok(commDeviceService.deleteDevice(id));
     }
 
     /** 按设备编码查单台设备（如 bc-a1），用于地图点击后的详情面板；未命中时 data 返回 null。 */
