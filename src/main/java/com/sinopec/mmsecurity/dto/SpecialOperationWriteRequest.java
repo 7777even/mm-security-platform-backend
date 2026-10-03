@@ -1,27 +1,25 @@
-package com.sinopec.mmsecurity.entity;
+package com.sinopec.mmsecurity.dto;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.io.Serializable;
 
 /**
- * 特殊作业 - 作业票实体（对应 H2 表 fac_special_operation_ticket）。
- * 保留字规避：type→op_type、level→op_level、status→ticket_status、location→work_location。
+ * 特殊作业票写请求（新建/更新共用）。
+ *
+ * <p>id 与 sort_no 由服务端按 {@code LedgerIdSupport} 分配（规避三方言自增序列滞后撞主键）。
+ * 列名沿用实体的保留字规避约定：op_type / op_level / ticket_status / work_location。
+ * 只写主票表 {@code fac_special_operation_ticket}；现场视频 / 气体检测点 / 作业人员的子表本批不开放写。
  */
 @Data
-@TableName(value = "fac_special_operation_ticket")
-public class FacSpecialOperationTicket implements Serializable {
+public class SpecialOperationWriteRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @NotBlank
+    private String opType;
 
     private String ticketArea;
-
-    private String opType;
 
     private String opLevel;
 
@@ -72,10 +70,4 @@ public class FacSpecialOperationTicket implements Serializable {
     private Integer gasMonitorCount;
 
     private Integer personnelCount;
-
-    private Integer sortNo;
-
-    /** 乐观锁版本（V105 加列，默认 0），供 @Version 与实时广播使用。 */
-    @com.baomidou.mybatisplus.annotation.Version
-    private Long version;
 }

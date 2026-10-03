@@ -2,12 +2,15 @@ package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sinopec.mmsecurity.annotation.RealtimeSync;
+import com.sinopec.mmsecurity.dto.DeleteResult;
 import com.sinopec.mmsecurity.dto.SpecialOperationDetail;
 import com.sinopec.mmsecurity.dto.SpecialOperationGasPoint;
 import com.sinopec.mmsecurity.dto.SpecialOperationItem;
 import com.sinopec.mmsecurity.dto.SpecialOperationPage;
 import com.sinopec.mmsecurity.dto.SpecialOperationPersonItem;
 import com.sinopec.mmsecurity.dto.SpecialOperationVideoItem;
+import com.sinopec.mmsecurity.dto.SpecialOperationWriteRequest;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationGas;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationPerson;
 import com.sinopec.mmsecurity.entity.FacSpecialOperationTicket;
@@ -18,6 +21,7 @@ import com.sinopec.mmsecurity.mapper.FacSpecialOperationTicketMapper;
 import com.sinopec.mmsecurity.mapper.FacSpecialOperationVideoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,6 +64,79 @@ public class SpecialOperationService {
     /** 「全部xx」下拉文案与空串均视为不过滤。 */
     private boolean notBlankFilter(String value) {
         return value != null && !value.isBlank() && !value.startsWith("全部");
+    }
+
+    // ---- 写端点 ----
+    // 只写主票表 fac_special_operation_ticket；现场视频 / 气体检测点 / 作业人员子表本批不开放。
+    // 本域读端点无缓存（每次 selectPage），故写后无需失效缓存。
+
+    /** 新建作业票；id 与 sort_no 由 LedgerIdSupport 分配。广播 special-operation 实时通道。 */
+    @RealtimeSync(domain = "special-operation")
+    @Transactional
+    public SpecialOperationItem createTicket(SpecialOperationWriteRequest in) {
+        FacSpecialOperationTicket t = new FacSpecialOperationTicket();
+        t.setId(LedgerIdSupport.nextId(ticketMapper, FacSpecialOperationTicket::getId, FacSpecialOperationTicket::getId));
+        t.setSortNo(LedgerIdSupport.nextSortNo(ticketMapper, FacSpecialOperationTicket::getSortNo, FacSpecialOperationTicket::getSortNo));
+        applyTicketFields(t, in);
+        t.setVersion(0L);
+        ticketMapper.insert(t);
+        return toItem(t);
+    }
+
+    /** 更新作业票（按 id）；未命中返回 null。广播 special-operation 实时通道。 */
+    @RealtimeSync(domain = "special-operation")
+    @Transactional
+    public SpecialOperationItem updateTicket(Long id, SpecialOperationWriteRequest in) {
+        FacSpecialOperationTicket t = ticketMapper.selectById(id);
+        if (t == null) {
+            return null;
+        }
+        applyTicketFields(t, in);
+        ticketMapper.updateById(t);
+        return toItem(t);
+    }
+
+    /** 删除作业票（按 id）；未命中 ok=false。广播 special-operation 实时通道。 */
+    @RealtimeSync(domain = "special-operation")
+    @Transactional
+    public DeleteResult deleteTicket(Long id) {
+        DeleteResult result = new DeleteResult();
+        if (ticketMapper.selectById(id) == null) {
+            result.setOk(false);
+            return result;
+        }
+        result.setOk(ticketMapper.deleteById(id) > 0);
+        return result;
+    }
+
+    private void applyTicketFields(FacSpecialOperationTicket t, SpecialOperationWriteRequest in) {
+        t.setOpType(in.getOpType());
+        t.setTicketArea(in.getTicketArea());
+        t.setOpLevel(in.getOpLevel());
+        t.setTicketStatus(in.getTicketStatus());
+        t.setStartTime(in.getStartTime());
+        t.setEndTime(in.getEndTime());
+        t.setTimeRange(in.getTimeRange());
+        t.setWorkUnit(in.getWorkUnit());
+        t.setApplyUnit(in.getApplyUnit());
+        t.setOperationDate(in.getOperationDate());
+        t.setWorkLocation(in.getWorkLocation());
+        t.setIsContractor(in.getIsContractor());
+        t.setHazardType(in.getHazardType());
+        t.setLeaderName(in.getLeaderName());
+        t.setLeaderPhone(in.getLeaderPhone());
+        t.setPosition(in.getPosition());
+        t.setLongitude(in.getLongitude());
+        t.setLatitude(in.getLatitude());
+        t.setChangeReason(in.getChangeReason());
+        t.setCancelReason(in.getCancelReason());
+        t.setGuardianName(in.getGuardianName());
+        t.setWorkers(in.getWorkers());
+        t.setPermitNo(in.getPermitNo());
+        t.setContent(in.getContent());
+        t.setVideoCount(in.getVideoCount());
+        t.setGasMonitorCount(in.getGasMonitorCount());
+        t.setPersonnelCount(in.getPersonnelCount());
     }
 
     /** 作业票详情（含现场视频/气体检测点/作业人员）；未命中返回 null，由 Controller 转 404。 */
