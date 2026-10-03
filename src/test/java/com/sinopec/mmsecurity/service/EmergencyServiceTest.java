@@ -55,6 +55,7 @@ import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthItemMapper;
 import com.sinopec.mmsecurity.mapper.FacFireFacilityLedgerMapper;
+import com.sinopec.mmsecurity.mapper.FacEmergencyCaseMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.common.ResultCode;
@@ -96,6 +97,7 @@ class EmergencyServiceTest {
     private final FacBrigadeTeamMapper brigadeTeamMapper = mock(FacBrigadeTeamMapper.class);
     private final SysEmergencyPhoneMapper phoneMapper = mock(SysEmergencyPhoneMapper.class);
     private final SysKnowledgeItemMapper knowledgeMapper = mock(SysKnowledgeItemMapper.class);
+    private final FacEmergencyCaseMapper caseMapper = mock(FacEmergencyCaseMapper.class);
     private final SysDutyMemberMapper dutyMapper = mock(SysDutyMemberMapper.class);
     private final FacDispatchPersonnelMapper dispatchPersonnelMapper =
             mock(FacDispatchPersonnelMapper.class);
@@ -117,7 +119,7 @@ class EmergencyServiceTest {
     private final EmergencyService service = new EmergencyService(
             alarmMapper, assistStatMapper, strengthMapper, strengthItemMapper, fireFacilityLedgerMapper,
             rescuePersonnelMapper, rescueEquipmentMapper, rescueVehicleMapper, brigadeTeamMapper,
-            phoneMapper, knowledgeMapper, dutyMapper,
+            phoneMapper, knowledgeMapper, caseMapper, dutyMapper,
             dispatchPersonnelMapper, cmdMapper, commandRecordMapper, nodePhaseConfigMapper,
             emergencyPhaseMapper,
             responseModeMapper, processStageMapper, nodeGuidanceMapper, guidanceRosterMapper,
