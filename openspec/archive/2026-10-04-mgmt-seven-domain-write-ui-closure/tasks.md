@@ -21,6 +21,6 @@
 - [x] check-endpoint-authz：写端点全部具备角色/权限约束
 - [x] check-api-contract.mjs --strict：schema 漂移 0，路由差异维持基线 12
 - [x] 前端 vue-tsc --noEmit EXIT=0、eslint 0 error
-- [ ] 后端全量 mvn -o test 绿、jacoco 达标
-- [ ] 前端 build:subapps 12 子应用全绿
-- [ ] 双仓按 scope 拆分提交推送并归档本 Change
+- [x] 后端全量 mvn -o test 绿、jacoco 达标（920 例）
+- [x] 前端 build:subapps 12 子应用全绿
+- [x] 双仓按 scope 拆分提交推送并归档本 Change
