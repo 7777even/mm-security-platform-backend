@@ -646,13 +646,17 @@ public class FireFacilityService {
         FacFireFacilityFault e = new FacFireFacilityFault();
         e.setFaultCode(faultCode);
         e.setFacilityCode(req.getFacilityCode());
-        e.setFacilityName(req.getFacilityName());
-        e.setFacilityType(req.getFacilityType());
+        // 以下 4 列在 fac_fire_facility_fault 为 NOT NULL 且**无默认值**：调用方漏传时 MyBatis-Plus 会
+        // 从 INSERT 中省略该列，数据库随即抛约束异常，被全局处理器笼统映射为「数据冲突：请检查唯一键或
+        // 必填字段」，调用方完全无法定位缺哪个字段（实测漏 discoverMethod 即此症状）。
+        // 此处归一为空串后落库：空串本就是合法值，既不改变既有成功行为，也消除误导性的 409。
+        e.setFacilityName(nvl(req.getFacilityName()));
+        e.setFacilityType(nvl(req.getFacilityType()));
         e.setFaultType(req.getFaultType());
         e.setFaultLevel(req.getFaultLevel());
         e.setDiscoverTime(req.getDiscoverTime());
-        e.setDiscoverMethod(req.getDiscoverMethod());
-        e.setPhenomenon(req.getPhenomenon());
+        e.setDiscoverMethod(nvl(req.getDiscoverMethod()));
+        e.setPhenomenon(nvl(req.getPhenomenon()));
         e.setCauseText(req.getCause());
         e.setFaultStatus(status);
         e.setWorkOrderNo(req.getWorkOrderNo());
@@ -733,6 +737,11 @@ public class FireFacilityService {
 
     private static String blankToNull(String text) {
         return text == null || text.isBlank() ? null : text.trim();
+    }
+
+    /** 空值归一：null → 空串（用于 NOT NULL 且无默认值的文本列，避免被数据库约束拒绝）。 */
+    private static String nvl(String text) {
+        return text == null ? "" : text;
     }
 
     private static String workOrderStatus(String faultStatus) {

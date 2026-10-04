@@ -480,6 +480,9 @@ class FireFacilityServiceTest {
         req.setFaultType("硬件故障");
         req.setFaultLevel(level);
         req.setDiscoverTime("2026-10-01 09:15:00");
+        // 以下两列在 fac_fire_facility_fault 为 NOT NULL 且无默认值，service 已显式校验，构造请求须带上
+        req.setDiscoverMethod("巡检发现");
+        req.setPhenomenon("末端试水无压，压力表持续下降");
         return req;
     }
 
@@ -527,6 +530,29 @@ class FireFacilityServiceTest {
                 BusinessException.class, () -> service.createFault(createReq("FLT-2026-0003", "超紧急")));
         assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
         verify(faultMapper, never()).insert(any());
+    }
+
+    @Test
+    void createFault_nullTextColumns_normalizedToEmptyInsteadOfConflict() {
+        // discover_method / phenomenon / facility_name / facility_type 均为 NOT NULL 且无默认值：
+        // 漏传时过去会落到数据库约束异常、被笼统映射为 CONFLICT（「数据冲突：请检查唯一键或必填字段」），
+        // 调用方无法定位缺哪个字段（实测漏 discoverMethod 即此症状）。现应归一为空串后正常落库。
+        when(faultMapper.selectCount(any())).thenReturn(0L);
+        when(faultMapper.selectList(any())).thenReturn(List.of());
+        FireFacilityFaultCreateRequest req = createReq("FLT-2026-0004", "紧急");
+        req.setDiscoverMethod(null);
+        req.setPhenomenon(null);
+        req.setFacilityName(null);
+        req.setFacilityType(null);
+
+        service.createFault(req);
+
+        ArgumentCaptor<FacFireFacilityFault> captor = ArgumentCaptor.forClass(FacFireFacilityFault.class);
+        verify(faultMapper).insert(captor.capture());
+        assertEquals("", captor.getValue().getDiscoverMethod());
+        assertEquals("", captor.getValue().getPhenomenon());
+        assertEquals("", captor.getValue().getFacilityName());
+        assertEquals("", captor.getValue().getFacilityType());
     }
 
     @Test
