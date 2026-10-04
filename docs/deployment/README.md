@@ -2,10 +2,12 @@
 
 > **定位**：把系统真正跑起来（演示 / 生产）。本地开发联调细节见 [`docs/integration/README.md`](../integration/README.md)，本手册不重复。
 >
-> **当前状态（2026-09-08）**
+> **当前状态（2026-09-08；2026-10-05 订正 Docker 相关表述）**
 > - 容器化文件已补齐：后端 `Dockerfile`、前端 `Dockerfile` + `deploy/nginx.conf`、后端 `deploy/docker-compose.yml` + `.env.example`。
-> - ⚠️ **本机未安装 Docker，以上 compose / 镜像均未实跑验证**，结构已通过语法校验；首次使用请在有 Docker 的环境执行并反馈问题。
-> - ⚠️ 达梦 DM8 **已决策暂缓启用**（本机无实例 / 驱动 / Docker），配置与迁移脚本作为后期迁移资产保留，见 §5。
+> - ⚠️ **以上 compose / 镜像仍未实跑验证**（结构已通过语法校验；首次使用请在 Docker daemon 就绪的环境执行并反馈问题）。
+>   - 📌 2026-10-05 订正：旧表述「本机未安装 Docker」已失真——**Docker Desktop v29.8.0 已安装**（`C:\Users\7even\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe`），只是实测时 **daemon 未运行**（npipe `dockerDesktopLinuxEngine` 不存在）。故本项是「daemon 未启动」，不是「软件缺失」；启动至 Running 后即可实跑 compose。
+> - ⚠️ 达梦 DM8 **已决策暂缓启用**（本机无实例 / 驱动），配置与迁移脚本作为后期迁移资产保留，见 §5。
+>   - 📌 2026-10-05 补：达梦 **V1–V57 已于 2026-09-17 在真实 DM8 实例实跑通过**（错误码 0、建表 140，见 [`dameng-migration-runbook.md`](dameng-migration-runbook.md)）；当前三方言已到 V104，故 **V58–V104 尚未真机验证**。
 
 ---
 

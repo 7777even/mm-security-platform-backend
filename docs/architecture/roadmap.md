@@ -37,7 +37,11 @@
 - **未开始（阶段 7 · 生产就绪）**：达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核（依赖达梦环境与 release 窗口）。
 - **真正未闭环的已知债务 / 阻塞项（按性质）**：
   - ⬜ **P0 · ABAC zone 注入收紧**：WS 鉴权 + 三态 fail-open 骨架 09-17 已落地（`ZoneAware` 标记接口 + `RealtimeBroadcastService` 按 `zone_codes` 三态过滤）。**待产品定 `location → 防区` 映射规则**后方可收紧；当前 fail-open = 不过滤，等同全量广播。
-  - ⬜ **P1 · Testcontainers 方言 IT**：本机无 Docker，目前仅 H2 单测 IT（`DbLayerIntegrationIT`）；PG / 达梦真实容器 IT 未落地。
+    - 2026-10-05 实测补齐阻塞点细节（避免误判为「只差填配置」）：代码链路**已完整可用**（`ZoneAware` → `ZoneMappingResolver` ← `AbacZoneMappingProperties` ← `RealtimeSyncAspect` → `RealtimeBroadcastService` 三态过滤），且 `application-dev.yml` 已带 6 条示例映射证明「实体 `getLocation()` → 防区 → 仅推同防区会话」闭环生效。
+    - **但当前 0 个业务实体实现 `ZoneAware`** → 事件 `zones` 恒为 null → 即便生产填了映射也不会有任何过滤效果。故产品侧需给两件事：① `location → 防区` 语义规则；② 指定哪些实体的哪个字段充当 location（由该实体实现 `ZoneAware` 暴露）。二者齐备才能真正收紧。
+  - ⬜ **P1 · Testcontainers 方言 IT**（2026-10-05 实测订正，旧表述「本机无 Docker / 仅 1 个 IT」已失真）：`org.testcontainers` 已在 `pom.xml`，`src/test/java/.../integration/` 下已有 **6 个 IT**——PG：`PostgresqlFlywayMigrationIT` / `MgmtLedgerSqlPostgresqlIT`（`assumeTrue(DockerClientFactory.isDockerAvailable())`）；达梦：`DamengFlywayMigrationIT` / `MgmtLedgerSqlDamengIT`（`assumeTrue(DAMENG_JDBC_URL)`）；另 `DbLayerIntegrationIT` / `MgmtLedgerListIntegrationIT`。surefire 已配置 `<include>**/*IT.java</include>`，故 `mvn test` 会带跑（无环境时跳过而非失败）。
+    - **当前阻塞 = Docker daemon 未运行**：Docker Desktop v29.8.0 **已安装**，但 2026-10-05 实测 npipe `dockerDesktopLinuxEngine` 不存在（GUI 进程已起、daemon 未就绪）→ 启动 Docker Desktop 至 Running 后即自动真实运行，无需改代码。达梦另需 `DAMENG_JDBC_URL` + `-Pdm` + 本地驱动 jar。
+    - **真实缺口量化**：PG / 达梦的 **V1–V57 已于 2026-09-17 真机实跑通过**（详见 `docs/deployment/dameng-migration-runbook.md`）；当前三方言均到 **V104** → **V58–V104（47 个版本）在 PG / 达梦上从未真机验证**，这才是本项的实际风险面。
   - ⬜ **需求追溯列**：`docs/requirement/scope-inventory.md` 待甲方《功能项清单》输入回填（阻塞中）。
 - **后端 `openspec/changes/` 当前无进行中 Change**（仅 `README.md` 归档纪律说明）；前端 `openspec/changes/` 同样为空。任何新的 L3/L4 工作须先经 openspec 新建 Change 并回填 `tasks.md`，再据此实施（双库各自归属）。
 - **已补（不再阻塞）**：
