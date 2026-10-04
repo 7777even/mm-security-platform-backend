@@ -156,6 +156,20 @@ public class FireFacilityController {
     }
 
     /**
+     * 消防设施报警处置：报警是故障（fac_fire_facility_fault）的派生命名视图（id=AL-&lt;故障号数字部分&gt;），
+     * 本端点按报警 id 定位底层故障，复用故障处置能力（确认/派单/维修/验收状态流转 + 字段局部更新 + 时间线追加）。
+     * 需权限码 {@code fire-facility:handle}（V68 已登记并授权 ADMIN 及岗位角色）。
+     * 委托 {@code updateAlarm} → {@code updateFault}，触发 fire-facility.fault 实时广播，报警派生列表自动刷新。
+     */
+    @PutMapping("/alarms/{alarmId}")
+    @RequireAuth(perm = "fire-facility:handle")
+    public Result<FireFacilityFaultItem> updateAlarm(
+            @PathVariable String alarmId,
+            @RequestBody FireFacilityFaultUpdateRequest req) {
+        return Result.ok(fireFacilityService.updateAlarm(alarmId, req));
+    }
+
+    /**
      * 消防故障新增（管理端台账录入）：落库并返回新建条目（含空时间线）。
      * 需权限码 {@code fire-facility:fault-create}（V91 已登记并授权 ADMIN 及岗位角色）。
      * 成功触发 fire-facility.fault 实时广播，供大屏与管理端即时刷新。

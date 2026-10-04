@@ -491,6 +491,38 @@ public class FireFacilityService {
         if (e == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "消防故障不存在：" + faultId);
         }
+        return doUpdateFault(e, req);
+    }
+
+    /**
+     * 报警处置：报警（id=AL-&lt;故障号数字部分&gt;）是故障（fac_fire_facility_fault）的派生命名视图，本方法按报警
+     * id 定位底层故障，复用故障处置能力（确认/派单/维修/验收状态流转 + 字段局部更新 + 时间线追加）。
+     * 委托 {@link #doUpdateFault} 完成写操作，并复用 fire-facility.fault 实时广播，使报警派生列表自动刷新。
+     *
+     * <p>反查规则与 {@code toAlarm} 生成 id 的算法互逆：alarmId 去掉 "AL-" 前缀与全部非数字字符，得到故障编号
+     * 数字串；再以 {@code REPLACE(REPLACE(fault_code,'FLT-',''),'-','')} 匹配故障编号（兼容 FLT-/F- 前缀与
+     * 内部连字符），定位唯一故障。数字串仅保留数字以杜绝注入。</p>
+     */
+    @RealtimeSync(domain = "fire-facility.fault")
+    public FireFacilityFaultItem updateAlarm(String alarmId, FireFacilityFaultUpdateRequest req) {
+        if (alarmId == null || alarmId.isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "报警 id 必填");
+        }
+        String digits = alarmId.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "非法报警 id：" + alarmId);
+        }
+        FacFireFacilityFault fault = faultMapper.selectOne(
+                new LambdaQueryWrapper<FacFireFacilityFault>()
+                        .apply("REPLACE(REPLACE(fault_code,'FLT-',''),'-','') = {0}", digits));
+        if (fault == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "报警对应的消防设施故障不存在：" + alarmId);
+        }
+        return doUpdateFault(fault, req);
+    }
+
+    /** 故障写回核心：状态/字段局部更新 + 时间线追加 + 返回带完整时间线的条目。供故障端点与报警端点共用。 */
+    private FireFacilityFaultItem doUpdateFault(FacFireFacilityFault e, FireFacilityFaultUpdateRequest req) {
         if (req.getFaultStatus() != null) {
             if (!VALID_FAULT_STATUS.contains(req.getFaultStatus())) {
                 throw new BusinessException(

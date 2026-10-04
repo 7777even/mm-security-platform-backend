@@ -405,6 +405,53 @@ class FireFacilityServiceTest {
         verify(faultMapper, never()).updateById(any());
     }
 
+    /* ==================== 报警处置 updateAlarm ==================== */
+
+    @Test
+    void updateAlarm_resolvesByAlarmIdAndPersists() {
+        // AL-7 → 数字串 7 → REPLACE(REPLACE(fault_code,'FLT-',''),'-','')=7 命中 faultCode=FLT-7
+        when(faultMapper.selectOne(any())).thenReturn(fault(7L, "FLT-7", "硬件故障", "紧急", "待确认", null));
+        when(timelineMapper.selectList(any())).thenReturn(List.of());
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+        FireFacilityFaultTimelineCreate tc = new FireFacilityFaultTimelineCreate();
+        tc.setTime("2026-10-04 10:00:00");
+        tc.setOperator("值班员");
+        tc.setAction("确认故障");
+        tc.setDetail("确认为故障，待派单");
+        req.setTimelines(List.of(tc));
+
+        FireFacilityFaultItem item = service.updateAlarm("AL-7", req);
+
+        ArgumentCaptor<FacFireFacilityFault> captor = ArgumentCaptor.forClass(FacFireFacilityFault.class);
+        verify(faultMapper).updateById(captor.capture());
+        assertEquals("已确认", captor.getValue().getFaultStatus());
+        verify(timelineMapper).insert(any());
+        assertEquals("FLT-7", item.getFaultCode());
+        assertEquals("已确认", item.getStatus());
+    }
+
+    @Test
+    void updateAlarm_notFound_throwsNotFound() {
+        when(faultMapper.selectOne(any())).thenReturn(null);
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateAlarm("AL-999", req));
+        assertEquals(ResultCode.NOT_FOUND, ex.getCode());
+        verify(faultMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateAlarm_invalidId_throwsParamInvalid() {
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateAlarm("AL-abc", req));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+        verify(faultMapper, never()).updateById(any());
+    }
+
     /* ==================== 新增 createFault / 删除 deleteFault ==================== */
 
     private static FireFacilityFaultCreateRequest createReq(String faultCode, String level) {
