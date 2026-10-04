@@ -409,7 +409,7 @@ class FireFacilityServiceTest {
 
     @Test
     void updateAlarm_resolvesByAlarmIdAndPersists() {
-        // AL-7 → 数字串 7 → REPLACE(REPLACE(fault_code,'FLT-',''),'-','')=7 命中 faultCode=FLT-7
+        // AL-7 → 余串 7 → REPLACE(REPLACE(fault_code,'FLT-',''),'-','')=7 命中 faultCode=FLT-7
         when(faultMapper.selectOne(any())).thenReturn(fault(7L, "FLT-7", "硬件故障", "紧急", "待确认", null));
         when(timelineMapper.selectList(any())).thenReturn(List.of());
         FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
@@ -447,9 +447,26 @@ class FireFacilityServiceTest {
         FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
         req.setFaultStatus("已确认");
 
-        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateAlarm("AL-abc", req));
+        // 去掉 AL- 后余串不含字母/数字/下划线 → 无可用反查键，直接参数非法
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.updateAlarm("AL-###", req));
         assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
         verify(faultMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateAlarm_alphanumericFaultCode_resolves() {
+        // 真实种子编号形如 F-20260317-001：派生出的报警 id 含字母，反查不能只取数字（否则与库侧永不匹配）
+        when(faultMapper.selectOne(any()))
+                .thenReturn(fault(8L, "F-20260317-001", "硬件故障", "紧急", "待确认", null));
+        when(timelineMapper.selectList(any())).thenReturn(List.of());
+        FireFacilityFaultUpdateRequest req = new FireFacilityFaultUpdateRequest();
+        req.setFaultStatus("已确认");
+
+        FireFacilityFaultItem item = service.updateAlarm("AL-F20260317001", req);
+
+        assertEquals("F-20260317-001", item.getFaultCode());
+        assertEquals("已确认", item.getStatus());
+        verify(faultMapper).updateById(any());
     }
 
     /* ==================== 新增 createFault / 删除 deleteFault ==================== */

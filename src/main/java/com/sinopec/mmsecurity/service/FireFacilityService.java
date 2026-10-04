@@ -499,22 +499,26 @@ public class FireFacilityService {
      * id 定位底层故障，复用故障处置能力（确认/派单/维修/验收状态流转 + 字段局部更新 + 时间线追加）。
      * 委托 {@link #doUpdateFault} 完成写操作，并复用 fire-facility.fault 实时广播，使报警派生列表自动刷新。
      *
-     * <p>反查规则与 {@code toAlarm} 生成 id 的算法互逆：alarmId 去掉 "AL-" 前缀与全部非数字字符，得到故障编号
-     * 数字串；再以 {@code REPLACE(REPLACE(fault_code,'FLT-',''),'-','')} 匹配故障编号（兼容 FLT-/F- 前缀与
-     * 内部连字符），定位唯一故障。数字串仅保留数字以杜绝注入。</p>
+     * <p>反查规则与 {@code toAlarm} 生成 id 的算法严格互逆：报警 id 形如
+     * {@code "AL-" + faultCode.replace("FLT-","").replace("-","")}，故取 id 去掉 {@code "AL-"} 后的余串，
+     * 与库侧 {@code REPLACE(REPLACE(fault_code,'FLT-',''),'-','')} 精确匹配。该余串**可含字母**
+     * （如编号 F-20260317-001 → 报警 AL-F20260317001），因此不能只提取数字，否则与库侧永不匹配。
+     * 余串仅保留字母/数字/下划线后再入参，杜绝 SQL 注入。</p>
      */
     @RealtimeSync(domain = "fire-facility.fault")
     public FireFacilityFaultItem updateAlarm(String alarmId, FireFacilityFaultUpdateRequest req) {
         if (alarmId == null || alarmId.isBlank()) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "报警 id 必填");
         }
-        String digits = alarmId.replaceAll("[^0-9]", "");
-        if (digits.isEmpty()) {
+        String trimmed = alarmId.trim();
+        String raw = trimmed.startsWith("AL-") ? trimmed.substring(3) : trimmed;
+        String key = raw.replaceAll("[^A-Za-z0-9_]", "");
+        if (key.isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_INVALID, "非法报警 id：" + alarmId);
         }
         FacFireFacilityFault fault = faultMapper.selectOne(
                 new LambdaQueryWrapper<FacFireFacilityFault>()
-                        .apply("REPLACE(REPLACE(fault_code,'FLT-',''),'-','') = {0}", digits));
+                        .apply("REPLACE(REPLACE(fault_code,'FLT-',''),'-','') = {0}", key));
         if (fault == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "报警对应的消防设施故障不存在：" + alarmId);
         }
