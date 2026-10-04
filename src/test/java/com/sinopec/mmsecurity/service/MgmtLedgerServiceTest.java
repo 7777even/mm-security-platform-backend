@@ -3,7 +3,11 @@ package com.sinopec.mmsecurity.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sinopec.mmsecurity.dto.MgmtLedgerCellDto;
+import com.sinopec.mmsecurity.dto.MgmtLedgerCellWriteDto;
 import com.sinopec.mmsecurity.dto.MgmtLedgerListResult;
+import com.sinopec.mmsecurity.dto.MgmtLedgerRowWriteRequest;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.entity.MgmtLedgerCell;
 import com.sinopec.mmsecurity.entity.MgmtLedgerMeta;
 import com.sinopec.mmsecurity.entity.MgmtLedgerRow;
@@ -28,14 +32,17 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,6 +81,13 @@ class MgmtLedgerServiceTest {
 
         // 单元格：每页 3 行，每行 3 列
         when(cellMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(fakeCells());
+        // updateRow 定位行
+        MgmtLedgerRow existing = new MgmtLedgerRow();
+        existing.setId(1L);
+        existing.setDomain(DOMAIN);
+        existing.setRowNo(1);
+        existing.setSortNo(1);
+        when(rowMapper.selectById(anyLong())).thenReturn(existing);
     }
 
     private List<MgmtLedgerRow> fakeRows() {
@@ -187,5 +201,52 @@ class MgmtLedgerServiceTest {
 
         assertEquals(3, res.getTotal());
         verify(cellMapper, never()).selectRowIdsMatchingAllFilters(anyString(), anyList(), anyInt());
+    }
+
+    // ---- 写端点单元格结构性校验 ----
+
+    private MgmtLedgerRowWriteRequest reqOf(List<MgmtLedgerCellWriteDto> cells) {
+        MgmtLedgerRowWriteRequest req = new MgmtLedgerRowWriteRequest();
+        req.setCells(cells);
+        return req;
+    }
+
+    private MgmtLedgerCellWriteDto cell(int colIndex, String text) {
+        MgmtLedgerCellWriteDto c = new MgmtLedgerCellWriteDto();
+        c.setColIndex(colIndex);
+        c.setText(text);
+        return c;
+    }
+
+    @Test
+    @DisplayName("写端点：单元格为空 → PARAM_INVALID")
+    void write_emptyCells_rejected() {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateRow(DOMAIN, 1L, reqOf(Collections.emptyList())));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("写端点：列索引越界 → PARAM_INVALID")
+    void write_colIndexOutOfRange_rejected() {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateRow(DOMAIN, 1L, reqOf(List.of(cell(9, "x")))));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("写端点：列索引重复 → PARAM_INVALID")
+    void write_duplicateColIndex_rejected() {
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.updateRow(DOMAIN, 1L, reqOf(List.of(cell(0, "a"), cell(0, "b")))));
+        assertEquals(ResultCode.PARAM_INVALID, ex.getCode());
+    }
+
+    @Test
+    @DisplayName("写端点：合法单元格通过校验并落库")
+    void write_validCells_ok() {
+        service.updateRow(DOMAIN, 1L, reqOf(List.of(cell(0, "A"), cell(1, "B"), cell(2, "C"))));
+        verify(cellMapper).delete(any(LambdaQueryWrapper.class));
+        verify(cellMapper, times(3)).insert(any(MgmtLedgerCell.class));
     }
 }

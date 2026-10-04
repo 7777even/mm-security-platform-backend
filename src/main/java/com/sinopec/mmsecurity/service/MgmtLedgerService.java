@@ -157,6 +157,7 @@ public class MgmtLedgerService {
     @RealtimeSync(domain = "mgmt-ledger")
     public long createRow(String domain, MgmtLedgerRowWriteRequest req) {
         List<String> columns = meta(domain).getColumns();
+        validateCells(columns, req.getCells());
         MgmtLedgerRow row = new MgmtLedgerRow();
         row.setId(LedgerIdSupport.nextId(rowMapper, MgmtLedgerRow::getId, MgmtLedgerRow::getId));
         row.setDomain(domain);
@@ -180,6 +181,7 @@ public class MgmtLedgerService {
             throw new BusinessException(ResultCode.NOT_FOUND, "台账行不存在: " + rowId);
         }
         List<String> columns = meta(domain).getColumns();
+        validateCells(columns, req.getCells());
         cellMapper.delete(new LambdaQueryWrapper<MgmtLedgerCell>().eq(MgmtLedgerCell::getRowId, rowId));
         insertCells(rowId, columns, req.getCells());
     }
@@ -194,6 +196,30 @@ public class MgmtLedgerService {
         }
         cellMapper.delete(new LambdaQueryWrapper<MgmtLedgerCell>().eq(MgmtLedgerCell::getRowId, rowId));
         rowMapper.deleteById(rowId);
+    }
+
+    /**
+     * 写端点单元格结构性校验（后端最后一道防线）：非空、colIndex 不越界、不重复。
+     * 注：逐列「必填/类型」语义校验需 MgmtLedgerMeta 增加定义，当前列定义仅含标题，故暂不做语义校验。
+     */
+    private void validateCells(List<String> columns, List<MgmtLedgerCellWriteDto> cells) {
+        if (cells == null || cells.isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_INVALID, "台账单元格不能为空");
+        }
+        Set<Integer> seen = new HashSet<>();
+        for (MgmtLedgerCellWriteDto c : cells) {
+            if (c.getColIndex() == null) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "单元格缺少列索引(colIndex)");
+            }
+            int idx = c.getColIndex();
+            if (idx < 0 || idx >= columns.size()) {
+                throw new BusinessException(ResultCode.PARAM_INVALID,
+                        "列索引越界: " + idx + " (列数 " + columns.size() + ")");
+            }
+            if (!seen.add(idx)) {
+                throw new BusinessException(ResultCode.PARAM_INVALID, "列索引重复: " + idx);
+            }
+        }
     }
 
     private void insertCells(Long rowId, List<String> columns, List<MgmtLedgerCellWriteDto> cells) {
