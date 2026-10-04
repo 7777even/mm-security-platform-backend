@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-04
+status: in-progress
+title: 通用台账列表查询下推 DB 分页与筛选
