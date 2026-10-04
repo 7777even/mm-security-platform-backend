@@ -9,4 +9,4 @@
 ## 验证
 - [x] 后端 mvn -o test -Dtest=MgmtLedgerServiceTest 6/6 绿、jacoco 达标
 - [x] 前端契约不受影响（list 接口签名未变），check-api-contract 路由差异维持基线 0
-- [ ] 归档本 Change 并推送 origin main
+- [x] 归档本 Change 并推送 origin main
