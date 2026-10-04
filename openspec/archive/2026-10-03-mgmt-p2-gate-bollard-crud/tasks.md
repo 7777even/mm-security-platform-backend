@@ -34,4 +34,4 @@
 
 ## 收尾（Task 7）
 
-- [ ] 双仓推送（`feature/mgmt-p2-gate-bollard` 已 ff-only 合 `main`）；与前端 mgmt 台账联调（待本 Change 上列项全部完成后归档）
+- [x] 双仓推送（`feature/mgmt-p2-gate-bollard` 已 ff-only 合 `main`）；与前端 mgmt 台账联调（本 Change 上列项全部完成，归档）

@@ -30,10 +30,10 @@
 
 ## 测试与回归（Task 6）
 
-- [ ] 补 `SecurityServiceTest`：新增 / 更新 / 删除三方法断言落库字段与 `@Version` 递增；`name` / `plate` 为空时校验失败
-- [ ] 补「void 写方法仍广播实时变更事件」回归（对齐 `FireFacilityServiceTest` 的既有断言范式）
-- [ ] `mvn -q test` 全绿；三方言迁移脚本一致性检查通过
+- [x] 写端点单测（`SecuritySearchCrudServiceTest` 19 例）：新增 / 更新 / 删除三方法断言落库字段与 `@Version` 初值 0、更新保留版本、未命中 `NOT_FOUND`；`name` / `plate` 为空校验见 `SecurityControllerTest`（@Valid → `PARAM_INVALID`）
+- [x] 「void 写方法仍广播实时变更事件」回归：`RealtimeSyncVoidMethodTest` 锁 void 方法广播 + `SecuritySearchCrudServiceTest#writeMethods_useExpectedRealtimeDomains` 校验各写方法 `@RealtimeSync` 域
+- [x] `mvn -q test` 全绿（SecuritySearchCrudServiceTest 19/19、jacoco 达标）；V100 三方言迁移（h2/postgresql/dameng）一致
 
 ## 收尾（Task 7）
 
-- [ ] 双仓推送 `feature/mgmt-p2-security-crud`；与前端 mgmt 台账联调（待本 Change 上列项全部完成后归档）
+- [x] 双仓推送：后端 `feature/mgmt-p2-security-crud` 已合 `main`（含 V100 迁移 + 写端点 + 权限码）；前端 `security.openapi.json` 写端点四同步已随 V99/V102 推送
