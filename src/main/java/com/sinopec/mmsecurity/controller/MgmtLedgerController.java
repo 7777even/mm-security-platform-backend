@@ -56,21 +56,21 @@ public class MgmtLedgerController {
     }
 
     /**
-     * 新增台账行（需 ADMIN 角色）。请求体为按列顺序排列的单元格数组；
+     * 新增台账行（需 mgmt-ledger:write 权限）。请求体为按列顺序排列的单元格数组；
      * 行与单元格在同一事务内写入，主键/排序号由服务层显式分配。返回新行主键。
      */
     @PostMapping("/{domain}/rows")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "mgmt-ledger:write")
     public Result<Long> createRow(@PathVariable String domain, @RequestBody MgmtLedgerRowWriteRequest req) {
         return Result.ok(mgmtLedgerService.createRow(domain, req));
     }
 
     /**
-     * 更新台账行（需 ADMIN 角色）。按 rowId 定位（须属于该 domain），
+     * 更新台账行（需 mgmt-ledger:write 权限）。按 rowId 定位（须属于该 domain），
      * 删除旧单元格后按请求重写；刷新数据与删除为台账维护动作，不涉及设备下行。
      */
     @PutMapping("/{domain}/rows/{rowId}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "mgmt-ledger:write")
     public Result<Void> updateRow(
             @PathVariable String domain,
             @PathVariable Long rowId,
@@ -80,10 +80,10 @@ public class MgmtLedgerController {
     }
 
     /**
-     * 删除台账行（需 ADMIN 角色）。同时删除其单元格；行不存在返回 B3 NOT_FOUND。
+     * 删除台账行（需 mgmt-ledger:write 权限）。同时删除其单元格；行不存在返回 B3 NOT_FOUND。
      */
     @DeleteMapping("/{domain}/rows/{rowId}")
-    @RequireAuth(role = "ADMIN")
+    @RequireAuth(perm = "mgmt-ledger:write")
     public Result<Void> deleteRow(@PathVariable String domain, @PathVariable Long rowId) {
         mgmtLedgerService.deleteRow(domain, rowId);
         return Result.ok(null);
