@@ -11,4 +11,4 @@
 ## 验证
 - [x] 后端 `mvn -o compile` 绿；`check-endpoint-authz` 写端点 147 全约束；`check-api-contract --strict` 路由差异 0 / schema 漂移 0
 - [x] 前端 `vue-tsc` 绿；`eslint` 0 error
-- [ ] 归档本 Change 并双仓推送（含前端 `feat(mgmt)` 配套）
+- [x] 归档本 Change 并双仓推送（含前端 `feat(mgmt)` 配套）
