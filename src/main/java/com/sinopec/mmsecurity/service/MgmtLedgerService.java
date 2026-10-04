@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sinopec.mmsecurity.annotation.RealtimeSync;
@@ -24,9 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -58,10 +61,26 @@ public class MgmtLedgerService {
         MgmtLedgerMetaDto metaDto = meta(domain);
         List<String> columns = metaDto.getColumns();
 
-        List<MgmtLedgerRow> rows = rowMapper.selectList(
-                new LambdaQueryWrapper<MgmtLedgerRow>()
-                        .eq(MgmtLedgerRow::getDomain, domain)
-                        .orderByAsc(MgmtLedgerRow::getRowNo));
+        // 命中行主键：列筛选(relational-division) + 关键字(LIKE) 全部在 DB 完成，仅取主键集合
+        List<Long> matched = null;
+        boolean hasKeyword = StringUtils.hasText(keyword);
+        if (filters != null && !filters.isEmpty()) {
+            List<MgmtLedgerCellMapper.ColVal> clauses = new ArrayList<>();
+            for (Map.Entry<String, String> e : filters.entrySet()) {
+                String val = e.getValue();
+                if (!StringUtils.hasText(val) || "全部".equals(val) || "全部中队".equals(val)) {
+                    continue; // 占位值忽略（与旧行为一致）
+                }
+                clauses.add(new MgmtLedgerCellMapper.ColVal(e.getKey(), val));
+            }
+            if (!clauses.isEmpty()) {
+                matched = cellMapper.selectRowIdsMatchingAllFilters(domain, clauses, clauses.size());
+            }
+        }
+        if (hasKeyword) {
+            List<Long> kwIds = cellMapper.selectRowIdsByKeyword(domain, "%" + escapeLike(keyword) + "%");
+            matched = (matched == null) ? kwIds : intersect(matched, kwIds);
+        }
 
         MgmtLedgerListResult result = new MgmtLedgerListResult();
         result.setColumns(columns);
@@ -69,17 +88,35 @@ public class MgmtLedgerService {
         result.setPage(page);
         result.setSize(size);
 
-        if (rows.isEmpty()) {
+        if (matched != null && matched.isEmpty()) {
             result.setRows(new ArrayList<>());
             result.setRowIds(new ArrayList<>());
             result.setTotal(0);
             return result;
         }
 
-        List<Long> rowIds = rows.stream().map(MgmtLedgerRow::getId).collect(Collectors.toList());
+        // DB 分页：仅取命中行（无筛选/关键字时直接按 domain 分页），再取本页单元格
+        Page<MgmtLedgerRow> pg = new Page<>(page, size);
+        LambdaQueryWrapper<MgmtLedgerRow> qw = new LambdaQueryWrapper<MgmtLedgerRow>()
+                .eq(MgmtLedgerRow::getDomain, domain)
+                .orderByAsc(MgmtLedgerRow::getRowNo);
+        if (matched != null) {
+            qw.in(MgmtLedgerRow::getId, matched);
+        }
+        rowMapper.selectPage(pg, qw);
+        List<MgmtLedgerRow> rows = pg.getRecords();
+
+        if (rows.isEmpty()) {
+            result.setRows(new ArrayList<>());
+            result.setRowIds(new ArrayList<>());
+            result.setTotal(matched == null ? 0 : matched.size());
+            return result;
+        }
+
+        List<Long> pageRowIds = rows.stream().map(MgmtLedgerRow::getId).collect(Collectors.toList());
         List<MgmtLedgerCell> cells = cellMapper.selectList(
                 new LambdaQueryWrapper<MgmtLedgerCell>()
-                        .in(MgmtLedgerCell::getRowId, rowIds)
+                        .in(MgmtLedgerCell::getRowId, pageRowIds)
                         .orderByAsc(MgmtLedgerCell::getColIndex));
         Map<Long, List<MgmtLedgerCell>> cellMap = new LinkedHashMap<>();
         for (MgmtLedgerCell c : cells) {
@@ -87,27 +124,29 @@ public class MgmtLedgerService {
         }
 
         // RowView 绑定「行 id + 单元格」，保证 rowIds 与筛选/分页后的显示行严格对齐
-        List<RowView> all = new ArrayList<>();
+        List<RowView> pageViews = new ArrayList<>();
         for (MgmtLedgerRow row : rows) {
             List<MgmtLedgerCell> rowCells = cellMap.getOrDefault(row.getId(), new ArrayList<>());
-            all.add(new RowView(row.getId(),
+            pageViews.add(new RowView(row.getId(),
                     rowCells.stream().map(this::toCellDto).collect(Collectors.toList())));
         }
 
-        List<RowView> filtered = all.stream()
-                .filter(r -> matchKeyword(r.cells, keyword))
-                .filter(r -> matchFilters(r.cells, columns, filters))
-                .collect(Collectors.toList());
-
-        int total = filtered.size();
-        int from = Math.max(0, (page - 1) * size);
-        int to = Math.min(total, from + size);
-        List<RowView> pageRows = from <= to ? filtered.subList(from, to) : new ArrayList<>();
-
-        result.setRows(pageRows.stream().map(r -> r.cells).collect(Collectors.toList()));
-        result.setRowIds(pageRows.stream().map(r -> r.id).collect(Collectors.toList()));
-        result.setTotal(total);
+        result.setRows(pageViews.stream().map(r -> r.cells).collect(Collectors.toList()));
+        result.setRowIds(pageViews.stream().map(r -> r.id).collect(Collectors.toList()));
+        result.setTotal(matched == null ? pg.getTotal() : matched.size());
         return result;
+    }
+
+    /** LIKE 转义：% / _ / \\ 前加转义符，避免被当作通配符。 */
+    private static String escapeLike(String s) {
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    /** 两个主键集合求交集（用于「列筛选 ∩ 关键字」）。 */
+    private static List<Long> intersect(List<Long> a, List<Long> b) {
+        Set<Long> set = new HashSet<>(a);
+        set.retainAll(b);
+        return new ArrayList<>(set);
     }
 
     /**
@@ -170,35 +209,6 @@ public class MgmtLedgerService {
             cell.setCellType(c.getType());
             cellMapper.insert(cell);
         }
-    }
-
-    private boolean matchKeyword(List<MgmtLedgerCellDto> row, String keyword) {
-        if (!StringUtils.hasText(keyword)) {
-            return true;
-        }
-        String k = keyword.toLowerCase();
-        return row.stream().anyMatch(c -> c.getText() != null && c.getText().toLowerCase().contains(k));
-    }
-
-    private boolean matchFilters(List<MgmtLedgerCellDto> row, List<String> columns, Map<String, String> filters) {
-        if (filters == null || filters.isEmpty()) {
-            return true;
-        }
-        for (Map.Entry<String, String> e : filters.entrySet()) {
-            String val = e.getValue();
-            if (!StringUtils.hasText(val) || "全部".equals(val) || "全部中队".equals(val)) {
-                continue;
-            }
-            int idx = columns.indexOf(e.getKey());
-            if (idx < 0 || idx >= row.size()) {
-                continue;
-            }
-            String cellText = row.get(idx).getText();
-            if (cellText == null || !cellText.equals(val)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private MgmtLedgerMetaDto toMetaDto(MgmtLedgerMeta meta) {
