@@ -37,7 +37,9 @@
 
 ### 0.4 完成底线
 
-- 后端单测基线（standalone MockMvc + 纯 Mockito）须**全绿**；带 DB 的 `*IT` 未执行须**如实报告**，禁止用「零 DB 通过」冒充。
+- 后端单测基线（standalone MockMvc + 纯 Mockito）须**全绿**。
+- 带 DB 的 `*IT`：H2（`DbLayerIntegrationIT`）与 **PostgreSQL 真机**（`PostgresqlFlywayMigrationIT` + `MgmtLedgerSqlPostgresqlIT`，Testcontainers 起容器，2026-10-05 起已跑通）须全绿；**达梦**需外部 DM 实例 + `DmJdbcDriver18.jar`，当前**未执行须如实报告**，禁止用「零 DB 通过」冒充。
+- 🚨 H2 通过 ≠ PG / 达梦通过；三方言各有独立迁移目录，未跑到的方言必须显式声明「未执行」。
 - 前端 `vitest run` + `vue-tsc` 须全绿；改 `src/` 后须重建子应用产物。
 - 提交按 scope 拆分、不 amend；两库**独立提交、独立推送**。
 
