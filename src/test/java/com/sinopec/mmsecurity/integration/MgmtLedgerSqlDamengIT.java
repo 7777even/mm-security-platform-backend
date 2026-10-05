@@ -77,19 +77,32 @@ class MgmtLedgerSqlDamengIT {
     }
 
     private void seed(Statement st) throws Exception {
+        // DM8：这些表 id 均为 IDENTITY 自增列，显式给 id 必须先用 SET IDENTITY_INSERT 打开
+        // （会话级、同一时刻只能对一张表 ON），插完立刻 OFF。
+        st.execute("SET IDENTITY_INSERT mgmt_ledger_meta ON");
         st.execute("INSERT INTO mgmt_ledger_meta(id,domain_code,title,columns_json,filter_json,sort_no) "
                 + "VALUES (9001,'it-ledger-list','IT设施测试','[\"编号\",\"名称\",\"类型\"]','[]',9001)");
+        st.execute("SET IDENTITY_INSERT mgmt_ledger_meta OFF");
+
         long rowId = 9101;
-        for (String[] d : DATA) {
+        st.execute("SET IDENTITY_INSERT mgmt_ledger_row ON");
+        for (int ri = 0; ri < DATA.length; ri++) {
+            long id = rowId + ri;
             st.execute("INSERT INTO mgmt_ledger_row(id,domain_code,row_no,sort_no) VALUES ("
-                    + rowId + ",'it-ledger-list'," + (rowId - 9100) + "," + (rowId - 9100) + ")");
+                    + id + ",'it-ledger-list'," + (id - 9100) + "," + (id - 9100) + ")");
+        }
+        st.execute("SET IDENTITY_INSERT mgmt_ledger_row OFF");
+
+        st.execute("SET IDENTITY_INSERT mgmt_ledger_cell ON");
+        for (int ri = 0; ri < DATA.length; ri++) {
+            long id = rowId + ri;
             for (int ci = 0; ci < COLS.length; ci++) {
                 st.execute("INSERT INTO mgmt_ledger_cell(id,row_id,col_index,col_key,cell_text,cell_type) VALUES ("
-                        + (rowId * 10 + ci) + "," + rowId + "," + ci + ",'"
-                        + COLS[ci] + "','" + d[ci] + "',null)");
+                        + (id * 10 + ci) + "," + id + "," + ci + ",'"
+                        + COLS[ci] + "','" + DATA[ri][ci] + "',null)");
             }
-            rowId++;
         }
+        st.execute("SET IDENTITY_INSERT mgmt_ledger_cell OFF");
     }
 
     private int countRows(Statement st, String sql) throws Exception {

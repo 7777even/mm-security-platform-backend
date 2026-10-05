@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.integration;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -31,8 +32,18 @@ class DamengFlywayMigrationIT {
                         System.getenv().getOrDefault("DAMENG_JDBC_PASSWORD", "SYSDBA"))
                 .locations("classpath:db/migration/dameng")
                 .load();
-        int applied = flyway.migrate().migrationsExecuted;
-        assertNotNull(flyway.info().current(), "达梦方言迁移应已应用（当前版本非空）");
-        assertTrue(applied >= 80, "达梦方言应已应用全部 V 文件（>=80），实际=" + applied);
+        flyway.migrate();
+
+        // 注意：这里断言的是「库当前所处版本」，而不是「本次应用了几个迁移」。
+        // 达梦走的是本机持久实例（非一次性容器），重复跑时 V1..Vn 早已应用，
+        // 本次 migrationsExecuted 只会是新增的那几个（例如 23），用应用数做断言会误判。
+        MigrationInfo current = flyway.info().current();
+        assertNotNull(current, "达梦方言迁移应已应用（当前版本非空）");
+        if (current == null) {
+            return;
+        }
+        int version = Integer.parseInt(current.getVersion().getVersion());
+        assertTrue(version >= 80,
+                "达梦方言当前版本应 >= 80（V 文件总数 104），实际=" + current.getVersion());
     }
 }
