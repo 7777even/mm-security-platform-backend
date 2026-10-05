@@ -20,9 +20,12 @@ CREATE TABLE fac_form_record (
 );
 
 -- 演示种子（用户填报数据，仅初始化展示用）
+-- DM8：id 为 IDENTITY 自增列，显式插入 id 值必须先用 SET IDENTITY_INSERT 打开（会话级，用完即关）。
+SET IDENTITY_INSERT fac_form_record ON;
 INSERT INTO fac_form_record (id, form_no, form_type, title, reporter, department, fill_at, detail_json, status, remark, version)
 VALUES (1, 'FR-20260901-0001', '隐患排查', '储罐区防静电接地巡检填报', '张伟', '储运部', '2026-09-01 09:20:00',
         '{"location":"储罐区T-301","level":"一般","measure":"更换接地点并复测","owner":"张伟"}', 'REVIEWED', '已归档。', 0);
 INSERT INTO fac_form_record (id, form_no, form_type, title, reporter, department, fill_at, detail_json, status, remark, version)
 VALUES (2, 'FR-20260915-0002', '设备巡检', '消防泵房周检填报', '李娜', '消防大队', '2026-09-15 14:05:00',
         '{"deviceNo":"XF-1#","deviceName":"消防泵1#","result":"正常","abnormal":""}', 'SUBMITTED', NULL, 0);
+SET IDENTITY_INSERT fac_form_record OFF;
