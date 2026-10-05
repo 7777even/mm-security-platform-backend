@@ -114,3 +114,14 @@
 - 写端点 SHALL NOT 引入任何下行控制动作（零下行控制红线 `HardControlPaths` 不变）。
 - 写端点（create/report/start-response）复用既有表（V12 `fac_accident_incident` / V17 `fac_emergency_event`），SHALL NOT 新增 Flyway 迁移。
 - 「动态快讯按事件隔离」增强：V63 迁移为 `fac_accident_dynamic` 加 `incident_id` 列 + 索引 + 演练事件 11 的种子；V64 迁移为演练事件 12–16 各补 `fac_accident_incident` 行 + 各 7 条演练专属动态（均属新增迁移，不与写端点约束冲突）。
+
+### Requirement: 疏散人员名册只读端点
+
+系统 SHALL 提供 `GET /api/v1/emergency-events/evacuation-people`（登录即可），
+按应急事件返回疏散人员名册（含 `routeProgress` 进度口径），供大屏事故救援处置页
+「疏散人员」面板渲染；无数据时返回空列表（非空态兜底），响应统一 B3 包络。
+
+> **来源说明**：本端点在已归档 Change 中无 spec-delta 记录，按契约真源
+> `docs/api/emergency-event.openapi.json` 与 `EmergencyEventController` 实现反推。
+> 注意：`EvacuationPerson`（本端点的视图已落位型，带 `longitude/latitude`）与
+> 前端 `evacuationPeopleMock` 的同名类型语义一致，后者属 by-design 的视图模型类型源。

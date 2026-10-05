@@ -25,3 +25,29 @@
 
 - 纯只读：本域 SHALL NOT 提供任何写端点，不含发送 / 外呼 / 播报动作（零下行控制红线不变）。
 - 各类型记录按需填充字段，未使用字段 SHALL 返回空字符串而非 `null`（前端统一按空值渲染占位符）。
+
+### Requirement: 通讯设备台账 CRUD 与广播
+
+系统 SHALL 提供 `POST /api/v1/communication/devices`、`PUT /api/v1/communication/devices/{id}`、
+`DELETE /api/v1/communication/devices/{id}`（权限码 `communication:device-write`），
+并提供 `GET /api/v1/communication/devices` 与 `GET /api/v1/communication/devices/{id}` 只读端点。
+
+`CommDeviceService` 的 createDevice / updateDevice / deleteDevice 在事务提交成功后
+SHALL 广播 `communication.device.changed`。
+
+- 写请求体 `CommDeviceWriteRequest` 含 15 字段：deviceCode / deviceType / groupKey / groupLabel /
+  deviceName / areaName / locationName / deviceStatus / longitude / latitude / categoryName /
+  installTime / ownerName / ipAddress / lastCheckTime；
+- 读端点响应 schema 不变（写端点不变更既有读契约）。
+
+### Requirement: 通讯记录台账 CRUD 与广播
+
+系统 SHALL 提供 `PUT /api/v1/communication/records/{recordNo}` 与
+`DELETE /api/v1/communication/records/{recordNo}`（权限码 `communication:record-write`），
+与既有 `POST` / `GET` 构成完整 CRUD；
+`CommRecordService` 的 createRecord / updateRecord / deleteRecord 在事务提交成功后
+SHALL 广播 `communication.record.changed`。
+
+- 写请求体 `CommRecordWriteRequest` 含 12 字段：recordNo / recordType / occurredAt / category /
+  sender / receiver / summary / result / duration / channel / direction / contentType；
+- `CommunicationRecord`（12 字段）响应 schema 不变，仍与后端 dto 对齐。

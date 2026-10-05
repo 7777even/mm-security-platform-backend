@@ -43,3 +43,38 @@
 - **GIVEN** 存在 `status=未处置` 与 `status=已确认` 两条生产报警
 - **WHEN** 统计「未处置告警」
 - **THEN** 两者合并计数（已确认仍属待办口径）
+
+### Requirement: 生产域只读消费端点
+
+系统 SHALL 提供生产域只读端点（登录即可）：`GET /api/v1/production/overview`（生产概览）、
+`GET /api/v1/production/areas/{facilityId}`（装置区详情）、`GET /api/v1/production/devices`
+（生产设备）、`GET /api/v1/production/personnel`（生产人员）、
+`GET /api/v1/production/risk-warnings` 与 `/risk-warnings/{id}`（风险预警列表与详情）。
+
+> **来源说明**：这 6 个只读端点在已归档 Change 中无 spec-delta 记录，本条按契约真源
+> `docs/api/production.openapi.json` 与 `ProductionController` 实现反推。
+
+响应统一 B3 包络（HTTP 200 + `code=0`）；只读端点不产生广播事件，未鉴权返回 401。
+
+### Requirement: 生产报警关联抓拍
+
+系统 SHALL 提供 `GET /api/v1/production/alarms/{id}/snapshots`，按生产报警 id 返回关联的
+录像截图列表，使生产报警详情可精准内嵌关联抓拍。
+
+> 抓拍本身由 `tv` capability 的 `POST /api/v1/tv/snapshots` 入库，
+> 经可选 `alarmId` / `alarmType`（PRODUCTION / FIRE / PERIMETER）绑定到具体告警；
+> 来源：`openspec/archive/2026-09-29-production-tv-snapshot-linkage/`。
+
+该报警无关联抓拍时返回空列表（非空态兜底），不返回 404。
+
+### 端点清单（production 只读，显式路径）
+
+| Method | Path | 权限 |
+| ------ | ---- | ---- |
+| GET | `/api/v1/production/overview` | 登录即可 |
+| GET | `/api/v1/production/areas/{facilityId}` | 登录即可 |
+| GET | `/api/v1/production/devices` | 登录即可 |
+| GET | `/api/v1/production/personnel` | 登录即可 |
+| GET | `/api/v1/production/risk-warnings` | 登录即可 |
+| GET | `/api/v1/production/risk-warnings/{id}` | 登录即可 |
+| GET | `/api/v1/production/alarms/{id}/snapshots` | 登录即可 |

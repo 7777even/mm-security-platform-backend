@@ -120,3 +120,24 @@
 `GET /api/v1/emergency/process/panorama`、`/process/guidances`、`/process/node-configs`
 （应急流程全景 / 指引 / 节点联动配置，后者 `PUT` 为 `role:ADMIN`）
 等只读端点；响应统一 B3 包络，只读端点不产生广播事件。
+
+### Requirement: 应急指令与值班签到的编辑 / 删除（补充）
+
+`PUT /api/v1/emergency/command-records/{id}` 与 `DELETE /api/v1/emergency/command-records/{id}`
+（权限码 `emergency:command:write`）、`PUT /api/v1/emergency/duty-sign-ins/{id}` 与
+`DELETE /api/v1/emergency/duty-sign-ins/{id}`（权限码 `emergency:duty:write`）四条端点
+的语义与首批已登记的写端点一致：修改须为**局部更新**（空值字段表示"不更新"），
+删除为物理删除且不存在返回 B3 `NOT_FOUND`，写操作须发布对应域变更事件并落审计。
+
+### Requirement: 应急流程全景 / 指引 / 节点联动配置
+
+系统应提供 `GET /api/v1/emergency/process/panorama`（应急流程全景：5 阶段 + 4 响应模式 + 15 节点）、
+`GET /api/v1/emergency/process/guidances`（实时值班表 + 节点指引）、
+`GET` 与 `PUT /api/v1/emergency/process/node-configs`（节点联动配置；`PUT` 为 `role:ADMIN`）。
+
+> **来源说明**：这三个端点在已归档 Change 中无 spec-delta 记录，本条按契约真源
+> `docs/api/emergency.openapi.json` 与 `EmergencyController` 实现反推。
+
+- 三个端点均为登录态可读；`PUT /process/node-configs` 仅 `ADMIN` 可写；
+- 前端在无后端（`VITE_API_BASE` 未配置）时保留 localStorage 离线缓存与默认值，
+  失败不得假成功。

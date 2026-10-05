@@ -114,3 +114,33 @@
 
 - **WHEN** 审计落库抛异常
 - **THEN** 主操作仍返回成功，仅记录 warn 日志
+
+### Requirement: 字典类型与字典项 CRUD
+
+系统须提供字典类型 `POST/GET /api/v1/system/dict-types`、`PUT/DELETE /api/v1/system/dict-types/{id}`
+与字典项 `POST/GET /api/v1/system/dict-items`、`PUT/DELETE /api/v1/system/dict-items/{id}`
+四组端点（默认仅 `ADMIN` 可访问），返回统一 `Result<T>` 包络。
+
+> 业务只读例外：`GET /api/v1/system/dicts/{dictCode}` 任何已登录用户可用（供前端筛选项字典驱动），
+> 见本 spec 既有 Requirement。
+
+#### Scenario: 非管理员访问字典维护端点
+- **WHEN** 非 `ADMIN` 角色调用 `POST /api/v1/system/dict-types`
+- **THEN** 返回 403，不写库
+
+### Requirement: 菜单权限树 CRUD 与权限码字典
+
+系统须提供菜单权限树 `POST/GET /api/v1/system/menus`、`PUT/DELETE /api/v1/system/menus/{id}`
+（默认仅 `ADMIN`），并提供 `GET /api/v1/system/permissions` 返回权限码字典供角色授权树渲染。
+
+- 菜单行 SHALL 携带 `perm_code`（V32 落 `sys_menu.perm_code`），ADMIN 已全量授权（V33）；
+- 角色授权变更 SHALL 立即生效（写时失效缓存），无需等待令牌过期。
+
+### Requirement: 用户与角色启停用
+
+系统须提供 `PUT /api/v1/system/users/{id}/status` 与 `PUT /api/v1/system/roles/{id}/status`
+（仅 `ADMIN`）用于启停用；停用后该用户/角色立即不可用于鉴权解析。
+
+#### Scenario: 停用自身账号
+- **WHEN** 管理员调用 `PUT /api/v1/system/users/{自己id}/status` 停用自己
+- **THEN** 服务端拒绝（自锁防护，见本 spec「自锁与提权防护」Requirement），账号状态不变

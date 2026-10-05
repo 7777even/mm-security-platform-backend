@@ -115,3 +115,34 @@
 
 - **WHEN** 已鉴权用户请求 `GET /tv/snapshots?monitorCode=&zone=&startTime=&endTime=`
 - **THEN** 系统在原有 alarmId/alarmType 过滤基础上叠加设备/防区/时间区间过滤
+
+### Requirement: 维修工单端点
+
+系统 SHALL 提供 `GET /api/v1/tv/maintenance-orders`（可按 `status` ∈ {PENDING,PROCESSING,OVERTIME}
+过滤，空为全部）与 `GET /api/v1/tv/maintenance-orders/{id}`（工单不存在返回 `NOT_FOUND`），
+返回 `TvMaintenanceOrderItem`（工单编号 WO-2026-xxxx / 设备名 / 设备编码 / 故障描述 / 状态 /
+负责人 / 责任部门 / 防区编码 / 创建与计划与实际完成时间 / 处理说明）。
+
+`GET /api/v1/tv/overview` 响应的 `TvOverview.maintenanceOrders[]` 计数来源 SHALL 由
+`fac_tv_stat_item.MAINTENANCE` 切换为 `fac_tv_maintenance_order GROUP BY order_status`
+（结构不变，仅数据真源变更）。
+
+来源：`openspec/archive/2026-09-30-tv-maintenance-order/`。
+
+### Requirement: 监控分类字段
+
+`TvMonitorSummary.monitorCategory` / `TvOverviewItem.category` / `TvMonitorUpsertRequest.monitorCategory`
+SHALL 支持分类 code：PRODUCTION / BOUNDARY / CLOSED_GATE / OTHER_GATE / OTHER
+（重大危险源类 `TvOverviewItem.category` = MAJOR_HAZARD；空表示无下钻），
+落库 `fac_tv_monitor.monitor_category`，字段可选可空、向后兼容。
+
+来源：`openspec/archive/2026-09-30-tv-monitor-category/`。
+
+### Requirement: 巡检记录与地图点位只读端点
+
+系统 SHALL 提供 `GET /api/v1/tv/inspections`（巡检记录列表）与
+`GET /api/v1/tv/map-points`（工业电视地图点位）两个只读端点（登录即可），
+供大屏面板与地图落图渲染；响应统一 B3 包络，只读端点不产生广播事件。
+
+> **来源说明**：这两个端点在已归档 Change 中无 spec-delta 记录，本条按契约真源
+> `docs/api/tv.openapi.json` 与 `TvController` 实现反推。

@@ -38,3 +38,21 @@
 
 ### Requirement: 零下行控制
 通用台账端点仅提供只读 GET，不提供任何写接口，符合 B3 红线。
+
+### Requirement: 通用台账行写端点
+
+系统 SHALL 提供 `POST /api/v1/mgmt-ledger/{domain}/rows`（新增台账行，返回新建行 id `Result<Long>`）、
+`PUT /api/v1/mgmt-ledger/{domain}/rows/{rowId}`（更新台账行）与
+`DELETE /api/v1/mgmt-ledger/{domain}/rows/{rowId}`（删除台账行），权限码 `mgmt-ledger:write`。
+
+- 请求体 `MgmtLedgerRowWriteRequest` = `{ cells: MgmtLedgerCellWriteDto[] }`，
+  `MgmtLedgerCellWriteDto` = `{ colIndex: Integer; text: String; type: String }`；
+- `GET /api/v1/mgmt-ledger/{domain}` 响应 `MgmtLedgerListResult` SHALL 增补
+  `rowIds: List<Long>`（与 `rows` 一一对应，供前端编辑/删除定位）；
+- 写操作须发布 `mgmt-ledger` 域变更事件，使订阅面板自动重拉。
+
+来源：`openspec/archive/2026-10-03-mgmt-ledger-write/`、
+`openspec/archive/2026-10-04-mgmt-ledger-write-perm/`。
+
+> 机器可读契约真源在前端 `frontend-scaffold/docs/api/mgmt-ledger.openapi.json`，
+> 后端不另存 OpenAPI。

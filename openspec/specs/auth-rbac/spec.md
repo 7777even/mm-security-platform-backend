@@ -137,3 +137,15 @@ JWT / 签名密钥仅经环境变量 `JWT_SECRET` / `SIGNATURE_SECRET` 注入（
 
 - **WHEN** 接入 ABAC 的业务域（首期=救援队伍域 `FacBrigadeTeam.area`）配置防区
 - **THEN** 其取值须与 `sys_zone.zone_name` 及对应字典标签（如 `BRIGADE_AREA`）精确一致，否则 `IN` 条件命中不到任何行
+
+### Requirement: 个人资料自助更新
+
+系统 SHALL 提供 `PUT /api/v1/auth/profile` 供已登录用户更新本人资料（如 `realName` 等），
+返回更新后的 `MeResult`。
+
+- 端点不在 JwtFilter 免鉴权白名单内，须携带有效 access 令牌（未携带返回 401）；
+- 越权防护由 `AuthorizationService.assertSelfOrAdmin` 兜底——**只能改自己**，
+  非 ADMIN 改他人资料返回 403；
+- 更新成功后 SHALL 广播 `system.user` 域变更事件，使管理端用户列表自动重拉。
+
+来源：`openspec/archive/2026-09-10-system-management-rbac/`。

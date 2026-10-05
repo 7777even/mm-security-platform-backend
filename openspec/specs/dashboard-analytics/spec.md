@@ -41,3 +41,21 @@
 
 - **WHEN** `GET /api/v1/workstations?page=1&size=20&zone=&online=`
 - **THEN** B3 包络返回 `Result<WorkstationPageResult>`（list=`Workstation[]`、`total`/`page`/`size`）；非 ALL 角色仅见其 `zone_codes` 内工作站（`resolveZones()` 空集合→`1=0` 零可见）
+
+### Requirement: 态势总览与系统消息只读端点
+
+系统 SHALL 提供 `GET /api/v1/dashboard/overview`（态势总览聚合）与
+`GET /api/v1/dashboard/messages`（系统消息列表）两个只读端点（登录即可），
+响应统一 B3 包络；只读端点不产生广播事件，未鉴权返回 401。
+
+> **来源说明**：这两个端点在已归档 Change 中无 spec-delta 记录，本条按契约真源
+> `docs/api/dashboard.openapi.json` 与 `DashboardController` 实现反推。
+
+### Requirement: 工作站详情与防区过滤列表
+
+系统 SHALL 提供 `GET /api/v1/dashboard/workstations`（工作站列表，结果已套 data_scope 行级 ABAC，
+非 ALL 角色仅见其 `zone_codes` 内工作站）与 `GET /api/v1/dashboard/workstations/{id}`
+（按 id 的工作站详情），以及 `GET /api/v1/workstations`（防区过滤分页列表，
+参数 `page` / `size` / `zone` / `online`，响应 `WorkstationPageResult`）。
+
+来源：`openspec/archive/2026-09-13-workstation-datascope-list/`。
