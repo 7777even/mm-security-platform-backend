@@ -274,6 +274,7 @@ def fe_module(key, fe_hits):
 # --------------------------------------------------------------------------- 输出
 def main():
     only_matrix = "--matrix" in sys.argv
+    only_gaps = "--gaps" in sys.argv
     rows = scan_endpoints()
     contracts = load_contracts()
     specs = load_specs()
@@ -286,6 +287,29 @@ def main():
         groups[(ct_hits.get(r["http"] + " " + r["path"]) or ["—"])[0]].append(r)
 
     out = []
+    if only_gaps:
+        gap = defaultdict(lambda: [0, 0])
+        for r in rows:
+            d = (ct_hits.get(r["http"] + " " + r["path"]) or ["—"])[0]
+            gap[d][0] += 1
+            if not sp_hits.get(r["http"] + " " + r["path"]):
+                gap[d][1] += 1
+        out.append("| 契约域 | 端点 | 无 spec 引用 | 缺口率 |")
+        out.append("| ------ | ---: | ----------: | -----: |")
+        for d in sorted(gap, key=lambda x: -gap[x][1]):
+            tot, miss = gap[d]
+            if miss == 0:
+                continue
+            out.append(f"| {d} | {tot} | {miss} | {miss * 100 // tot}% |")
+        t_all = sum(v[0] for v in gap.values())
+        m_all = sum(v[1] for v in gap.values())
+        out.append(f"| **合计** | **{t_all}** | **{m_all}** | **{m_all * 100 // t_all}%** |")
+        out.append("")
+        out.append("已完整覆盖（0 缺口）的域："
+                   + "、".join(sorted(d for d in gap if gap[d][1] == 0)))
+        print("\n".join(out))
+        return
+
     if not only_matrix:
         tot_w = sum(1 for r in rows if r["http"] in WRITE_VERBS)
         out.append("| 契约域 | 端点 | 读 | 写 | 控制器 | 前端主 service |")
