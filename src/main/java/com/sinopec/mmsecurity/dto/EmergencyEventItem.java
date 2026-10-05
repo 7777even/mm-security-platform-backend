@@ -1,10 +1,12 @@
 package com.sinopec.mmsecurity.dto;
 
+import com.sinopec.mmsecurity.websocket.ZoneAware;
+
 import lombok.Data;
 
 /** 应急事件条目（与前端 EmergencyEventItem 契约一致）。 */
 @Data
-public class EmergencyEventItem {
+public class EmergencyEventItem implements ZoneAware {
 
     private Long id;
 
@@ -46,4 +48,15 @@ public class EmergencyEventItem {
 
     /** 仅极端天气事件有值，其余为 null（Jackson 默认输出 null，前端已处理）。 */
     private EmergencyEventWeatherMeta weatherMeta;
+
+    /**
+     * ABAC 实时广播防区收紧的扩展点：暴露位置字段 location（事件发生位置），由 {@code RealtimeSyncAspect}
+     * 经 {@code ZoneMappingResolver} 按配置 {@code abac.zone-mapping.location-to-zones} 映射为防区，
+     * 注入 {@code EntityChangedEvent.zones}，使写广播按防区过滤（最小权限）。
+     * 映射未配置或未命中 → 返回 null → 该域 fail-open（推给全部已认证会话），与既有语义一致。
+     */
+    @Override
+    public String getLocation() {
+        return this.location;
+    }
 }

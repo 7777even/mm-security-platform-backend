@@ -15,8 +15,21 @@ package com.sinopec.mmsecurity.websocket;
  *       经配置 {@code abac.zone-mapping.location-to-zones} 映射为防区集合（规则由产品提供，代码不硬编码）。</li>
  * </ul>
  *
- * <p><b>产品依赖</b>：监测告警/设备等多数域的 location→防区 映射待产品定（填配置即生效，无需改代码）。
- * 当前无写方法返回 {@code ZoneAware} 时，事件 {@code zones == null} → 全推（fail-open）。</p>
+ * <p><b>接线对象 = 写方法的返回值类型</b>（不是实体）：切面取的是 {@code @RealtimeSync} 写方法的
+ * {@code returning} 值，而多数写方法返回的是 DTO / View（如 {@code AlarmItem}、{@code GateControlItem}），
+ * 只有 {@code FacDevice} 等少数直接返回实体。故收紧时应对着「写方法返回类型」接线，对实体接线大多无效。</p>
+ *
+ * <p><b>已接线清单（2026-10-06）</b>：{@code FacDevice}（getZoneName）+ 18 个写方法返回 DTO
+ * ——AlarmItem / PatrolExecutionView / CommunicationDevice / EmergencyEventItem / EmergencyCaseItem /
+ * FireAlarmItem / FireFacilityLedgerItem / ProductionAlarmItem / FireBrigadeTeam / RescueVehicleItem /
+ * RescueEquipmentItem / PersonSearchDetail / GateControlItem / PerimeterAlarmDetail /
+ * SpecialOperationItem / VideoCameraItem（以上走 getLocation 映射）与 BollardItem / TvMonitorSummary
+ * （直接持有防区名，走 getZoneName）。断言见 {@code ZoneAwareDtoWiringTest}。</p>
+ *
+ * <p><b>产品依赖</b>：location→防区 的语义规则由产品在配置
+ * {@code abac.zone-mapping.location-to-zones} 中提供（填了即生效，无需改代码）；
+ * 未配置或未命中 → {@code zones == null} → 全推（fail-open，维持既有公开语义）。
+ * 另：写方法返回 {@code void} 或 {@code DeleteResult}（删除类）无法携带防区，天然 fail-open，属已知限制。</p>
  */
 public interface ZoneAware {
 
