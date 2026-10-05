@@ -1,5 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
@@ -10,6 +12,12 @@ import lombok.Data;
 @Data
 @TableName("fac_gate_control")
 public class FacGateControl {
+    /**
+     * 主键。V4__security.sql 中 fac_gate_control.id 为 BIGINT PRIMARY KEY（无 AUTO_INCREMENT），
+     * 全局 id-type=auto 会期望 DB 自增而 H2/PG/DM 均不会自动生成 → 插入报 23502 主键空。
+     * 用 ASSIGN_ID（Java 雪花）显式生成，跨方言行为一致、不依赖 DB 自增特性。
+     */
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     private String name;
     private String location;
