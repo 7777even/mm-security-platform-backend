@@ -17,7 +17,7 @@
   - **能力域 spec**：后端 `openspec/specs/<capability>/spec.md` 中**提及该端点**的文本证据；`⚠️ 未归属` = spec 未提及（缺口见 §3，**不代表无实现**）。
   - **鉴权**：`公开` = JwtFilter 白名单（login/refresh/logout）；`登录` = JwtFilter 强制令牌 + 裸（或无）`@RequireAuth`；`role:ADMIN` / `perm:<code>` = `@RequireAuth` 显式约束。
   - **前端消费模块**：`src/services/*` 优先，其次 `screen/`（大屏）、`mgmt/`（管理端）、`mobile/`（移动端）；最多列 2 项。
-- **重新生成**：`python scripts/gen-scope-inventory.py`（无第三方依赖，只读不写；`--matrix` 只输出 §2）。端点有增删后**必须重跑并回填 §1 / §2**，禁止手抄。
+- **重新生成**：`python scripts/gen-scope-inventory.py`（无第三方依赖，只读不写；`--matrix` 只输出 §2，`--gaps` 只输出 §3）。端点或 spec 有增删后**必须重跑并回填 §1 / §2 / §3**，禁止手抄。
 
 ## 1. 交付规模总览（按契约域）
 
@@ -68,10 +68,10 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 2 | GET | `/api/v1/alarms` | Alarm | alarm-domain、map-geojson… | 登录 | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、screen/components/map/CenterMap.vue… |
-| 3 | POST | `/api/v1/alarms` | Alarm | alarm-domain、map-geojson… | role:ADMIN | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、screen/components/map/CenterMap.vue… |
-| 4 | DELETE | `/api/v1/alarms/{alarmId}` | Alarm | alarm-domain、production-alarm | role:ADMIN | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、mobile/views/alarms.vue |
-| 5 | PUT | `/api/v1/alarms/{alarmId}` | Alarm | alarm-domain、production-alarm | role:ADMIN | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、mobile/views/alarms.vue |
+| 2 | GET | `/api/v1/alarms` | Alarm | alarm-domain、fire-alarm… | 登录 | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、screen/components/map/CenterMap.vue… |
+| 3 | POST | `/api/v1/alarms` | Alarm | alarm-domain、fire-alarm… | role:ADMIN | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、screen/components/map/CenterMap.vue… |
+| 4 | DELETE | `/api/v1/alarms/{alarmId}` | Alarm | alarm-domain、fire-facility… | role:ADMIN | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、mobile/views/alarms.vue |
+| 5 | PUT | `/api/v1/alarms/{alarmId}` | Alarm | alarm-domain、fire-facility… | role:ADMIN | services/alarm.ts、services/fireFacility.ts… / screen/components/common/AlarmDetailPanel.vue、mobile/views/alarms.vue |
 
 ### auth（7）
 
@@ -132,36 +132,36 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 36 | GET | `/api/v1/emergency/assist-stats` | Emergency | ⚠️ 未归属 | 登录 | services/emergency.ts |
-| 37 | GET | `/api/v1/emergency/cases` | Emergency | ⚠️ 未归属 | 登录 | services/emergencyCase.ts / mgmt/views/emergency/CaseLibView.vue |
-| 38 | POST | `/api/v1/emergency/cases` | Emergency | ⚠️ 未归属 | perm:emergency:case:write | services/emergencyCase.ts / mgmt/views/emergency/CaseLibView.vue |
-| 39 | DELETE | `/api/v1/emergency/cases/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:case:write | services/emergencyCase.ts |
-| 40 | PUT | `/api/v1/emergency/cases/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:case:write | services/emergencyCase.ts |
+| 36 | GET | `/api/v1/emergency/assist-stats` | Emergency | emergency-reference | 登录 | services/emergency.ts |
+| 37 | GET | `/api/v1/emergency/cases` | Emergency | emergency-reference | 登录 | services/emergencyCase.ts / mgmt/views/emergency/CaseLibView.vue |
+| 38 | POST | `/api/v1/emergency/cases` | Emergency | emergency-reference | perm:emergency:case:write | services/emergencyCase.ts / mgmt/views/emergency/CaseLibView.vue |
+| 39 | DELETE | `/api/v1/emergency/cases/{id}` | Emergency | emergency-reference | perm:emergency:case:write | services/emergencyCase.ts |
+| 40 | PUT | `/api/v1/emergency/cases/{id}` | Emergency | emergency-reference | perm:emergency:case:write | services/emergencyCase.ts |
 | 41 | GET | `/api/v1/emergency/closed-cases` | Emergency | emergency-reference | 登录 | services/backendFallback.ts、services/closedCases.ts |
-| 42 | GET | `/api/v1/emergency/command-records` | Emergency | ⚠️ 未归属 | 登录 | services/businessWrite.ts / screen/components/panels/accident-rescue/EmergencyResponseCommandPanel.vue、mgmt/views/emergency/EmergencyCommandView.vue… |
-| 43 | POST | `/api/v1/emergency/command-records` | Emergency | ⚠️ 未归属 | perm:emergency:command:write | services/businessWrite.ts / screen/components/panels/accident-rescue/EmergencyResponseCommandPanel.vue、mgmt/views/emergency/EmergencyCommandView.vue… |
+| 42 | GET | `/api/v1/emergency/command-records` | Emergency | emergency-reference | 登录 | services/businessWrite.ts / screen/components/panels/accident-rescue/EmergencyResponseCommandPanel.vue、mgmt/views/emergency/EmergencyCommandView.vue… |
+| 43 | POST | `/api/v1/emergency/command-records` | Emergency | emergency-reference | perm:emergency:command:write | services/businessWrite.ts / screen/components/panels/accident-rescue/EmergencyResponseCommandPanel.vue、mgmt/views/emergency/EmergencyCommandView.vue… |
 | 44 | DELETE | `/api/v1/emergency/command-records/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:command:write | services/businessWrite.ts |
 | 45 | PUT | `/api/v1/emergency/command-records/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:command:write | services/businessWrite.ts |
-| 46 | GET | `/api/v1/emergency/commands` | Emergency | ⚠️ 未归属 | 登录 | services/emergency.ts / mobile/views/events.vue |
-| 47 | GET | `/api/v1/emergency/commands/{commandId}` | Emergency | ⚠️ 未归属 | 登录 | services/emergency.ts |
-| 48 | GET | `/api/v1/emergency/dispatch-personnel` | Emergency | ⚠️ 未归属 | 登录 | services/emergency.ts / screen/components/common/AlarmDetailPanel.vue |
+| 46 | GET | `/api/v1/emergency/commands` | Emergency | emergency-reference | 登录 | services/emergency.ts / mobile/views/events.vue |
+| 47 | GET | `/api/v1/emergency/commands/{commandId}` | Emergency | emergency-reference | 登录 | services/emergency.ts |
+| 48 | GET | `/api/v1/emergency/dispatch-personnel` | Emergency | emergency-reference | 登录 | services/emergency.ts / screen/components/common/AlarmDetailPanel.vue |
 | 49 | GET | `/api/v1/emergency/duty` | Emergency | emergency-reference | 登录 | services/businessWrite.ts、services/duty.ts… / screen/components/panels/DutyInfoPanel.vue、screen/components/panels/accident-rescue/RescueDutyPanel.vue… |
-| 50 | GET | `/api/v1/emergency/duty-sign-ins` | Emergency | ⚠️ 未归属 | 登录 | services/businessWrite.ts / mgmt/views/emergency/DutySignInView.vue、mobile/views/duty.vue |
-| 51 | POST | `/api/v1/emergency/duty-sign-ins` | Emergency | ⚠️ 未归属 | perm:emergency:duty:write | services/businessWrite.ts / mgmt/views/emergency/DutySignInView.vue、mobile/views/duty.vue |
+| 50 | GET | `/api/v1/emergency/duty-sign-ins` | Emergency | emergency-reference | 登录 | services/businessWrite.ts / mgmt/views/emergency/DutySignInView.vue、mobile/views/duty.vue |
+| 51 | POST | `/api/v1/emergency/duty-sign-ins` | Emergency | emergency-reference | perm:emergency:duty:write | services/businessWrite.ts / mgmt/views/emergency/DutySignInView.vue、mobile/views/duty.vue |
 | 52 | DELETE | `/api/v1/emergency/duty-sign-ins/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:duty:write | services/businessWrite.ts |
 | 53 | PUT | `/api/v1/emergency/duty-sign-ins/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:duty:write | services/businessWrite.ts |
 | 54 | GET | `/api/v1/emergency/knowledge` | Emergency | emergency-reference | 登录 | services/knowledge.ts / screen/components/panels/accident-rescue/RescueAuxiliaryPanel.vue、screen/components/panels/preliminary/SafetyKnowledgePanel.vue… |
 | 55 | POST | `/api/v1/emergency/knowledge` | Emergency | emergency-reference | perm:emergency:knowledge:write | services/knowledge.ts / screen/components/panels/accident-rescue/RescueAuxiliaryPanel.vue、screen/components/panels/preliminary/SafetyKnowledgePanel.vue… |
-| 56 | DELETE | `/api/v1/emergency/knowledge/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:knowledge:write | services/knowledge.ts |
-| 57 | PUT | `/api/v1/emergency/knowledge/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:knowledge:write | services/knowledge.ts |
+| 56 | DELETE | `/api/v1/emergency/knowledge/{id}` | Emergency | emergency-reference | perm:emergency:knowledge:write | services/knowledge.ts |
+| 57 | PUT | `/api/v1/emergency/knowledge/{id}` | Emergency | emergency-reference | perm:emergency:knowledge:write | services/knowledge.ts |
 | 58 | GET | `/api/v1/emergency/phones` | Emergency | emergency-reference | 登录 | services/emergencyPhone.ts / screen/components/panels/accident-rescue/EmergencyAddressBookDialog.vue、mgmt/views/emergency/ContactsView.vue… |
 | 59 | POST | `/api/v1/emergency/phones` | Emergency | emergency-reference | perm:emergency:phone:write | services/emergencyPhone.ts / screen/components/panels/accident-rescue/EmergencyAddressBookDialog.vue、mgmt/views/emergency/ContactsView.vue… |
-| 60 | DELETE | `/api/v1/emergency/phones/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:phone:write | services/emergencyPhone.ts |
-| 61 | PUT | `/api/v1/emergency/phones/{id}` | Emergency | ⚠️ 未归属 | perm:emergency:phone:write | services/emergencyPhone.ts |
+| 60 | DELETE | `/api/v1/emergency/phones/{id}` | Emergency | emergency-reference | perm:emergency:phone:write | services/emergencyPhone.ts |
+| 61 | PUT | `/api/v1/emergency/phones/{id}` | Emergency | emergency-reference | perm:emergency:phone:write | services/emergencyPhone.ts |
 | 62 | GET | `/api/v1/emergency/process/guidances` | Emergency | ⚠️ 未归属 | 登录 | services/emergencyProcess.ts |
 | 63 | GET | `/api/v1/emergency/process/node-configs` | Emergency | ⚠️ 未归属 | 登录 | services/emergencyProcess.ts / screen/lib/composables/useEmergencyProcess.ts |
 | 64 | PUT | `/api/v1/emergency/process/node-configs` | Emergency | ⚠️ 未归属 | role:ADMIN | services/emergencyProcess.ts / screen/lib/composables/useEmergencyProcess.ts |
-| 65 | GET | `/api/v1/emergency/process/panorama` | Emergency | ⚠️ 未归属 | 登录 | services/emergencyProcess.ts / screen/lib/composables/useEmergencyProcess.ts |
+| 65 | GET | `/api/v1/emergency/process/panorama` | Emergency | emergency-reference | 登录 | services/emergencyProcess.ts / screen/lib/composables/useEmergencyProcess.ts |
 | 66 | GET | `/api/v1/emergency/strength` | Emergency | emergency-reference、rescue-resource | 登录 | services/backendFallback.ts、services/emergency.ts / screen/components/panels/preliminary/EmergencyRescuePanel.vue、screen/lib/composables/useRescueStrengthView.ts |
 
 ### emergency-event（7）
@@ -180,76 +180,76 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 74 | GET | `/api/v1/emergency-plans` | EmergencyPlan | ⚠️ 未归属 | 登录 | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
-| 75 | POST | `/api/v1/emergency-plans` | EmergencyPlan | ⚠️ 未归属 | perm:emergency:plan:write | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
-| 76 | GET | `/api/v1/emergency-plans/catalog` | EmergencyPlan | ⚠️ 未归属 | 登录 | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、mgmt/views/emergency/PlanCatalogView.vue… |
-| 77 | GET | `/api/v1/emergency-plans/catalog-detail` | EmergencyPlan | ⚠️ 未归属 | 登录 | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、mobile/views/plan-detail.vue |
-| 78 | GET | `/api/v1/emergency-plans/catalog-items` | EmergencyPlan | ⚠️ 未归属 | 登录 | services/emergencyPlan.ts / mgmt/views/emergency/PlanCatalogView.vue |
-| 79 | POST | `/api/v1/emergency-plans/catalog-items` | EmergencyPlan | ⚠️ 未归属 | perm:emergency:plan-catalog:write | services/emergencyPlan.ts / mgmt/views/emergency/PlanCatalogView.vue |
-| 80 | DELETE | `/api/v1/emergency-plans/catalog-items/{id}` | EmergencyPlan | ⚠️ 未归属 | perm:emergency:plan-catalog:write | services/emergencyPlan.ts |
-| 81 | PUT | `/api/v1/emergency-plans/catalog-items/{id}` | EmergencyPlan | ⚠️ 未归属 | perm:emergency:plan-catalog:write | services/emergencyPlan.ts |
-| 82 | GET | `/api/v1/emergency-plans/matrix` | EmergencyPlan | ⚠️ 未归属 | 登录 | services/emergencyPlan.ts |
-| 83 | GET | `/api/v1/emergency-plans/options` | EmergencyPlan | ⚠️ 未归属 | 登录 | services/emergencyPlan.ts |
-| 84 | DELETE | `/api/v1/emergency-plans/{id}` | EmergencyPlan | ⚠️ 未归属 | perm:emergency:plan:write | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
-| 85 | PUT | `/api/v1/emergency-plans/{id}` | EmergencyPlan | ⚠️ 未归属 | perm:emergency:plan:write | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
-| 86 | POST | `/api/v1/emergency-plans/{id}/invoke` | EmergencyPlan | ⚠️ 未归属 | role:ADMIN | services/emergencyPlan.ts |
-| 87 | POST | `/api/v1/emergency-plans/{planId}/action-cards` | EmergencyPlan | ⚠️ 未归属 | role:ADMIN | services/emergencyPlan.ts / screen/lib/composables/usePlanMatrix.ts |
-| 88 | DELETE | `/api/v1/emergency-plans/{planId}/action-cards/{cardId}` | EmergencyPlan | ⚠️ 未归属 | role:ADMIN | screen/lib/composables/usePlanMatrix.ts |
-| 89 | PUT | `/api/v1/emergency-plans/{planId}/action-cards/{cardId}` | EmergencyPlan | ⚠️ 未归属 | role:ADMIN | screen/lib/composables/usePlanMatrix.ts |
+| 74 | GET | `/api/v1/emergency-plans` | EmergencyPlan | emergency-plan | 登录 | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
+| 75 | POST | `/api/v1/emergency-plans` | EmergencyPlan | emergency-plan | perm:emergency:plan:write | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
+| 76 | GET | `/api/v1/emergency-plans/catalog` | EmergencyPlan | emergency-plan | 登录 | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、mgmt/views/emergency/PlanCatalogView.vue… |
+| 77 | GET | `/api/v1/emergency-plans/catalog-detail` | EmergencyPlan | emergency-plan | 登录 | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、mobile/views/plan-detail.vue |
+| 78 | GET | `/api/v1/emergency-plans/catalog-items` | EmergencyPlan | emergency-plan | 登录 | services/emergencyPlan.ts / mgmt/views/emergency/PlanCatalogView.vue |
+| 79 | POST | `/api/v1/emergency-plans/catalog-items` | EmergencyPlan | emergency-plan | perm:emergency:plan-catalog:write | services/emergencyPlan.ts / mgmt/views/emergency/PlanCatalogView.vue |
+| 80 | DELETE | `/api/v1/emergency-plans/catalog-items/{id}` | EmergencyPlan | emergency-plan | perm:emergency:plan-catalog:write | services/emergencyPlan.ts |
+| 81 | PUT | `/api/v1/emergency-plans/catalog-items/{id}` | EmergencyPlan | emergency-plan | perm:emergency:plan-catalog:write | services/emergencyPlan.ts |
+| 82 | GET | `/api/v1/emergency-plans/matrix` | EmergencyPlan | emergency-plan | 登录 | services/emergencyPlan.ts |
+| 83 | GET | `/api/v1/emergency-plans/options` | EmergencyPlan | emergency-plan | 登录 | services/emergencyPlan.ts |
+| 84 | DELETE | `/api/v1/emergency-plans/{id}` | EmergencyPlan | emergency-plan | perm:emergency:plan:write | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
+| 85 | PUT | `/api/v1/emergency-plans/{id}` | EmergencyPlan | emergency-plan | perm:emergency:plan:write | services/emergencyPlan.ts / screen/components/panels/accident-rescue/EmergencyPlanPanel.vue、screen/lib/composables/usePlanMatrix.ts… |
+| 86 | POST | `/api/v1/emergency-plans/{id}/invoke` | EmergencyPlan | emergency-plan | role:ADMIN | services/emergencyPlan.ts |
+| 87 | POST | `/api/v1/emergency-plans/{planId}/action-cards` | EmergencyPlan | emergency-plan | role:ADMIN | services/emergencyPlan.ts / screen/lib/composables/usePlanMatrix.ts |
+| 88 | DELETE | `/api/v1/emergency-plans/{planId}/action-cards/{cardId}` | EmergencyPlan | emergency-plan | role:ADMIN | screen/lib/composables/usePlanMatrix.ts |
+| 89 | PUT | `/api/v1/emergency-plans/{planId}/action-cards/{cardId}` | EmergencyPlan | emergency-plan | role:ADMIN | screen/lib/composables/usePlanMatrix.ts |
 
 ### fire-alarm（4）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 90 | GET | `/api/v1/fire-alarms` | FireAlarm | ⚠️ 未归属 | 登录 | services/alarm.ts / screen/components/panels/SafetyAlarmPanel.vue、screen/lib/adapters/alarmAdapter.ts… |
-| 91 | POST | `/api/v1/fire-alarms` | FireAlarm | ⚠️ 未归属 | perm:fire-alarm:create | services/alarm.ts / screen/components/panels/SafetyAlarmPanel.vue、screen/lib/adapters/alarmAdapter.ts… |
-| 92 | DELETE | `/api/v1/fire-alarms/{alarmId}` | FireAlarm | ⚠️ 未归属 | perm:fire-alarm:delete | services/alarm.ts |
-| 93 | PUT | `/api/v1/fire-alarms/{alarmId}` | FireAlarm | ⚠️ 未归属 | perm:fire-alarm:ack | services/alarm.ts |
+| 90 | GET | `/api/v1/fire-alarms` | FireAlarm | fire-alarm | 登录 | services/alarm.ts / screen/components/panels/SafetyAlarmPanel.vue、screen/lib/adapters/alarmAdapter.ts… |
+| 91 | POST | `/api/v1/fire-alarms` | FireAlarm | fire-alarm | perm:fire-alarm:create | services/alarm.ts / screen/components/panels/SafetyAlarmPanel.vue、screen/lib/adapters/alarmAdapter.ts… |
+| 92 | DELETE | `/api/v1/fire-alarms/{alarmId}` | FireAlarm | fire-alarm | perm:fire-alarm:delete | services/alarm.ts |
+| 93 | PUT | `/api/v1/fire-alarms/{alarmId}` | FireAlarm | fire-alarm | perm:fire-alarm:ack | services/alarm.ts |
 
 ### fire-facility（15）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 94 | GET | `/api/v1/fire-facility/alarms` | FireFacility | ⚠️ 未归属 | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/views/fire/FireFacilityAlarmView.vue |
-| 95 | PUT | `/api/v1/fire-facility/alarms/{alarmId}` | FireFacility | ⚠️ 未归属 | perm:fire-facility:handle | services/fireFacility.ts |
-| 96 | GET | `/api/v1/fire-facility/faults` | FireFacility | ⚠️ 未归属 | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/components/FireFacilityFaultEditDialog.vue、mgmt/views/fire/FaultMgmtView.vue |
-| 97 | POST | `/api/v1/fire-facility/faults` | FireFacility | ⚠️ 未归属 | perm:fire-facility:fault-create | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/components/FireFacilityFaultEditDialog.vue、mgmt/views/fire/FaultMgmtView.vue |
-| 98 | DELETE | `/api/v1/fire-facility/faults/{faultId}` | FireFacility | ⚠️ 未归属 | perm:fire-facility:fault-delete | services/fireFacility.ts / mgmt/components/FireFacilityFaultEditDialog.vue |
-| 99 | PUT | `/api/v1/fire-facility/faults/{faultId}` | FireFacility | ⚠️ 未归属 | perm:fire-facility:handle | services/fireFacility.ts / mgmt/components/FireFacilityFaultEditDialog.vue |
-| 100 | GET | `/api/v1/fire-facility/ledger` | FireFacility | ⚠️ 未归属 | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/views/fire/FireFacilityLedgerView.vue、mgmt/views/fire/FireFacilityMaintenanceView.vue |
-| 101 | POST | `/api/v1/fire-facility/ledger` | FireFacility | ⚠️ 未归属 | perm:fire-facility:ledger:write | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/views/fire/FireFacilityLedgerView.vue、mgmt/views/fire/FireFacilityMaintenanceView.vue |
-| 102 | DELETE | `/api/v1/fire-facility/ledger/{id}` | FireFacility | ⚠️ 未归属 | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
-| 103 | PUT | `/api/v1/fire-facility/ledger/{id}` | FireFacility | ⚠️ 未归属 | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
-| 104 | POST | `/api/v1/fire-facility/ledger/{ledgerId}/maintenance` | FireFacility | ⚠️ 未归属 | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
-| 105 | DELETE | `/api/v1/fire-facility/maintenance/{recordId}` | FireFacility | ⚠️ 未归属 | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
-| 106 | GET | `/api/v1/fire-facility/monitors` | FireFacility | ⚠️ 未归属 | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts |
-| 107 | POST | `/api/v1/fire-facility/monitors/report` | FireFacility | ⚠️ 未归属 | perm:fire-facility:handle | services/fireFacility.ts |
-| 108 | GET | `/api/v1/fire-facility/work-orders` | FireFacility | ⚠️ 未归属 | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mobile/views/ops-board.vue、mobile/views/order-detail.vue… |
+| 94 | GET | `/api/v1/fire-facility/alarms` | FireFacility | fire-facility | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/views/fire/FireFacilityAlarmView.vue |
+| 95 | PUT | `/api/v1/fire-facility/alarms/{alarmId}` | FireFacility | fire-facility | perm:fire-facility:handle | services/fireFacility.ts |
+| 96 | GET | `/api/v1/fire-facility/faults` | FireFacility | fire-facility | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/components/FireFacilityFaultEditDialog.vue、mgmt/views/fire/FaultMgmtView.vue |
+| 97 | POST | `/api/v1/fire-facility/faults` | FireFacility | fire-facility | perm:fire-facility:fault-create | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/components/FireFacilityFaultEditDialog.vue、mgmt/views/fire/FaultMgmtView.vue |
+| 98 | DELETE | `/api/v1/fire-facility/faults/{faultId}` | FireFacility | fire-facility | perm:fire-facility:fault-delete | services/fireFacility.ts / mgmt/components/FireFacilityFaultEditDialog.vue |
+| 99 | PUT | `/api/v1/fire-facility/faults/{faultId}` | FireFacility | fire-facility | perm:fire-facility:handle | services/fireFacility.ts / mgmt/components/FireFacilityFaultEditDialog.vue |
+| 100 | GET | `/api/v1/fire-facility/ledger` | FireFacility | fire-facility | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/views/fire/FireFacilityLedgerView.vue、mgmt/views/fire/FireFacilityMaintenanceView.vue |
+| 101 | POST | `/api/v1/fire-facility/ledger` | FireFacility | fire-facility | perm:fire-facility:ledger:write | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mgmt/views/fire/FireFacilityLedgerView.vue、mgmt/views/fire/FireFacilityMaintenanceView.vue |
+| 102 | DELETE | `/api/v1/fire-facility/ledger/{id}` | FireFacility | fire-facility | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
+| 103 | PUT | `/api/v1/fire-facility/ledger/{id}` | FireFacility | fire-facility | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
+| 104 | POST | `/api/v1/fire-facility/ledger/{ledgerId}/maintenance` | FireFacility | fire-facility | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
+| 105 | DELETE | `/api/v1/fire-facility/maintenance/{recordId}` | FireFacility | fire-facility | perm:fire-facility:ledger:write | services/fireFacility.ts / mgmt/views/fire/FireFacilityMaintenanceView.vue |
+| 106 | GET | `/api/v1/fire-facility/monitors` | FireFacility | fire-facility | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts |
+| 107 | POST | `/api/v1/fire-facility/monitors/report` | FireFacility | fire-facility | perm:fire-facility:handle | services/fireFacility.ts |
+| 108 | GET | `/api/v1/fire-facility/work-orders` | FireFacility | fire-facility | 登录 | services/fireFacility.ts、services/fireFacilityMonitoringMock.ts / mobile/views/ops-board.vue、mobile/views/order-detail.vue… |
 
 ### fire-monitoring（12）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 109 | GET | `/api/v1/fire/equipment` | FireMonitoring | ⚠️ 未归属 | 登录 | services/fireMonitoring.ts / screen/components/panels/EquipmentMonitoring.vue |
-| 110 | GET | `/api/v1/fire/equipment-status` | FireMonitoring | ⚠️ 未归属 | 登录 | services/fireMonitoring.ts / screen/components/panels/EquipmentMonitoring.vue |
-| 111 | GET | `/api/v1/fire/patrol-executions` | FireMonitoring | ⚠️ 未归属 | 登录 | services/businessWrite.ts / mgmt/views/fire/PatrolExecutionView.vue、mobile/views/patrol-exec.vue |
-| 112 | POST | `/api/v1/fire/patrol-executions` | FireMonitoring | ⚠️ 未归属 | perm:fire-alarm:patrol:write | services/businessWrite.ts / mgmt/views/fire/PatrolExecutionView.vue、mobile/views/patrol-exec.vue |
-| 113 | DELETE | `/api/v1/fire/patrol-executions/{id}` | FireMonitoring | ⚠️ 未归属 | perm:fire-alarm:patrol:write | services/businessWrite.ts |
-| 114 | PUT | `/api/v1/fire/patrol-executions/{id}` | FireMonitoring | ⚠️ 未归属 | perm:fire-alarm:patrol:write | services/businessWrite.ts |
-| 115 | GET | `/api/v1/fire/patrols` | FireMonitoring | ⚠️ 未归属 | 登录 | services/fireMonitoring.ts / screen/components/common/FirePatrolDialog.vue、screen/components/panels/EquipmentMonitoring.vue… |
-| 116 | POST | `/api/v1/fire/patrols` | FireMonitoring | ⚠️ 未归属 | perm:fire:patrol-write | services/fireMonitoring.ts / screen/components/common/FirePatrolDialog.vue、screen/components/panels/EquipmentMonitoring.vue… |
-| 117 | DELETE | `/api/v1/fire/patrols/{id}` | FireMonitoring | ⚠️ 未归属 | perm:fire:patrol-write | services/fireMonitoring.ts |
-| 118 | PUT | `/api/v1/fire/patrols/{id}` | FireMonitoring | ⚠️ 未归属 | perm:fire:patrol-write | services/fireMonitoring.ts |
-| 119 | GET | `/api/v1/fire/rescue-forces` | FireMonitoring | ⚠️ 未归属 | 登录 | services/fireMonitoring.ts / screen/components/panels/DutyInfoPanel.vue |
-| 120 | GET | `/api/v1/fire/special-operations` | FireMonitoring | ⚠️ 未归属 | 登录 | services/fireMonitoring.ts、services/specialOperation.ts / screen/components/panels/SpecialOperationsPanel.vue |
+| 109 | GET | `/api/v1/fire/equipment` | FireMonitoring | fire-monitoring | 登录 | services/fireMonitoring.ts / screen/components/panels/EquipmentMonitoring.vue |
+| 110 | GET | `/api/v1/fire/equipment-status` | FireMonitoring | fire-monitoring | 登录 | services/fireMonitoring.ts / screen/components/panels/EquipmentMonitoring.vue |
+| 111 | GET | `/api/v1/fire/patrol-executions` | FireMonitoring | fire-monitoring | 登录 | services/businessWrite.ts / mgmt/views/fire/PatrolExecutionView.vue、mobile/views/patrol-exec.vue |
+| 112 | POST | `/api/v1/fire/patrol-executions` | FireMonitoring | fire-monitoring | perm:fire-alarm:patrol:write | services/businessWrite.ts / mgmt/views/fire/PatrolExecutionView.vue、mobile/views/patrol-exec.vue |
+| 113 | DELETE | `/api/v1/fire/patrol-executions/{id}` | FireMonitoring | fire-monitoring | perm:fire-alarm:patrol:write | services/businessWrite.ts |
+| 114 | PUT | `/api/v1/fire/patrol-executions/{id}` | FireMonitoring | fire-monitoring | perm:fire-alarm:patrol:write | services/businessWrite.ts |
+| 115 | GET | `/api/v1/fire/patrols` | FireMonitoring | fire-monitoring | 登录 | services/fireMonitoring.ts / screen/components/common/FirePatrolDialog.vue、screen/components/panels/EquipmentMonitoring.vue… |
+| 116 | POST | `/api/v1/fire/patrols` | FireMonitoring | fire-monitoring | perm:fire:patrol-write | services/fireMonitoring.ts / screen/components/common/FirePatrolDialog.vue、screen/components/panels/EquipmentMonitoring.vue… |
+| 117 | DELETE | `/api/v1/fire/patrols/{id}` | FireMonitoring | fire-monitoring | perm:fire:patrol-write | services/fireMonitoring.ts |
+| 118 | PUT | `/api/v1/fire/patrols/{id}` | FireMonitoring | fire-monitoring | perm:fire:patrol-write | services/fireMonitoring.ts |
+| 119 | GET | `/api/v1/fire/rescue-forces` | FireMonitoring | fire-monitoring | 登录 | services/fireMonitoring.ts / screen/components/panels/DutyInfoPanel.vue |
+| 120 | GET | `/api/v1/fire/special-operations` | FireMonitoring | fire-monitoring | 登录 | services/fireMonitoring.ts、services/specialOperation.ts / screen/components/panels/SpecialOperationsPanel.vue |
 
 ### fire-situation（3）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 121 | GET | `/api/v1/fire-situation/areas` | FireSituation | ⚠️ 未归属 | 登录 | services/fireSituation.ts / screen/components/panels/SafetyAlarmPanel.vue |
-| 122 | GET | `/api/v1/fire-situation/markers` | FireSituation | ⚠️ 未归属 | 登录 | services/fireSituation.ts / screen/components/map/CenterMap.vue |
-| 123 | GET | `/api/v1/fire-situation/monitored-objects` | FireSituation | ⚠️ 未归属 | 登录 | services/fireSituation.ts |
+| 121 | GET | `/api/v1/fire-situation/areas` | FireSituation | fire-situation | 登录 | services/fireSituation.ts / screen/components/panels/SafetyAlarmPanel.vue |
+| 122 | GET | `/api/v1/fire-situation/markers` | FireSituation | fire-situation | 登录 | services/fireSituation.ts / screen/components/map/CenterMap.vue |
+| 123 | GET | `/api/v1/fire-situation/monitored-objects` | FireSituation | fire-situation | 登录 | services/fireSituation.ts |
 
 ### form-records（5）
 
@@ -265,17 +265,17 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 129 | GET | `/api/v1/facilities/detail` | Hazard | ⚠️ 未归属 | 登录 | services/hazard.ts / screen/views/AccidentEmergencyRescue.vue |
-| 130 | GET | `/api/v1/hazards` | Hazard | ⚠️ 未归属 | 登录 | services/hazard.ts / src/router/index.ts、screen/lib/composables/useScreenHazardData.ts… |
-| 131 | POST | `/api/v1/hazards` | Hazard | ⚠️ 未归属 | perm:hazard:write | services/hazard.ts / src/router/index.ts、screen/lib/composables/useScreenHazardData.ts… |
-| 132 | DELETE | `/api/v1/hazards/{id}` | Hazard | ⚠️ 未归属 | perm:hazard:write | services/hazard.ts |
-| 133 | GET | `/api/v1/hazards/{id}` | Hazard | ⚠️ 未归属 | 登录 | services/hazard.ts |
-| 134 | PUT | `/api/v1/hazards/{id}` | Hazard | ⚠️ 未归属 | perm:hazard:write | services/hazard.ts |
-| 135 | GET | `/api/v1/monitoring/alarms` | Hazard | ⚠️ 未归属 | 登录 | services/hazard.ts |
-| 136 | GET | `/api/v1/monitoring/points` | Hazard | ⚠️ 未归属 | 登录 | services/hazard.ts / mgmt/views/monitor/MonitorPointView.vue |
-| 137 | POST | `/api/v1/monitoring/points` | Hazard | ⚠️ 未归属 | perm:hazard:point-write | services/hazard.ts / mgmt/views/monitor/MonitorPointView.vue |
-| 138 | DELETE | `/api/v1/monitoring/points/{id}` | Hazard | ⚠️ 未归属 | perm:hazard:point-write | services/hazard.ts |
-| 139 | PUT | `/api/v1/monitoring/points/{id}` | Hazard | ⚠️ 未归属 | perm:hazard:point-write | services/hazard.ts |
+| 129 | GET | `/api/v1/facilities/detail` | Hazard | hazard | 登录 | services/hazard.ts / screen/views/AccidentEmergencyRescue.vue |
+| 130 | GET | `/api/v1/hazards` | Hazard | hazard | 登录 | services/hazard.ts / src/router/index.ts、screen/lib/composables/useScreenHazardData.ts… |
+| 131 | POST | `/api/v1/hazards` | Hazard | hazard | perm:hazard:write | services/hazard.ts / src/router/index.ts、screen/lib/composables/useScreenHazardData.ts… |
+| 132 | DELETE | `/api/v1/hazards/{id}` | Hazard | hazard | perm:hazard:write | services/hazard.ts |
+| 133 | GET | `/api/v1/hazards/{id}` | Hazard | hazard | 登录 | services/hazard.ts |
+| 134 | PUT | `/api/v1/hazards/{id}` | Hazard | hazard | perm:hazard:write | services/hazard.ts |
+| 135 | GET | `/api/v1/monitoring/alarms` | Hazard | hazard | 登录 | services/hazard.ts |
+| 136 | GET | `/api/v1/monitoring/points` | Hazard | hazard | 登录 | services/hazard.ts / mgmt/views/monitor/MonitorPointView.vue |
+| 137 | POST | `/api/v1/monitoring/points` | Hazard | hazard | perm:hazard:point-write | services/hazard.ts / mgmt/views/monitor/MonitorPointView.vue |
+| 138 | DELETE | `/api/v1/monitoring/points/{id}` | Hazard | hazard | perm:hazard:point-write | services/hazard.ts |
+| 139 | PUT | `/api/v1/monitoring/points/{id}` | Hazard | hazard | perm:hazard:point-write | services/hazard.ts |
 
 ### map（3）
 
@@ -345,53 +345,53 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 179 | GET | `/api/v1/security/bollards` | Security | ⚠️ 未归属 | 登录 | services/security.ts / mgmt/views/security/BollardView.vue |
-| 180 | POST | `/api/v1/security/bollards` | Security | ⚠️ 未归属 | perm:security:bollard-write | services/security.ts / mgmt/views/security/BollardView.vue |
-| 181 | DELETE | `/api/v1/security/bollards/{id}` | Security | ⚠️ 未归属 | perm:security:bollard-write | services/security.ts |
-| 182 | PUT | `/api/v1/security/bollards/{id}` | Security | ⚠️ 未归属 | perm:security:bollard-write | services/security.ts |
-| 183 | GET | `/api/v1/security/events` | Security | ⚠️ 未归属 | 登录 | services/securityEventStore.ts / screen/components/panels/security/EntryExitStatsPanel.vue、screen/lib/composables/useEntryCaptureListView.ts |
-| 184 | GET | `/api/v1/security/gate-controls` | Security | ⚠️ 未归属 | 登录 | services/security.ts / mgmt/router.ts、mgmt/views/security/BarrierView.vue… |
-| 185 | POST | `/api/v1/security/gate-controls` | Security | ⚠️ 未归属 | perm:security:gate-write | services/security.ts / mgmt/router.ts、mgmt/views/security/BarrierView.vue… |
-| 186 | DELETE | `/api/v1/security/gate-controls/{id}` | Security | ⚠️ 未归属 | perm:security:gate-write | services/security.ts |
-| 187 | PUT | `/api/v1/security/gate-controls/{id}` | Security | ⚠️ 未归属 | perm:security:gate-write | services/security.ts |
-| 188 | GET | `/api/v1/security/patrol-cameras` | Security | ⚠️ 未归属 | 登录 | services/security.ts / screen/components/panels/security/PerimeterAlarmCreateDialog.vue、screen/lib/composables/usePatrolLinkage.ts |
-| 189 | GET | `/api/v1/security/perimeter-alarms` | Security | perimeter-alarm | 登录 | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue、mgmt/views/security/PerimeterAlarmView.vue |
-| 190 | POST | `/api/v1/security/perimeter-alarms` | Security | perimeter-alarm | perm:security:perimeter-create | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue、mgmt/views/security/PerimeterAlarmView.vue |
-| 191 | GET | `/api/v1/security/perimeter-alarms/latest` | Security | perimeter-alarm | 登录 | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
-| 192 | DELETE | `/api/v1/security/perimeter-alarms/{id}` | Security | perimeter-alarm | perm:security:perimeter-delete | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
-| 193 | GET | `/api/v1/security/perimeter-alarms/{id}` | Security | perimeter-alarm | 登录 | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
-| 194 | PUT | `/api/v1/security/perimeter-alarms/{id}` | Security | perimeter-alarm | perm:security:perimeter-ack | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
-| 195 | GET | `/api/v1/security/perimeter-alarms/{id}/snapshot` | Security | perimeter-alarm | 登录 | services/security.ts |
-| 196 | GET | `/api/v1/security/search/person` | Security | ⚠️ 未归属 | 登录 | services/security.ts / mgmt/views/security/PersonnelRegView.vue |
-| 197 | POST | `/api/v1/security/search/person` | Security | ⚠️ 未归属 | perm:security:person-write | services/security.ts / mgmt/views/security/PersonnelRegView.vue |
-| 198 | DELETE | `/api/v1/security/search/person/{id}` | Security | ⚠️ 未归属 | perm:security:person-write | services/security.ts |
-| 199 | GET | `/api/v1/security/search/person/{id}` | Security | ⚠️ 未归属 | 登录 | services/security.ts |
-| 200 | PUT | `/api/v1/security/search/person/{id}` | Security | ⚠️ 未归属 | perm:security:person-write | services/security.ts |
-| 201 | GET | `/api/v1/security/search/vehicle` | Security | ⚠️ 未归属 | 登录 | services/security.ts / mgmt/views/security/VehicleRegView.vue |
-| 202 | POST | `/api/v1/security/search/vehicle` | Security | ⚠️ 未归属 | perm:security:vehicle-write | services/security.ts / mgmt/views/security/VehicleRegView.vue |
-| 203 | DELETE | `/api/v1/security/search/vehicle/{id}` | Security | ⚠️ 未归属 | perm:security:vehicle-write | services/security.ts |
-| 204 | GET | `/api/v1/security/search/vehicle/{id}` | Security | ⚠️ 未归属 | 登录 | services/security.ts |
-| 205 | PUT | `/api/v1/security/search/vehicle/{id}` | Security | ⚠️ 未归属 | perm:security:vehicle-write | services/security.ts |
-| 206 | GET | `/api/v1/security/track/summary` | Security | ⚠️ 未归属 | 登录 | services/security.ts |
-| 207 | GET | `/api/v1/security/track/timeline` | Security | ⚠️ 未归属 | 登录 | services/security.ts |
+| 179 | GET | `/api/v1/security/bollards` | Security | security | 登录 | services/security.ts / mgmt/views/security/BollardView.vue |
+| 180 | POST | `/api/v1/security/bollards` | Security | security | perm:security:bollard-write | services/security.ts / mgmt/views/security/BollardView.vue |
+| 181 | DELETE | `/api/v1/security/bollards/{id}` | Security | security | perm:security:bollard-write | services/security.ts |
+| 182 | PUT | `/api/v1/security/bollards/{id}` | Security | security | perm:security:bollard-write | services/security.ts |
+| 183 | GET | `/api/v1/security/events` | Security | security | 登录 | services/securityEventStore.ts / screen/components/panels/security/EntryExitStatsPanel.vue、screen/lib/composables/useEntryCaptureListView.ts |
+| 184 | GET | `/api/v1/security/gate-controls` | Security | security | 登录 | services/security.ts / mgmt/router.ts、mgmt/views/security/BarrierView.vue… |
+| 185 | POST | `/api/v1/security/gate-controls` | Security | security | perm:security:gate-write | services/security.ts / mgmt/router.ts、mgmt/views/security/BarrierView.vue… |
+| 186 | DELETE | `/api/v1/security/gate-controls/{id}` | Security | security | perm:security:gate-write | services/security.ts |
+| 187 | PUT | `/api/v1/security/gate-controls/{id}` | Security | security | perm:security:gate-write | services/security.ts |
+| 188 | GET | `/api/v1/security/patrol-cameras` | Security | security | 登录 | services/security.ts / screen/components/panels/security/PerimeterAlarmCreateDialog.vue、screen/lib/composables/usePatrolLinkage.ts |
+| 189 | GET | `/api/v1/security/perimeter-alarms` | Security | perimeter-alarm、security | 登录 | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue、mgmt/views/security/PerimeterAlarmView.vue |
+| 190 | POST | `/api/v1/security/perimeter-alarms` | Security | perimeter-alarm、security | perm:security:perimeter-create | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue、mgmt/views/security/PerimeterAlarmView.vue |
+| 191 | GET | `/api/v1/security/perimeter-alarms/latest` | Security | perimeter-alarm、security | 登录 | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
+| 192 | DELETE | `/api/v1/security/perimeter-alarms/{id}` | Security | perimeter-alarm、security | perm:security:perimeter-delete | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
+| 193 | GET | `/api/v1/security/perimeter-alarms/{id}` | Security | perimeter-alarm、security | 登录 | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
+| 194 | PUT | `/api/v1/security/perimeter-alarms/{id}` | Security | perimeter-alarm、security | perm:security:perimeter-ack | services/security.ts / screen/components/panels/security/SecurityStatusPanel.vue |
+| 195 | GET | `/api/v1/security/perimeter-alarms/{id}/snapshot` | Security | perimeter-alarm、security | 登录 | services/security.ts |
+| 196 | GET | `/api/v1/security/search/person` | Security | security | 登录 | services/security.ts / mgmt/views/security/PersonnelRegView.vue |
+| 197 | POST | `/api/v1/security/search/person` | Security | security | perm:security:person-write | services/security.ts / mgmt/views/security/PersonnelRegView.vue |
+| 198 | DELETE | `/api/v1/security/search/person/{id}` | Security | security | perm:security:person-write | services/security.ts |
+| 199 | GET | `/api/v1/security/search/person/{id}` | Security | security | 登录 | services/security.ts |
+| 200 | PUT | `/api/v1/security/search/person/{id}` | Security | security | perm:security:person-write | services/security.ts |
+| 201 | GET | `/api/v1/security/search/vehicle` | Security | security | 登录 | services/security.ts / mgmt/views/security/VehicleRegView.vue |
+| 202 | POST | `/api/v1/security/search/vehicle` | Security | security | perm:security:vehicle-write | services/security.ts / mgmt/views/security/VehicleRegView.vue |
+| 203 | DELETE | `/api/v1/security/search/vehicle/{id}` | Security | security | perm:security:vehicle-write | services/security.ts |
+| 204 | GET | `/api/v1/security/search/vehicle/{id}` | Security | security | 登录 | services/security.ts |
+| 205 | PUT | `/api/v1/security/search/vehicle/{id}` | Security | security | perm:security:vehicle-write | services/security.ts |
+| 206 | GET | `/api/v1/security/track/summary` | Security | security | 登录 | services/security.ts |
+| 207 | GET | `/api/v1/security/track/timeline` | Security | security | 登录 | services/security.ts |
 
 ### security-blacklist（3）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 208 | GET | `/api/v1/security/blacklist` | Blacklist | ⚠️ 未归属 | 登录 | services/securityBlacklist.ts / screen/components/panels/security/BlacklistDialog.vue |
-| 209 | DELETE | `/api/v1/security/blacklist/persons/{id}` | Blacklist | ⚠️ 未归属 | role:ADMIN | services/securityBlacklist.ts / screen/components/panels/security/BlacklistDialog.vue |
-| 210 | DELETE | `/api/v1/security/blacklist/vehicles/{id}` | Blacklist | ⚠️ 未归属 | role:ADMIN | services/securityBlacklist.ts / screen/components/panels/security/BlacklistDialog.vue |
+| 208 | GET | `/api/v1/security/blacklist` | Blacklist | security | 登录 | services/securityBlacklist.ts / screen/components/panels/security/BlacklistDialog.vue |
+| 209 | DELETE | `/api/v1/security/blacklist/persons/{id}` | Blacklist | security | role:ADMIN | services/securityBlacklist.ts / screen/components/panels/security/BlacklistDialog.vue |
+| 210 | DELETE | `/api/v1/security/blacklist/vehicles/{id}` | Blacklist | security | role:ADMIN | services/securityBlacklist.ts / screen/components/panels/security/BlacklistDialog.vue |
 
 ### special-operation（5）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 211 | GET | `/api/v1/special-operations` | SpecialOperation | ⚠️ 未归属 | 登录 | services/fireMonitoring.ts、services/specialOperation.ts / screen/components/panels/SpecialOperationsPanel.vue、screen/lib/composables/useSpecialOperationView.ts… |
-| 212 | POST | `/api/v1/special-operations` | SpecialOperation | ⚠️ 未归属 | perm:special-operation:write | services/fireMonitoring.ts、services/specialOperation.ts / screen/components/panels/SpecialOperationsPanel.vue、screen/lib/composables/useSpecialOperationView.ts… |
-| 213 | DELETE | `/api/v1/special-operations/{id}` | SpecialOperation | ⚠️ 未归属 | perm:special-operation:write | services/specialOperation.ts / screen/lib/composables/useSpecialOperationView.ts |
-| 214 | GET | `/api/v1/special-operations/{id}` | SpecialOperation | ⚠️ 未归属 | 登录 | services/specialOperation.ts / screen/lib/composables/useSpecialOperationView.ts |
-| 215 | PUT | `/api/v1/special-operations/{id}` | SpecialOperation | ⚠️ 未归属 | perm:special-operation:write | services/specialOperation.ts / screen/lib/composables/useSpecialOperationView.ts |
+| 211 | GET | `/api/v1/special-operations` | SpecialOperation | fire-monitoring、special-operation | 登录 | services/fireMonitoring.ts、services/specialOperation.ts / screen/components/panels/SpecialOperationsPanel.vue、screen/lib/composables/useSpecialOperationView.ts… |
+| 212 | POST | `/api/v1/special-operations` | SpecialOperation | fire-monitoring、special-operation | perm:special-operation:write | services/fireMonitoring.ts、services/specialOperation.ts / screen/components/panels/SpecialOperationsPanel.vue、screen/lib/composables/useSpecialOperationView.ts… |
+| 213 | DELETE | `/api/v1/special-operations/{id}` | SpecialOperation | special-operation | perm:special-operation:write | services/specialOperation.ts / screen/lib/composables/useSpecialOperationView.ts |
+| 214 | GET | `/api/v1/special-operations/{id}` | SpecialOperation | special-operation | 登录 | services/specialOperation.ts / screen/lib/composables/useSpecialOperationView.ts |
+| 215 | PUT | `/api/v1/special-operations/{id}` | SpecialOperation | special-operation | perm:special-operation:write | services/specialOperation.ts / screen/lib/composables/useSpecialOperationView.ts |
 
 ### system（31）
 
@@ -451,8 +451,8 @@
 | 257 | PUT | `/api/v1/tv/monitors/{code}` | Tv | tv | perm:tv:monitor:update | services/tv.ts / screen/components/panels/tv/VideoAnalysisPanel.vue、screen/lib/composables/useTvVideoDetail.ts… |
 | 258 | GET | `/api/v1/tv/monitors/{code}/snapshots` | Tv | tv | 登录 | services/tv.ts / src/views/tv/playback.vue |
 | 259 | GET | `/api/v1/tv/overview` | Tv | ⚠️ 未归属 | 登录 | services/tv.ts / screen/components/panels/tv/EventAnalysisPanel.vue、screen/components/panels/tv/MaintenanceOrderPanel.vue… |
-| 260 | GET | `/api/v1/tv/snapshots` | Tv | tv | 登录 | services/tv.ts / screen/components/panels/tv/TvSnapshotFeedPanel.vue、src/views/tv/playback.vue |
-| 261 | POST | `/api/v1/tv/snapshots` | Tv | tv | perm:video:snapshot:create | services/tv.ts / screen/components/panels/tv/TvSnapshotFeedPanel.vue、src/views/tv/playback.vue |
+| 260 | GET | `/api/v1/tv/snapshots` | Tv | tv、video | 登录 | services/tv.ts / screen/components/panels/tv/TvSnapshotFeedPanel.vue、src/views/tv/playback.vue |
+| 261 | POST | `/api/v1/tv/snapshots` | Tv | tv、video | perm:video:snapshot:create | services/tv.ts / screen/components/panels/tv/TvSnapshotFeedPanel.vue、src/views/tv/playback.vue |
 | 262 | POST | `/api/v1/tv/snapshots/{id}/ack` | Tv | tv | perm:video:snapshot:ack | services/tv.ts / screen/components/panels/tv/TvSnapshotFeedPanel.vue |
 | 263 | GET | `/api/v1/tv/snapshots/{id}/snapshot` | Tv | tv | 登录 | services/tv.ts / src/views/tv/playback.vue |
 
@@ -460,13 +460,13 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 264 | GET | `/api/v1/typhoon/dispatch-orders` | TyphoonEmergency | ⚠️ 未归属 | 登录 | services/businessWrite.ts / screen/views/TyphoonEmergencyDetailV3.vue、mgmt/views/typhoon/TyphoonDispatchView.vue |
-| 265 | POST | `/api/v1/typhoon/dispatch-orders` | TyphoonEmergency | ⚠️ 未归属 | perm:typhoon:dispatch:write | services/businessWrite.ts / screen/views/TyphoonEmergencyDetailV3.vue、mgmt/views/typhoon/TyphoonDispatchView.vue |
-| 266 | DELETE | `/api/v1/typhoon/dispatch-orders/{id}` | TyphoonEmergency | ⚠️ 未归属 | perm:typhoon:dispatch:write | services/businessWrite.ts |
-| 267 | PUT | `/api/v1/typhoon/dispatch-orders/{id}` | TyphoonEmergency | ⚠️ 未归属 | perm:typhoon:dispatch:write | services/businessWrite.ts |
-| 268 | GET | `/api/v1/typhoon/dispatch-resources` | TyphoonEmergency | ⚠️ 未归属 | 登录 | services/typhoonEmergency.ts |
-| 269 | GET | `/api/v1/typhoon/incident` | TyphoonEmergency | ⚠️ 未归属 | 登录 | services/typhoonEmergency.ts |
-| 270 | GET | `/api/v1/typhoon/response-board` | TyphoonEmergency | ⚠️ 未归属 | 登录 | services/typhoonEmergency.ts |
+| 264 | GET | `/api/v1/typhoon/dispatch-orders` | TyphoonEmergency | typhoon-emergency | 登录 | services/businessWrite.ts / screen/views/TyphoonEmergencyDetailV3.vue、mgmt/views/typhoon/TyphoonDispatchView.vue |
+| 265 | POST | `/api/v1/typhoon/dispatch-orders` | TyphoonEmergency | typhoon-emergency | perm:typhoon:dispatch:write | services/businessWrite.ts / screen/views/TyphoonEmergencyDetailV3.vue、mgmt/views/typhoon/TyphoonDispatchView.vue |
+| 266 | DELETE | `/api/v1/typhoon/dispatch-orders/{id}` | TyphoonEmergency | typhoon-emergency | perm:typhoon:dispatch:write | services/businessWrite.ts |
+| 267 | PUT | `/api/v1/typhoon/dispatch-orders/{id}` | TyphoonEmergency | typhoon-emergency | perm:typhoon:dispatch:write | services/businessWrite.ts |
+| 268 | GET | `/api/v1/typhoon/dispatch-resources` | TyphoonEmergency | typhoon-emergency | 登录 | services/typhoonEmergency.ts |
+| 269 | GET | `/api/v1/typhoon/incident` | TyphoonEmergency | typhoon-emergency | 登录 | services/typhoonEmergency.ts |
+| 270 | GET | `/api/v1/typhoon/response-board` | TyphoonEmergency | typhoon-emergency | 登录 | services/typhoonEmergency.ts |
 
 ### uplink（3）
 
@@ -480,64 +480,54 @@
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 274 | GET | `/api/v1/video/cameras` | Video | ⚠️ 未归属 | 登录 | services/fireImages.ts、services/video.ts / screen/components/video-control/VideoControlBottomBar.vue、screen/components/video-control/VideoControlGrid.vue… |
-| 275 | POST | `/api/v1/video/cameras` | Video | ⚠️ 未归属 | perm:video:camera-write | services/fireImages.ts、services/video.ts / screen/components/video-control/VideoControlBottomBar.vue、screen/components/video-control/VideoControlGrid.vue… |
-| 276 | DELETE | `/api/v1/video/cameras/{id}` | Video | ⚠️ 未归属 | perm:video:camera-write | services/video.ts |
-| 277 | PUT | `/api/v1/video/cameras/{id}` | Video | ⚠️ 未归属 | perm:video:camera-write | services/video.ts |
-| 278 | GET | `/api/v1/video/cameras/{id}/snapshot` | Video | ⚠️ 未归属 | 登录 | services/video.ts |
-| 279 | GET | `/api/v1/video/important-groups` | Video | ⚠️ 未归属 | 登录 | services/video.ts / screen/components/panels/tv/ImportantVideoPanel.vue |
-| 280 | GET | `/api/v1/video/linkage-options` | Video | ⚠️ 未归属 | 登录 | services/video.ts / screen/components/video-wall/VideoLinkageConfigDialog.vue、mgmt/components/VideoLinkageEditDialog.vue |
-| 281 | GET | `/api/v1/video/linkages` | Video | ⚠️ 未归属 | 登录 | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts、mgmt/router.ts… |
-| 282 | POST | `/api/v1/video/linkages` | Video | ⚠️ 未归属 | role:ADMIN | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts、mgmt/router.ts… |
-| 283 | DELETE | `/api/v1/video/linkages/{configCode}` | Video | ⚠️ 未归属 | role:ADMIN | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts |
-| 284 | PUT | `/api/v1/video/linkages/{configCode}` | Video | ⚠️ 未归属 | role:ADMIN | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts |
-| 285 | GET | `/api/v1/video/linkages/{configCode}/rules` | Video | ⚠️ 未归属 | 登录 | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts |
-| 286 | GET | `/api/v1/video/navigation` | Video | ⚠️ 未归属 | 登录 | services/video.ts / screen/components/video-control/VideoControlSidebar.vue |
-| 287 | GET | `/api/v1/video/wall-navigation` | Video | ⚠️ 未归属 | 登录 | services/video.ts / screen/components/video-wall/videoWallStore.ts |
+| 274 | GET | `/api/v1/video/cameras` | Video | video | 登录 | services/fireImages.ts、services/video.ts / screen/components/video-control/VideoControlBottomBar.vue、screen/components/video-control/VideoControlGrid.vue… |
+| 275 | POST | `/api/v1/video/cameras` | Video | video | perm:video:camera-write | services/fireImages.ts、services/video.ts / screen/components/video-control/VideoControlBottomBar.vue、screen/components/video-control/VideoControlGrid.vue… |
+| 276 | DELETE | `/api/v1/video/cameras/{id}` | Video | video | perm:video:camera-write | services/video.ts |
+| 277 | PUT | `/api/v1/video/cameras/{id}` | Video | video | perm:video:camera-write | services/video.ts |
+| 278 | GET | `/api/v1/video/cameras/{id}/snapshot` | Video | video | 登录 | services/video.ts |
+| 279 | GET | `/api/v1/video/important-groups` | Video | video | 登录 | services/video.ts / screen/components/panels/tv/ImportantVideoPanel.vue |
+| 280 | GET | `/api/v1/video/linkage-options` | Video | video | 登录 | services/video.ts / screen/components/video-wall/VideoLinkageConfigDialog.vue、mgmt/components/VideoLinkageEditDialog.vue |
+| 281 | GET | `/api/v1/video/linkages` | Video | video | 登录 | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts、mgmt/router.ts… |
+| 282 | POST | `/api/v1/video/linkages` | Video | video | role:ADMIN | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts、mgmt/router.ts… |
+| 283 | DELETE | `/api/v1/video/linkages/{configCode}` | Video | video | role:ADMIN | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts |
+| 284 | PUT | `/api/v1/video/linkages/{configCode}` | Video | video | role:ADMIN | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts |
+| 285 | GET | `/api/v1/video/linkages/{configCode}/rules` | Video | video | 登录 | services/video.ts / screen/lib/composables/useVideoLinkageConfig.ts |
+| 286 | GET | `/api/v1/video/navigation` | Video | video | 登录 | services/video.ts / screen/components/video-control/VideoControlSidebar.vue |
+| 287 | GET | `/api/v1/video/wall-navigation` | Video | video | 登录 | services/video.ts / screen/components/video-wall/videoWallStore.ts |
 
 ### weather（1）
 
 | # | 方法 | 端点 | 控制器 | 能力域 spec | 鉴权 | 前端消费模块 |
 | - | ---- | ---- | ------ | ----------- | ---- | ------------ |
-| 288 | GET | `/api/v1/weather/overview` | Weather | ⚠️ 未归属 | 登录 | services/weather.ts |
+| 288 | GET | `/api/v1/weather/overview` | Weather | weather | 登录 | services/weather.ts |
 
-## 3. 能力域 spec 覆盖缺口（2026-10-06 量化）
+## 3. 能力域 spec 覆盖缺口（2026-10-06 量化 · 回填后）
 
 > 判据：§2「能力域 spec」列为 `⚠️ 未归属` 的端点数 = 后端 `openspec/specs/*/spec.md` 全文中**未出现该端点路径**的端点数。
 
 | 契约域 | 端点 | 无 spec 引用 | 缺口率 |
 | ------ | ---: | ----------: | -----: |
-| emergency | 31 | 24 | 77% |
-| security | 29 | 22 | 75% |
-| emergency-plan | 16 | 16 | 100% |
-| fire-facility | 15 | 15 | 100% |
 | system | 31 | 15 | 48% |
 | rescue-resource | 20 | 14 | 70% |
-| video | 14 | 14 | 100% |
-| fire-monitoring | 12 | 12 | 100% |
-| hazard | 11 | 11 | 100% |
 | communication | 9 | 7 | 77% |
+| emergency | 31 | 7 | 22% |
 | production | 9 | 7 | 77% |
-| typhoon-emergency | 7 | 7 | 100% |
-| special-operation | 5 | 5 | 100% |
 | tv | 15 | 5 | 33% |
-| fire-alarm | 4 | 4 | 100% |
-| security-blacklist | 3 | 3 | 100% |
 | dashboard | 7 | 3 | 42% |
 | device | 5 | 3 | 60% |
-| fire-situation | 3 | 3 | 100% |
 | mgmt-ledger | 5 | 3 | 60% |
 | auth | 7 | 1 | 14% |
 | emergency-event | 7 | 1 | 14% |
-| weather | 1 | 1 | 100% |
-| **合计** | **288** | **196** | **68%** |
+| **合计** | **288** | **66** | **22%** |
+
+accident-rescue、alarm、drills、emergency-plan、fire-alarm、fire-facility、fire-monitoring、fire-situation、form-records、hazard、map、msds、security、security-blacklist、special-operation、tasks、typhoon-emergency、uplink、video、weather
 
 **怎么读这张表（避免误判为「这些功能没做」）**
 
 1. capability spec 是**需求规约**（Requirement / Scenario），不是端点清单；端点已实现且有契约、有前端消费、有授权守门（三项校验均 0 缺口），**功能本身是闭环的**。
-2. 但本文 §5 维护规则要求「新增端点：先建/归属 capability spec → 写契约 → 在此表追加一行」。**196 条（68%）缺归属留痕，是真实的流程债务**——甲方若按「功能项 → 端点 → spec → 测试」四层追溯，这 196 条在第 3 层会断链。
-3. **100% 缺口的 11 个域共 91 条**（emergency-plan / fire-facility / video / fire-monitoring / hazard / typhoon-emergency / special-operation / fire-alarm / security-blacklist / fire-situation / weather）建议优先补；已完整覆盖的 8 个域（accident-rescue / alarm / drills / form-records / map / msds / tasks / uplink）可作范本。
-4. **不主张为凑数而建 spec**：补的方式优先是「在既有 spec 增 Requirement」（如 `map-geojson` 吸收 hazard/device），只有确实构成独立能力时才新建 spec 目录；新建须走 openspec L3/L4 流程，不在本文自行决定。
+2. 但本文 §5 维护规则要求「新增端点：先建/归属 capability spec → 写契约 → 在此表追加一行」。缺归属留痕是真实的流程债务——甲方若按「功能项 → 端点 → spec → 测试」四层追溯，这些条目在第 3 层会断链。
+3. **缺口根因已定位（2026-10-06）**：不是「需求没写」，而是**已归档 Change 的 `spec-delta.md` 从未回填进 `openspec/specs/<capability>/spec.md`**——72 个归档 Change 中 70 个带 delta，但 `fire-facility` / `video` / `hazard` 等能力域在 `openspec/specs/` 下连目录都没有。
+4. **首批回填已完成**：Change `openspec/archive/2026-10-06-spec-delta-backfill/` 新建 11 个 capability spec 并补充 `emergency-reference`，缺口由 **196/288（68%）降至 66/288（22%）**，100% 缺口的 11 个域全部清零。剩余缺口按域分批补，**不主张为凑数新建无需求支撑的 spec**。
 
 ## 4. 已知债务
 
@@ -545,20 +535,23 @@
   - 「认证/RBAC 域无独立 capability spec」→ `openspec/specs/auth-rbac/spec.md` 已建（8 条 Requirement）。
   - 「Prometheus 指标端点未入 spec」→ 已入 `observability-probes` spec 的 `### Requirement: Prometheus 指标端点`。
   - 「追溯清单只到 34 端点」→ 本次 §1 / §2 已由脚本全量重建为 288 条，并固化重跑方式（§0）。
+  - 「spec 覆盖缺口 196 条」→ 首批回填后降至 **66 条**（见 §3 与 Change `2026-10-06-spec-delta-backfill`）。
+- ⬜ **spec 覆盖缺口剩余 66 条**：集中在 `system`（15）/ `rescue-resource`（14）/ `communication`（7）/ `production`（7）/ `emergency`（7）/ `tv`（5）/ `dashboard`（3）/ `device`（3）/ `mgmt-ledger`（3）/ `auth`（1）/ `emergency-event`（1）。建议下一批按域补，优先在既有 spec 增 Requirement。
 - ⬜ **甲方《功能项清单》缺失（阻塞中）**：本文为内部派生基线；一旦甲方提供需求文档，须逐条回链编号，建立「功能项 → 端点 → spec → 测试」四层可追溯。
-- ⬜ **spec 覆盖缺口 196 条（本次新登记）**：见 §3，按域分批补，不阻塞交付但阻塞甲方追溯。
 - ⬜ **（`scripts/check-endpoint-authz.mjs` 既有标注）**：`Uplink#reportAudit`（`POST /audit/log`）现状登录即可提交，任意登录账号可伪造审计记录，待产品/安全确认是否收紧——**不是加 `role=ADMIN`**（会挡死普通用户上报），应在 Service 侧校验「仅允许上报与自己相关的动作」。
 
 ## 5. 维护规则
 
-1. **新增端点**：先建/归属 capability spec（L3/L4）→ 写契约（前端 `docs/api/*.openapi.json`）→ **重跑 `python scripts/gen-scope-inventory.py` 回填 §1 / §2** → 补单测 → `node scripts/check-api-contract.mjs --strict` 通过 → 同步 §3 缺口表。
-2. **端点下线**：spec 标 Deprecated → 契约移除 → 前端同步 → 重跑脚本刷新本文。
-3. **禁止手抄 §1 / §2**：手抄必然再次失真（2026-10-06 修订前的 37 vs 288 即教训）。脚本只读代码与契约，不做任何写入，可安全反复执行。
-4. 本文与 `openspec/specs/*`、`frontend-scaffold/docs/requirement/README.md`（业务域与权限模型）互为补充：本文是「后端交付了什么」，前端文档是「业务怎么跑」。
+1. **新增端点**：先建/归属 capability spec（L3/L4）→ 写契约（前端 `docs/api/*.openapi.json`）→ **重跑 `python scripts/gen-scope-inventory.py` 回填 §1 / §2 / §3** → 补单测 → `node scripts/check-api-contract.mjs --strict` 通过。
+2. **归档 Change 时必须把 `spec-delta.md` 合并进 `openspec/specs/<capability>/spec.md`**——2026-10-06 的 196 条缺口正是「只归档不合并」造成的。合并后重跑本脚本，缺口数应下降。
+3. **端点下线**：spec 标 Deprecated → 契约移除 → 前端同步 → 重跑脚本刷新本文。
+4. **禁止手抄 §1 / §2 / §3**：手抄必然再次失真（2026-10-06 修订前的 37 vs 288 即教训）。脚本只读代码与契约，不做任何写入，可安全反复执行。
+5. 本文与 `openspec/specs/*`、`frontend-scaffold/docs/requirement/README.md`（业务域与权限模型）互为补充：本文是「后端交付了什么」，前端文档是「业务怎么跑」。
 
 ## 6. 修订记录
 
 | 日期 | 修订 |
 | ---- | ---- |
 | 2026-09-16 | 初版：手工登记 37 条（34 REST + 1 WS）+ 9 个能力域交付状态。 |
-| 2026-10-06 | 全量重建：§0 改为脚本反推口径；§1 / §2 覆盖 37 Controller / 288 端点 / 31 契约域；新增 §3 spec 覆盖缺口量化（196/288）；§4 订正已解决债务 3 项、新增缺口 1 项；§5 固化「禁止手抄」规则。新增 `scripts/gen-scope-inventory.py`。 |
+| 2026-10-06（一） | 全量重建：§0 改为脚本反推口径；§1 / §2 覆盖 37 Controller / 288 端点 / 31 契约域；新增 §3 spec 覆盖缺口量化（196/288）；§4 订正已解决债务 3 项；§5 固化「禁止手抄」规则。新增 `scripts/gen-scope-inventory.py`。 |
+| 2026-10-06（二） | 首批 spec 回填：新建 11 个 capability spec + 补充 `emergency-reference`，缺口 196 → **66（22%）**，100% 缺口域清零；§3 改为脚本生成（新增 `--gaps`）；§5 新增「归档 Change 必须合并 spec-delta」规则。Change `2026-10-06-spec-delta-backfill`。 |
