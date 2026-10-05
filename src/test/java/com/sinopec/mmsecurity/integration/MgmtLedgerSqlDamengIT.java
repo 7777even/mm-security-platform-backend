@@ -77,6 +77,13 @@ class MgmtLedgerSqlDamengIT {
     }
 
     private void seed(Statement st) throws Exception {
+        // 达梦是本机持久实例（不像 PG 每次用全新容器），重复跑本 IT 会残留上一轮种子，
+        // 直接 INSERT 会撞唯一性约束。故先按 id 区间清理，保证幂等、可反复执行。
+        // 顺序须先子后父：cell -> row -> meta。
+        st.execute("DELETE FROM mgmt_ledger_cell WHERE row_id >= 9101");
+        st.execute("DELETE FROM mgmt_ledger_row WHERE id >= 9101");
+        st.execute("DELETE FROM mgmt_ledger_meta WHERE id = 9001");
+
         // DM8：这些表 id 均为 IDENTITY 自增列，显式给 id 必须先用 SET IDENTITY_INSERT 打开
         // （会话级、同一时刻只能对一张表 ON），插完立刻 OFF。
         st.execute("SET IDENTITY_INSERT mgmt_ledger_meta ON");
