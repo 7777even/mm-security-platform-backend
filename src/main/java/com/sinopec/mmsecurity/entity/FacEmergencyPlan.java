@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -33,7 +34,10 @@ public class FacEmergencyPlan implements Serializable {
     /**
      * 业务域：production=生产域 / fire=消防域 / perimeter=周界域 / superior=上级单位域。
      * 用于生产应急二级功能按域筛选「域内核预案」。
+     * 列名 domain_code：`domain` 是达梦 DM8 保留字（ADD domain 报 -2007，双引号也绕不过），
+     * 按仓库规约改列名 + @TableField 映射，三方言统一。
      */
+    @TableField("domain_code")
     private String domain;
 
     /** 核预案标记（0/1）：是否属核生化/重点核管控类预案。 */

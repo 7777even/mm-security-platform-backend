@@ -1,6 +1,7 @@
 package com.sinopec.mmsecurity.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -26,6 +27,8 @@ public class FacEmergencyPlanInvokeLog implements Serializable {
 
     private String planName;
 
+    /** 调用时所属业务域。列名 domain_code：`domain` 是达梦 DM8 保留字，按仓库规约改列名 + @TableField 映射。 */
+    @TableField("domain_code")
     private String domain;
 
     private String operator;
