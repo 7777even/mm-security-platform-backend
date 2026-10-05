@@ -1,9 +1,10 @@
 package com.sinopec.mmsecurity.entity;
 
+import com.sinopec.mmsecurity.websocket.ZoneAware;
+
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.sinopec.mmsecurity.websocket.ZoneAware;
 import lombok.Data;
 
 import java.time.LocalDateTime;
