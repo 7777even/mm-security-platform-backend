@@ -38,8 +38,9 @@
 ### 0.4 完成底线
 
 - 后端单测基线（standalone MockMvc + 纯 Mockito）须**全绿**。
-- 带 DB 的 `*IT`：H2（`DbLayerIntegrationIT`）与 **PostgreSQL 真机**（`PostgresqlFlywayMigrationIT` + `MgmtLedgerSqlPostgresqlIT`，Testcontainers 起容器，2026-10-05 起已跑通）须全绿；**达梦**需外部 DM 实例 + `DmJdbcDriver18.jar`，当前**未执行须如实报告**，禁止用「零 DB 通过」冒充。
-- 🚨 H2 通过 ≠ PG / 达梦通过；三方言各有独立迁移目录，未跑到的方言必须显式声明「未执行」。
+- 带 DB 的 `*IT`：**三方言真机 IT 已全部全绿**（2026-10-06）——H2 `DbLayerIntegrationIT` 6/6、PostgreSQL（Testcontainers，104 迁移 v107）2/2、**达梦 DM8（本机 `localhost:5236` 实例，V1–V107）2/2**。改迁移或 SQL 后**三方言都要重跑**；某方言确实跑不到须显式声明「未执行」，禁止用「零 DB 通过」冒充。
+- 🚨 H2 通过 ≠ PG / 达梦通过。达梦三个硬限制：①自增列显式插 id 须 `SET IDENTITY_INSERT <表> ON/OFF`（`-2723`）；②无法重置 IDENTITY 起始值（`RESTART WITH` 报 `-2007`，`DROP IDENTITY` 不可逆），靠应用层 `LedgerIdSupport.nextId` 规避；③`domain` 是硬保留字（双引号也绕不过），列名须 `domain_code` + `@TableField("domain_code")`。
+- ⚠️ H2 dev 库**已应用的 V 文件不可改**（checksum 失败）→ 用新增 V108+ rename 迁移；PG（Testcontainers 空库）与达梦（未应用的 V）可直接改。达梦 IT 靠 `DAMENG_JDBC_URL` 门控，不设则 skip。
 - 前端 `vitest run` + `vue-tsc` 须全绿；改 `src/` 后须重建子应用产物。
 - 提交按 scope 拆分、不 amend；两库**独立提交、独立推送**。
 
