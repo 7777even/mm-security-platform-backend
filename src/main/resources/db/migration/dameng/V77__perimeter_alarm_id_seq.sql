@@ -1,6 +1,18 @@
 -- =============================================================================
--- V77 复位 fac_perimeter_alarm 自增主键序列（达梦 DM8 方言，未实跑验证）
---   同 H2/PG：V29 种子显式插入 id=1,2 不会推进 IDENTITY(1,1) 序列，导致录入 INSERT 主键冲突。
---   当前种子固定 2 行（id=1,2），复位为 3；若后续向本表新增种子行须同步上调。
+-- V77 复位 fac_perimeter_alarm 自增主键序列（达梦 DM8 方言，2026-10-05 实跑确认）
+--
+-- ⚠️ 达梦 DM8 不支持在线重置 IDENTITY 起始值（H2/PG 的 RESTART WITH / setval 均不适用）：
+--    `ALTER TABLE ... ALTER COLUMN id RESTART WITH 3`  -> -2007 语法分析出错
+--    实测候选语法全部失败：RESTART WITH 3 / RESTART WITH (3) / MODIFY (id ... IDENTITY(3,1))
+--    / ALTER COLUMN id SET IDENTITY / DBCC CHECKIDENT / ALTER COLUMN id INITIAL WITH 3。
+--    唯一可用的是 `ALTER TABLE ... DROP IDENTITY`，但 DROP 后无法用 ALTER 加回
+--    （ADD IDENTITY / SET IDENTITY / MODIFY 全失败），故不可用于"复位"。
+--
+-- 因此本文件在达梦下为 no-op。序列滞后问题（V29 种子显式写入 id=1,2 不推进
+-- IDENTITY(1,1)）改由应用层规避：写端点统一用 `LedgerIdSupport.nextId/nextSortNo`
+-- 显式 max+1 生成主键，不依赖数据库自增序列。这与项目既有铁律一致。
+--
+-- 若将来达梦提供 RESTART 能力，或改用独立 SEQUENCE 对象替代 IDENTITY，可在此补上复位逻辑。
 -- =============================================================================
-ALTER TABLE fac_perimeter_alarm ALTER COLUMN id RESTART WITH 3;
+-- no-op：达梦无对应语法，见上方说明。空迁移由 Flyway 正常记录并标记成功。
+SELECT 1 FROM dual WHERE 1 = 0;
