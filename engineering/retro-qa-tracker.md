@@ -21,3 +21,4 @@
 | 2026-09-07 | retro | alarm-trend | L3/L4 | [engineering/retro/2026-09-07-alarm-trend.md](../retro/2026-09-07-alarm-trend.md) | |
 | 2026-09-07 | retro | backend-baseline | L3/L4 | [engineering/retro/2026-09-07-backend-baseline.md](../retro/2026-09-07-backend-baseline.md) | |
 | 2026-09-07 | retro | dashboard-realtime-cleanup | L3/L4 | [engineering/retro/2026-09-07-dashboard-realtime-cleanup.md](../retro/2026-09-07-dashboard-realtime-cleanup.md) | |
+| 2026-10-06 | retro | penetration-static-self-audit | 阶段7 | [engineering/retro/2026-10-06-penetration-static-self-audit.md](2026-10-06-penetration-static-self-audit.md) | 离线可证条目先行：148 写端点 0 违规/BCrypt/CORS fail-fast/零下行硬控/审计不可变/SQL 无拼接/ABAC 纯配置 |

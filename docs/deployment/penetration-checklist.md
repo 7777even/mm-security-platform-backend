@@ -80,3 +80,12 @@
 - 阻塞项升级为 L4 门禁（须人工决策后实施）。
 - 复核报告同步甲方，等保条款对齐 `customer-environment-questionnaire.md §3`。
 - 复核完成后将本清单状态回填 `docs/architecture/roadmap.md` 阶段 7「安全渗透复核」项，置 ✅。
+
+## 8. 本机静态自审记录（2026-10-06）
+
+> 离线可证部分已先期执行，不依赖 release 窗口/甲方输入：实测 `check-endpoint-authz.mjs` **148 写端点 0 违规**；
+> 源码/配置 grep 坐实 JWT/签名密钥 fail-fast、BCrypt、CORS(`*`/空即 `IllegalStateException`)、零下行硬控 503、审计不可变（无 DELETE/PUT `/audit/log`）、
+> SQL 注入无 `${}` 拼接、ABAC 纯配置无硬编码等。
+> 完整逐条状态（通过/风险/阻塞）+ 四段式风险登记见
+> [`engineering/retro/2026-10-06-penetration-static-self-audit.md`](../engineering/retro/2026-10-06-penetration-static-self-audit.md)。
+> 仍标 `[ ]` 的条目 = 需 dev/prod 实例实跑或甲方问卷回收，留待 release 窗口执行。
