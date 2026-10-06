@@ -27,7 +27,7 @@ services:
   # ---------- 达梦 DM8（生产目标库，默认不启动）----------
   db-dm:
     profiles: ["dm"]
-    image: ${DM_IMAGE:?达梦镜像需自备（在 .env 中设置 DM_IMAGE）}
+    image: ${DM_IMAGE:-dm8:latest}   # 达梦镜像需自备；dev 默认可不起 db-dm，故给占位默认值避免插值失败
     container_name: mm-db-dm
     environment:
       DM_SYSDBA_PWD: ${DM_SYSDBA_PWD:-SysDba@2026}
