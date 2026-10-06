@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +42,14 @@ public class AbacZoneMappingProperties {
     /** location/area 标识 → 防区名列表（须与 sys_zone.zone_name 对齐）。默认空 = fail-open。 */
     private Map<String, List<String>> locationToZones = new LinkedHashMap<>();
 
-    /** 别名 → location-to-zones 的键（prefix/contains 模式下的同义表述兜底）。默认空 = 无别名。 */
-    private Map<String, String> aliases = new LinkedHashMap<>();
+    /**
+     * 别名 → location-to-zones 的键（prefix/contains 模式下的同义表述兜底）。默认空 = 无别名。
+     * 以 {@code "alias=zone"} 列表形式注入（见 application-dev.yml 的 {@code alias-pairs}）：
+     * 因 Spring Boot 3.2.x 对「与 {@code Map<String,List<String>>} 同级的裸 {@code Map<String,String>}」
+     * 嵌套绑定存在缺陷（会把首条值的标量误当作整个 Map，报 String→Map ConverterNotFoundException），
+     * 故用 {@code List<String>} 承载、运行时解析为 Map，规避该缺陷。
+     */
+    private List<String> aliasPairs = new ArrayList<>();
 
     public String getMatchMode() {
         return matchMode;
@@ -60,11 +67,32 @@ public class AbacZoneMappingProperties {
         this.locationToZones = locationToZones == null ? new LinkedHashMap<>() : locationToZones;
     }
 
+    /**
+     * 解析后的别名 → canonical 键（运行时由 {@link #aliasPairs} 惰性构建，保序用 LinkedHashMap）。
+     * 供 {@link com.sinopec.mmsecurity.security.ZoneMappingResolver} 读取；只读，不暴露 setter，
+     * 避免 Spring 把 YAML 的 {@code alias-pairs} 误绑到 Map 属性上。
+     */
     public Map<String, String> getAliases() {
-        return aliases;
+        Map<String, String> map = new LinkedHashMap<>();
+        for (String pair : aliasPairs) {
+            if (pair == null) {
+                continue;
+            }
+            int sep = pair.indexOf('=');
+            if (sep <= 0) {
+                continue; // 非法条目静默忽略（fail-open）
+            }
+            map.put(pair.substring(0, sep).trim(), pair.substring(sep + 1).trim());
+        }
+        return map;
     }
 
-    public void setAliases(Map<String, String> aliases) {
-        this.aliases = aliases == null ? new LinkedHashMap<>() : aliases;
+    /** Spring 绑定入口：YAML {@code alias-pairs} 以 list-of-"alias=zone" 提供。 */
+    public List<String> getAliasPairs() {
+        return aliasPairs;
+    }
+
+    public void setAliasPairs(List<String> aliasPairs) {
+        this.aliasPairs = aliasPairs == null ? new ArrayList<>() : aliasPairs;
     }
 }

@@ -114,7 +114,11 @@ abac:
       门: [全厂范围]
       动力站: [公用工程区]
       公用工程站: [公用工程区]
-    aliases:
-      水东港: 码头区
-      水东港区: 码头区
-      乙烯裂解: 乙烯区
+    # 别名兜底（prefix/contains 模式下同义表述 → canonical 防区键）。
+    # 注意：Spring Boot 3.2.x 对「与 Map<String,List<String>> 同级的裸 Map<String,String>」嵌套绑定存在缺陷
+    # （会把首条值的标量误当作整个 Map，报 ConverterNotFoundException: String→Map），故用 list-of-"alias=zone"
+    # 形式承载，由 AbacZoneMappingProperties.getAliases() 运行时解析，规避该缺陷。
+    alias-pairs:
+      - 水东港=码头区
+      - 水东港区=码头区
+      - 乙烯裂解=乙烯区

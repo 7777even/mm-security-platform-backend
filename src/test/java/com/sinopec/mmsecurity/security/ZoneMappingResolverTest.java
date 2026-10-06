@@ -63,7 +63,7 @@ class ZoneMappingResolverTest {
         AbacZoneMappingProperties p = new AbacZoneMappingProperties();
         p.setMatchMode("contains");
         p.setLocationToZones(Map.of("炼油区", List.of("炼油区")));
-        p.setAliases(Map.of("催化裂化", "炼油区"));
+        p.setAliasPairs(List.of("催化裂化=炼油区"));
         ZoneMappingResolver r = new ZoneMappingResolver(p);
         // 同义表述不含防区名，但命中别名 → 重定向到 canonical 防区
         assertEquals(Set.of("炼油区"), r.resolveZonesByLocation("催化裂化装置西侧"));
@@ -172,7 +172,7 @@ class ZoneMappingResolverTest {
         AbacZoneMappingProperties p = new AbacZoneMappingProperties();
         p.setMatchMode("contains");
         p.setLocationToZones(Map.of("码头区", List.of("码头区"), "码头", List.of("码头区")));
-        p.setAliases(Map.of("水东港", "码头区", "水东港区", "码头区"));
+        p.setAliasPairs(List.of("水东港=码头区", "水东港区=码头区"));
         ZoneMappingResolver r = new ZoneMappingResolver(p);
         assertEquals(Set.of("码头区"), r.resolveZonesByLocation("水东港区码头"));
         assertEquals(Set.of("码头区"), r.resolveZonesByLocation("港区液体化工码头2号泊位"));
