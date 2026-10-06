@@ -188,7 +188,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 
 - 端口：base `application.yml` 为 `8080`，dev profile（`application-dev.yml`）对齐前端 `VITE_API_BASE` 改为 `8787`（前端 dev 关 mock 后直连，零前端改动）。REST 前缀 `/api/v1`；WS 端点 `/ws/alarm`（告警实时推送，包络见 `docs/integration/README.md` 与 `frontend-scaffold/docs/api/realtime.openapi.json`：`{topic:'alarm.push', payload:AlarmItem}`）。
 - 过滤器 / 拦截器顺序（Servlet 级，先于 DispatcherServlet）：`CorsFilter`(HIGHEST_PRECEDENCE，先给所有响应加 CORS 头) → `HmacFilter`(HIGHEST_PRECEDENCE+1) → `JwtFilter`(HIGHEST_PRECEDENCE+10) → `HardControlInterceptor`(3) → `RequireAuthInterceptor`(4)。CORS 必须在最前：否则被 JwtFilter 短路的 401 响应无 CORS 头，浏览器报「No 'Access-Control-Allow-Origin' header」。前后端联调运行手册见 `docs/integration/README.md`。
-- dev profile 走 H2 内存库（Flyway 迁移 `db/migration/h2` 自动建表＋种子，不再用 `schema.sql`/`data.sql`），启动即由 `AuthService.ensureAdmin()` 写入默认账号 `admin` / `admin@2026`。
+- dev profile 走 H2 文件库（`data/mm_security_dev.mv.db`，重启保留数据；Flyway 迁移 `db/migration/h2` 自动建表＋种子，不再用 `schema.sql`/`data.sql`），启动即由 `AuthService.ensureAdmin()` 写入默认账号 `admin` / `admin@2026`。
 
 ### 6.2 目录职责与红线
 

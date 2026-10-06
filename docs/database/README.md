@@ -7,7 +7,7 @@
 | profile | 数据源 | 状态 | 说明 |
 | ------- | ------ | ---- | ---- |
 | `dev` | H2 文件库 `jdbc:h2:file:./data/mm_security_dev;AUTO_SERVER=TRUE`（库文件 `data/mm_security_dev.mv.db`，已 gitignore）| ✅ 唯一可实跑，重启保留数据 | `application-dev.yml` 覆盖；Flyway 走 `db/migration/h2`（V1 快照 + V2 种子） |
-| `dm` | 达梦 DM8 | ⏸️ 暂缓 | 本机无实例/驱动/Docker；`application-dm.yml` + `db/migration/dameng` 保留作迁移资产 |
+| `dm` | 达梦 DM8 | ✅ 迁移已真机验证（V1–V107，2/2 IT 全绿） | 本机 DM8 实例（`D:\dameng`，`localhost:5236`）+ 驱动 `DmJdbcDriver18-8.1.3` 已具备；是否作 prod 主库待问卷 §1.1 |
 | `prod` | PostgreSQL | ⏸️ 回退 | 本机未装；`db/migration/postgresql` 存在 |
 
 代码层 DB 无关（MyBatis-Plus 方言探测 + 不写方言函数），切换 profile 不改动 Java。
@@ -44,4 +44,4 @@
 2. proposal 写明存量影响、回退方案、是否触达共享环境；
 3. dev=H2 跑通 `mvn -s ci-settings.xml test`（Flyway 迁移在测试上下文执行）；
 4. 若影响契约字段，同步 `frontend-scaffold/docs/api/*.openapi.json` + `check-api-contract.mjs --strict`；
-5. 达梦专属方言变更须到 DM8 实例复核（当前环境无法验证，标注待复核）。
+5. 达梦专属方言变更须到本机 DM8 实例（`D:\dameng`，`localhost:5236`）复核——本机已具备，须实跑 `DamengFlywayMigrationIT` + `MgmtLedgerSqlDamengIT`（2/2 全绿）或 disql 逐文件补跑，不再标注「待复核」。

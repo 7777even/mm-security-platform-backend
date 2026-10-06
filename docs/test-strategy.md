@@ -21,7 +21,7 @@
 | 集成契约 | `IntegrationContractTest`(5) | 真实 CorsFilter→HmacFilter→JwtFilter 串接、401 带 CORS、白名单放行 |
 | 端到端 | `EndToEndFlowTest`(7, `@SpringBootTest @ActiveProfiles("dev")`) | 登录→admin 受保护 200 / 缺 token 401+CORS / viewer 建警 403 / 伪报 reporter 403 / 凭 Cookie 续期 / 登出清 Cookie |
 
-> 注：`EndToEndFlowTest` 是唯一起 Spring 上下文的测试（dev=H2 内存库），用于锁死跨层行为；其余全 standalone。
+> 注：`EndToEndFlowTest` 是唯一起 Spring 上下文的测试（dev=H2 文件库），用于锁死跨层行为；其余全 standalone。
 
 ## 3. 运行
 

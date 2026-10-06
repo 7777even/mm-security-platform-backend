@@ -2,12 +2,12 @@
 
 > **定位**：把系统真正跑起来（演示 / 生产）。本地开发联调细节见 [`docs/integration/README.md`](../integration/README.md)，本手册不重复。
 >
-> **当前状态（2026-09-08；2026-10-05 订正 Docker 相关表述）**
+> **当前状态（2026-09-08；2026-10-05 订正 Docker 相关表述；2026-10-06 订正达梦/PG 实跑口径）**
 > - 容器化文件已补齐：后端 `Dockerfile`、前端 `Dockerfile` + `deploy/nginx.conf`、后端 `deploy/docker-compose.yml` + `.env.example`。
 > - ⚠️ **以上 compose / 镜像仍未实跑验证**（结构已通过语法校验；首次使用请在 Docker daemon 就绪的环境执行并反馈问题）。
 >   - 📌 2026-10-05 订正：旧表述「本机未安装 Docker」已失真——**Docker Desktop v29.8.0 已安装**（`C:\Users\7even\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe`），只是实测时 **daemon 未运行**（npipe `dockerDesktopLinuxEngine` 不存在）。故本项是「daemon 未启动」，不是「软件缺失」；启动至 Running 后即可实跑 compose。
-> - ⚠️ 达梦 DM8 **已决策暂缓启用**（本机无实例 / 驱动），配置与迁移脚本作为后期迁移资产保留，见 §5。
->   - 📌 2026-10-05 补：达梦 **V1–V57 已于 2026-09-17 在真实 DM8 实例实跑通过**（错误码 0、建表 140，见 [`dameng-migration-runbook.md`](dameng-migration-runbook.md)）；当前三方言已到 V104，故 **V58–V104 尚未真机验证**。
+> - ✅ 达梦 DM8 **迁移已于 2026-10-06 真机跑通**（`D:\dameng` 本机实例监听 `localhost:5236`，驱动 `DmJdbcDriver18-8.1.3` 已在 m2）：V1–V107 全部迁移通过、schema 107、2/2 IT 全绿（见 `dameng-migration-runbook.md`）。是否作为 prod 主库仍由问卷 §1.1 决定；`dm` profile 配置与迁移脚本已可用，非「暂缓/未验证」。
+>   - 📌 2026-10-06 订正：旧表述「V58–V104 尚未真机验证」已失真——**三方言（H2/PostgreSQL/达梦）迁移均已真机验证到 V107**（H2 6/6、PG 104 迁移到 v107、达梦 V1–V107），原「V58–V104 在 PG/达梦上从未真机验证」风险面已清零；后续每改迁移仍须三方言都重跑（H2 通过 ≠ PG/达梦通过）。
 
 ---
 
@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | 前端（nginx） | `8080`（compose 映射） | 托管 `dist`；反代 `/api/` 与 `/ws/` 到后端 |
 | 后端（Spring Boot） | `8787` | 上下文 `/api/v1`；WS 告警推送 `/ws/alarm` |
-| 数据库 | `5236`（达梦，可选） | dev 演示用 **H2 内存库**，不占端口、无需安装 |
+| 数据库 | `5236`（达梦，可选） | dev 演示用 **H2 文件库**（`data/mm_security_dev.mv.db`，重启保留数据），不占端口、无需安装 |
 
 compose 内部服务名：`frontend` / `backend` / `db-dm`。前端 nginx 通过服务名 `backend:8787` 反代。
 
@@ -37,7 +37,7 @@ compose 内部服务名：`frontend` / `backend` / `db-dm`。前端 nginx 通过
 
 ## 3. 方式 A：docker compose（推荐，一键演示）
 
-默认 profile 为 `dev`，后端用 **H2 内存库**，不需要任何数据库、也不需要配置密钥（dev profile 自带 dev 密钥）。
+默认 profile 为 `dev`，后端用 **H2 文件库**（`data/mm_security_dev.mv.db`，重启保留数据），不需要任何数据库、也不需要配置密钥（dev profile 自带 dev 密钥）。
 
 ```bash
 cd backend-scaffold/deploy
@@ -110,11 +110,11 @@ location /ws/  {                            # WebSocket 必须升级协议
 
 | profile | 数据库 | 状态 |
 | --- | --- | --- |
-| `dev`（默认） | H2 内存库 | ✅ 唯一可实跑，演示/联调 |
-| `prod` | PostgreSQL | 回退方案。⚠️ 本机未安装，需另备环境 |
-| `dm` | 达梦 DM8 | ⏸️ **暂缓启用（后期迁移目标）** |
+| `dev`（默认） | H2 文件库 | ✅ 唯一可实跑，演示/联调（重启保留数据） |
+| `prod` | PostgreSQL | 回退方案。⚠️ 本机无 PG 实例，需另备环境 |
+| `dm` | 达梦 DM8 | ✅ **迁移已真机验证（V1–V107）**；是否启用为 prod 主库待问卷 §1.1 |
 
-**达梦暂缓原因**：无 DM8 实例（5236 无监听）、无 `DmJdbcDriver18.jar`、未安装 Docker。同样的原因，**PostgreSQL 本机也不具备**，因此"不用达梦"之后本机仍只有 H2 可跑。
+**达梦现状**：本机已有 DM8 实例（`D:\dameng`，`localhost:5236` 监听）、驱动 `DmJdbcDriver18-8.1.3` 已在 m2、迁移 V1–V107 已于 2026-10-06 真机跑通（2/2 IT 全绿），故「达梦未验证」已不成立。**PostgreSQL 本机仍无实例**，因此本地演示/联调仍只有 H2 可跑；是否以达梦替换 PG 作 prod 主库由问卷 §1.1 决定。
 
 **达梦配置与迁移脚本保留勿删**：`application-dm.yml`、`db/migration/dameng/V1__init_schema.sql`、`V2__seed_data.sql`、pom 的 `dm` profile。
 
@@ -191,7 +191,7 @@ curl -s http://localhost:8787/actuator/prometheus | head -8
 
 ## 9. 已知限制
 
-1. **Docker 相关未实跑**：本机无 Docker，compose / Dockerfile 仅通过结构与语法校验。
-2. **达梦未验证**：见 §5，属后期迁移项。
+1. **Docker compose 未实跑**：Docker Desktop 已安装（v29.8.0），但 compose / Dockerfile 仅通过结构与语法校验，**尚未 `docker compose up --build` 实跑**；首次实跑请在 daemon Running 的环境执行并反馈问题。
+2. **达梦迁移已真机验证（非限制）**：`dm` profile 迁移 V1–V107 已于 2026-10-06 在本机 DM8 实例跑通，详见 `dameng-migration-runbook.md`；是否作为 prod 主库由问卷 §1.1 决定。本项已从「限制」移除。
 3. **CSP 默认关闭**：`deploy/csp.conf` 的 nonce 是占位符（`REPLACE_WITH_GATEWAY_NONCE`），需入口网关/OpenResty 注入真实 nonce 后才能启用，否则内联脚本被拦导致白屏。
 4. **分支覆盖率偏低**（约 11%）：仅以行覆盖率做门禁；提升分支覆盖是后续可改进项。

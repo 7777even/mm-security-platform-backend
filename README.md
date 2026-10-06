@@ -70,7 +70,7 @@ SPRING_PROFILES_ACTIVE=dm DB_PASSWORD=... JWT_SECRET=... SIGNATURE_SECRET=... ./
 
 | Profile | 数据库 | 签名校验 | Flyway 迁移位置 |
 |---|---|---|---|
-| `dev` | H2 内存库 | 关闭（`signature.enabled=false`） | `classpath:db/migration/h2` |
+| `dev` | H2 文件库 | 关闭（`signature.enabled=false`） | `classpath:db/migration/h2` |
 | `prod` | PostgreSQL（兼容/回退） | 开启（`signature.enabled=true`） | `classpath:db/migration/postgresql` |
 | `dm` | 达梦 DM8（信创生产选定） | 开启（`signature.enabled=true`） | `classpath:db/migration/dameng` |
 

@@ -7,7 +7,7 @@
 - **单向哈希，绝不明文**：用户口令经 `BCryptPasswordEncoder`（Spring Security，默认 strength=10）哈希后存 `sys_user.password_hash`；登录时用 `encoder.matches(raw, hash)` 比对，**系统任何位置都不保留明文口令**。
 - **密钥只进环境变量**：`jwt.secret` / `signature.secret` 仅经 `JWT_SECRET` / `SIGNATURE_SECRET` 注入；base `application.yml` 不写默认值（防误提交弱密钥）。
 - **启动期密钥强度校验**：`SecurityBeans.validateSecrets()` 校验 JWT 密钥 ≥ 32 字节且非已知占位集合、签名密钥 ≥ 16 字节且非已知占位，违反即 `IllegalStateException` 拒绝启动。
-- **默认管理员一次性种子（2026-09-10 迁至 `RbacBootstrapService`）**：仅在 `sys_user` 表为空时写入 `admin / admin@2026`；非空即跳过，不在运行时反复重置。是否置 `must_change_pwd=1`（强制首登改密）由 `app.password.force-change-default-admin` 控制：**生产默认 true**（`admin@2026` 属已知弱口令），**dev 为 false**（H2 内存库每次重启重建，强制改密会反复阻断联调）。
+- **默认管理员一次性种子（2026-09-10 迁至 `RbacBootstrapService`）**：仅在 `sys_user` 表为空时写入 `admin / admin@2026`；非空即跳过，不在运行时反复重置。是否置 `must_change_pwd=1`（强制首登改密）由 `app.password.force-change-default-admin` 控制：**生产默认 true**（`admin@2026` 属已知弱口令），**dev 为 false**（H2 文件库，强制首登改密会反复阻断联调）。
 - **口令生命周期（V32/V33 起）**：`POST /auth/password` 本人改密（**必须校验旧口令** + 通过 `PasswordPolicy` 复杂度策略，成功后清 `must_change_pwd`、更新 `pwd_updated_at`）；`POST /system/users/{id}/password/reset` 管理员重置（服务端随机 12 位临时口令，**绝不用固定值**，置 `must_change_pwd=1`，一次性返回）。
 - **口令复杂度策略（`PasswordPolicy`，配置化）**：`app.password.{enabled,min-length,require-categories}`；默认长度 ≥ 8、须覆盖大写/小写/数字/符号中 **3 类**、不得包含用户名、不得与旧口令相同。违规抛 `code=100`（HTTP 200），由前端按 message 提示。
 - **强制首登改密的服务端兜底**：`PasswordLifecycleInterceptor` 对变更类请求（非 GET/HEAD/OPTIONS）拒绝未改密账号（403），豁免 `/api/v1/auth/**` 与 `/api/v1/uplink/audit`；前端引导为辅助，**不构成唯一防线**。
