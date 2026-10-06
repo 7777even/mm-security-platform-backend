@@ -32,4 +32,8 @@ public class FacAuditLog {
     private Long eventAt;
 
     private LocalDateTime createdAt;
+
+    /** 操作提交人（服务端按当前登录态写入，客户端不可伪造；可空以兼容历史行） */
+    @TableField("actor")
+    private String actor;
 }

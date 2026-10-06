@@ -25,4 +25,7 @@ public class AuditLogItem implements Serializable {
 
     /** 落库时间（yyyy-MM-dd HH:mm:ss） */
     private String createdAt;
+
+    /** 操作提交人（服务端按当前登录态写入，客户端不可伪造；历史行可能为 null） */
+    private String actor;
 }

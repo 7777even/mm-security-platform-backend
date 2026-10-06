@@ -15,6 +15,12 @@
 - **WHEN** `POST /api/v1/audit/log` 携带审计条目集合
 - **THEN** 条目落库并以 B3 包络返回
 
+#### Scenario: 提交人服务端锚定（防伪造）
+
+- **WHEN** `POST /api/v1/audit/log` 落库 `fac_audit_log`
+- **THEN** `actor` 字段由服务端按当前认证用户（`UserContext.username()`）写入，不得接受或信任客户端传入的提交人身份
+- **AND** `actor` 为 null（令牌无效）时拒绝上报（UNAUTHORIZED）
+
 ### Requirement: 现场采集回传受理
 
 系统须提供 `POST /api/v1/field-reports`，受理防爆手机现场采集回传。

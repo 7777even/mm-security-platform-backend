@@ -13,6 +13,8 @@ import com.sinopec.mmsecurity.dto.FieldReportItem;
 import com.sinopec.mmsecurity.dto.FieldReportMedia;
 import com.sinopec.mmsecurity.entity.FacAuditLog;
 import com.sinopec.mmsecurity.entity.FacFieldReport;
+import com.sinopec.mmsecurity.common.BusinessException;
+import com.sinopec.mmsecurity.common.ResultCode;
 import com.sinopec.mmsecurity.mapper.AuditLogMapper;
 import com.sinopec.mmsecurity.mapper.FacFieldReportMapper;
 import com.sinopec.mmsecurity.security.AuthorizationService;
@@ -48,6 +50,13 @@ public class UplinkService {
 
     public void reportAudit(AuditEventBatch batch) {
         if (batch == null || batch.getEvents() == null) return;
+        // 服务端锚定提交人：审计行可溯源到真实登录，杜绝"任意登录用户可伪造/不可溯源"。
+        // 复用 submitFieldReport 的"服务端覆盖身份"范式；@RequireAuth 保证 actor 非 null，
+        // 此处仍做防御性校验（令牌失效等异常路径）。
+        String actor = UserContext.username();
+        if (actor == null) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录或令牌过期");
+        }
         for (AuditEvent e : batch.getEvents()) {
             if (e == null) continue;
             try {
@@ -56,6 +65,7 @@ public class UplinkService {
                 log.setModule(e.getModule());
                 log.setDetailJson(e.getDetail() == null ? null : objectMapper.writeValueAsString(e.getDetail()));
                 log.setEventAt(e.getAt());
+                log.setActor(actor);
                 log.setCreatedAt(LocalDateTime.now());
                 auditLogMapper.insert(log);
             } catch (Exception ex) {
@@ -93,6 +103,7 @@ public class UplinkService {
         item.setModule(e.getModule());
         item.setDetailJson(e.getDetailJson());
         item.setEventAt(e.getEventAt());
+        item.setActor(e.getActor());
         item.setCreatedAt(
                 e.getCreatedAt() == null ? null : e.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         return item;

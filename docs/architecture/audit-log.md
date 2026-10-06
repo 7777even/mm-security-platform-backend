@@ -23,7 +23,7 @@
 
 - `reportAudit` 必须**尽力（best-effort）**：遍历 `batch.getEvents()`，单条 `insert` 异常捕获后记录日志并继续，不让审计失败拖垮主业务。
 - `event_at` 缺省由服务端取当前时间；`created_at` 始终服务端写入，前端不可伪造落库时间。
-- 审计写入路径**不触发二次审计**（避免无限递归），且不得依赖 `UserContext`（上报可能来自匿名 uplink 通道，按契约口径）。
+- 审计写入路径**不触发二次审计**（避免无限递归）。`reportAudit` 受类级 `@RequireAuth` 保护，`UserContext` 可靠可用，落库时由 `UserContext.username()` 写入 `actor` 提交人（见 Change `2026-10-06-uplink-audit-anchor-submitter`）；若未来开放匿名 uplink 通道再单独议定。
 - 审计表增长快，需配保留期策略（见 `deployment/` 阶段 7 演练项），但**保留期清理不得物理删除行**（用独立归档表或冷存，保持 append-only 语义）。
 
 ## 4. 反模式（Anti-patterns）
@@ -31,4 +31,4 @@
 - ❌ 把审计表当业务表做逻辑删除 / 更新 —— 破坏 append-only 与等保追溯。
 - ❌ 审计写入失败抛异常阻断主流程 —— 审计是旁路，必须尽力。
 - ❌ 把明文 PII 直接写 `detail_json` —— 见 `data-masking.md`，审计表更该脱敏。
-- ❌ 让 `reportAudit` 依赖 `UserContext` 鉴权 —— uplink 通道语义不同，按契约处理。
+- ❌ 让客户端自报提交人 —— `reportAudit` 必须由服务端按 `UserContext.username()` 写入 `actor`，不得信任客户端传入身份（防伪造 / 溯源）。

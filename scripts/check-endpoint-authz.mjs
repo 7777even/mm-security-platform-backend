@@ -46,9 +46,10 @@ const ALLOWLIST = new Map([
   ['Uplink#submitFieldReport',
     '防爆手机现场采集回传，代码注释明确「仍受 @RequireAuth 鉴权（401）」为设计口径；加管理权限会挡死一线终端'],
   ['Uplink#reportAudit',
-    '⚠️待安全确认：前端上报自身操作审计（POST /audit/log）。现状登录即可提交，'
-    + '意味着任意登录账号可伪造审计记录。若产品/安全认为需要约束，应改为「仅允许上报与自己相关的动作」'
-    + '或在 Service 侧校验，而不是简单加 role=ADMIN（那会挡死普通用户的审计上报）。'],
+    '已处置（方案 A，2026-10-06）：fac_audit_log 新增 actor 列，落库由服务端按当前登录态写入'
+    + '（UplinkService.reportAudit 取 UserContext.username()），客户端不可伪造提交人；'
+    + '保留 @RequireAuth 登录态口径、不加 role=ADMIN（不挡死普通用户审计上报）。'
+    + 'self-report 内容语义保留，待甲方最终确认（见 docs/deployment/audit-anti-forgery-decisions.md）。'],
 
   // —— 大屏自助操作（值守/指挥人员非 ADMIN，卡管理权限会挡死一线使用）——
   ['EmergencyEvent#create',

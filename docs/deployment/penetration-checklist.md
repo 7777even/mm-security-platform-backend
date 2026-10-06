@@ -65,11 +65,13 @@
 - [ ] **依赖漏洞**：`mvn dependency:check`（或 SCA）无高危；含达梦驱动 `DmJdbcDriver18-8.1.3` 版本核对（仅在 dm profile）。
 - [ ] **CSP**：`deploy/csp.conf` 的 nonce 须由入口网关/OpenResty 注入真实值后启用（占位 `REPLACE_WITH_GATEWAY_NONCE` 会导致内联脚本被拦白屏）；启用前须先验证 nonce 注入链路。
 
-## 6. 审计防伪造（标记风险项）
+## 6. 审计防伪造（已处置 · 方案 A）
 
-- [ ] **`POST /api/v1/audit/log` 收紧**：现状**登录即可提交** → 任意登录账号可伪造审计记录（已登记 `scripts/check-endpoint-authz.mjs` ALLOWLIST 标 `⚠️待安全确认`）。
-  - 处置选项（勿简单加 `role=ADMIN`，会挡死普通用户审计上报）：① 仅允许上报与自己相关的动作；② Service 侧校验动作归属；③ 与甲方确认是否接受当前自助上报语义。
-  - 复核时**必须**给出结论（通过/风险/阻塞）并回链此项的 OpenSpec Change。
+- [x] **`POST /api/v1/audit/log` 提交人溯源（方案 A）**：已实现——`fac_audit_log` 新增 `actor` 列（三方言 V108 迁移），`UplinkService.reportAudit` 由服务端按当前登录态（`UserContext.username()`）写入提交人，客户端不可伪造；保留 `@RequireAuth` 登录态口径、不加 `role=ADMIN`（不挡死普通用户审计上报）。`GET /api/v1/audit/log` 透出 `actor`，前端审计页增"操作人"列。
+  - 决策文档：`docs/deployment/audit-anti-forgery-decisions.md`（A/B/C 对比，用户拍板 A）。
+  - OpenSpec Change：`2026-10-06-uplink-audit-anchor-submitter`（已合入 `openspec/specs/uplink-audit/spec.md`）。
+  - **结论：通过**（提交人溯源已落地；self-report 内容语义保留，待甲方最终确认是否需进一步约束——见决策文档 §7）。
+  - 残余风险：审计内容仍由前端自我断言（服务端无法独立验证"用户真点了哪个按钮"），但每行可归因于真实登录，满足等保"审计记录可定位到主体"核心要求；该残余风险已登记为 accepted-risk 待甲方签字（决策文档 §3 方案 C 路径）。
 
 ## 7. 复核产出与证据规范
 
