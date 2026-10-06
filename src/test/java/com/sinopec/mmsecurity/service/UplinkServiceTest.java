@@ -3,6 +3,7 @@ package com.sinopec.mmsecurity.service;
 import com.sinopec.mmsecurity.dto.AuditEvent;
 import com.sinopec.mmsecurity.dto.AuditEventBatch;
 import com.sinopec.mmsecurity.dto.FieldReportItem;
+import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.entity.FacAuditLog;
 import com.sinopec.mmsecurity.entity.FacFieldReport;
 import com.sinopec.mmsecurity.mapper.AuditLogMapper;
@@ -17,6 +18,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -42,6 +45,7 @@ class UplinkServiceTest {
 
     @Test
     void reportAudit_persistsEachEvent() {
+        UserContext.set(new LoginUser(7L, "wang.wu", "VIEWER"));
         AuditEventBatch batch = new AuditEventBatch();
         AuditEvent e1 = new AuditEvent();
         e1.setAction("route.view");
@@ -51,7 +55,24 @@ class UplinkServiceTest {
         when(mapper.insert(any(FacAuditLog.class))).thenReturn(1);
 
         service.reportAudit(batch);
-        verify(mapper, times(2)).insert(any(FacAuditLog.class));
+
+        var captor = forClass(FacAuditLog.class);
+        verify(mapper, times(2)).insert(captor.capture());
+        // 提交人由服务端按登录态锚定，客户端不可伪造
+        assertEquals("wang.wu", captor.getAllValues().get(0).getActor());
+        assertEquals("wang.wu", captor.getAllValues().get(1).getActor());
+    }
+
+    @Test
+    void reportAudit_noLogin_throwsUnauthorized() {
+        UserContext.clear();
+        AuditEventBatch batch = new AuditEventBatch();
+        AuditEvent e1 = new AuditEvent();
+        e1.setAction("route.view");
+        batch.setEvents(List.of(e1));
+        // 未登录（UserContext 为 null）→ 防御性拒绝，避免写入无溯源的审计行
+        assertThrows(BusinessException.class, () -> service.reportAudit(batch));
+        verify(mapper, never()).insert(any());
     }
 
     @Test
