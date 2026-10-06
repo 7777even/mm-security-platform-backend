@@ -77,11 +77,29 @@
 - **THEN** 广播事件 `zones == null`，全部已认证会话 fail-open 接收；`ZoneAware` 作为扩展点就绪，产品定规则后相关写方法返回 `ZoneAware` 即自动启用按域收紧
 
 ### Requirement: 可配置 location→防区 映射（产品驱动收紧）
-系统 SHALL 提供配置驱动的 `location → 防区` 映射解析（`ZoneMappingResolver`，配置 `abac.zone-mapping.location-to-zones`），将写实体携带的 `location`/`area` 标识解析为与 `sys_zone.zone_name` 对齐的防区集合，作为实时广播防区过滤的输入。
+系统 SHALL 提供配置驱动的 `location → 防区` 映射解析（`ZoneMappingResolver`，配置 `abac.zone-mapping.location-to-zones`），将写实体携带的 `location`/`area` 标识解析为与 `sys_zone.zone_name` 对齐的防区集合，作为实时广播防区过滤的输入。业务库 location 多为自由文本（如 `炼油区-催化裂化装置西侧`），故映射解析 SHALL 支持三种可配置匹配模式，并由 `abac.zone-mapping.match-mode`（默认 `exact`，保持既有行为不变）选择：
+
+- `exact`：location 与配置键相等（忽略大小写/首尾空白）时命中；
+- `prefix`：location 以某配置键开头时命中（最长键优先）；
+- `contains`：location 包含某配置键时命中（最长键优先）—— 适配自由文本 location。
+
+映射解析 SHALL 额外支持别名兜底：配置 `abac.zone-mapping.aliases`（alias → 某个 location-to-zones 键），在 prefix/contains 模式下按最长键优先尝试；目标须是已存在的键，否则该别名静默失效（fail-open）。三种模式未命中、配置为空、location 空白或模式非法，一律返回 null → fail-open。
 
 #### Scenario: 配置为空 fail-open
 - **WHEN** `abac.zone-mapping.location-to-zones` 为空（或某 location 未命中）
 - **THEN** `resolveZonesByLocation` 返回 null，广播事件 `zones == null`，全部已认证会话 fail-open 接收（与现状一致）
+
+#### Scenario: exact 模式仅精确相等命中
+- **WHEN** `match-mode: exact` 且 location 与某配置键精确相等（或仅大小写/首尾空白差异）
+- **THEN** 返回该键对应的防区集合；子串/前缀形式的 location 不命中 → fail-open
+
+#### Scenario: contains 模式按子串命中（最长键优先）
+- **WHEN** `match-mode: contains` 且自由文本 location（如 `炼油区-催化裂化装置西侧`）包含某配置键（如 `炼油区`）
+- **THEN** 返回该防区集合；多个键可命中时取最长键优先
+
+#### Scenario: 别名兜底重定向到 canonical 防区
+- **WHEN** `match-mode` 为 prefix/contains，location 用的同义表述（如 `催化裂化装置西侧`）命中 `aliases` 中某别名（如 `催化裂化 → 炼油区`）
+- **THEN** 重定向到 canonical 键 `炼油区` 的防区集合；别名目标不存在则静默失效 fail-open
 
 #### Scenario: 配置命中收紧
 - **WHEN** 某 location 在配置中存在映射
@@ -89,7 +107,7 @@
 
 #### Scenario: 规则来自配置不来自代码
 - **WHEN** 检视 `ZoneMappingResolver` 实现
-- **THEN** 不存在硬编码的 location→防区 映射规则；映射完全由 `abac.zone-mapping.location-to-zones` 配置提供（AI 不自建权限模型）
+- **THEN** 不存在硬编码的 location→防区 映射规则；映射完全由 `abac.zone-mapping.{location-to-zones,match-mode,aliases}` 配置提供（AI 不自建权限模型）
 
 ### Requirement: 零下行控制红线不变（重申）
 实时广播 SHALL 仍仅下发「刷新通知」（`*.changed`），客户端据此重新拉取只读数据，不含任何硬控下行写指令；本变更新增的鉴权与过滤均不改变此红线。
