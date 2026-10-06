@@ -12,7 +12,7 @@
 | 4 | 可观测性 | Actuator 探针（health/liveness/readiness/info）、`/actuator/prometheus` | ✅ 完成（探针 Change 已归档；prometheus 系 Change 外交付，spec 待回填） |
 | 5 | 生产数据基线 | Flyway 双轨迁移（h2/postgresql/dameng 三方言）、覆盖率门禁（jacoco 0.80）、CI/CD、容器化 | ✅ 完成（`feat-flyway-prod-migration` 已归档） |
 | 6 | 业务域纵深 | 按前端业务域推进端到端闭环：监测预警确认流 → 应急指挥 → 设备/硬控读数 → 态势统计真实化 → 系统管理 | ⬜ 按 Change 逐个推进 |
-| 7 | 生产就绪 | 达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核 | ⬜ 未开始（达梦依赖环境） |
+| 7 | 生产就绪 | 达梦 DM8 实测迁移、prod profile 联调、部署演练、安全渗透复核 | ⬜ 部分（达梦实测迁移 ✅；prod 联调/部署演练/安全渗透复核待 release 窗口） |
 
 ## 2. 阶段完成判据（硬性）
 
@@ -34,7 +34,7 @@
 
 > 阶段 1–5 已全绿归档。阶段 6（业务域纵深）所列 Change 截至 2026-09-18 **已全部归档**——前端 `openspec/changes/` 为空，`mgmt-redesign-migration` / `mgmt-tabstrip-style-align` / `remaining-modules-inline-closed-loop` / `screen-mock-to-service` / `wujie-subapp-fullscreen` / `wujie-subapp-switch-race` 等均落在 `openspec/archive/`。→ 阶段 6 主体已闭环，下一处真实推进落在阶段 7 与下列已知债务 / 阻塞项。
 
-- **部分完成（阶段 7 · 生产就绪）**：✅ 达梦 DM8 实测迁移已于 2026-10-06 真机跑通（V1–V107，2/2 IT 全绿）；⬜ 仍未开始：prod profile 联调、部署演练、安全渗透复核（依赖 release 窗口，骨架见 `docs/deployment/penetration-checklist.md`）。
+- **部分完成（阶段 7 · 生产就绪）**：✅ 达梦 DM8 实测迁移已于 2026-10-06 真机跑通（V1–V107，2/2 IT 全绿）；⬜ prod profile 联调、部署演练、安全渗透复核（依赖 release 窗口）——**安全渗透复核清单已落地为可执行手册**（`docs/deployment/penetration-checklist.md`，7 节 30+ 复核项含 WS 握手鉴权/ABAC 防区/零下行硬控/审计防伪造等标记风险项，待 release 窗口逐项执行并回填 `engineering/retro/`）。
 - **真正未闭环的已知债务 / 阻塞项（按性质）**：
   - 🟨 **P0 · ABAC zone 注入收紧（代码侧已就绪，只差产品映射规则）**：WS 鉴权 + 三态 fail-open 骨架 09-17 已落地。
     - 🚨 **2026-10-06 纠正一个长期误判**：此前一直按「给约 30 个含 location 字段的**实体**实现 `ZoneAware`」推进，**这个思路大部分是无效的**——`RealtimeSyncAspect` 用 `@AfterReturning(returning="ret")` 取的是**写方法的返回值**，而 46 个广播域的写方法绝大多数返回 DTO / View，只有 `device` 域直接返回 `FacDevice`。对实体接线根本进不了切面。
