@@ -69,6 +69,8 @@ class RescueResourceServiceTest {
     private FacBrigadeTeamMapper brigadeTeamMapper;
     @Mock
     private DataScopeResolver dataScopeResolver;
+    @Mock
+    private EmergencyService emergencyService;
 
     @InjectMocks
     private RescueResourceService service;

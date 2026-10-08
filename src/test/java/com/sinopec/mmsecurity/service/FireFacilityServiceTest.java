@@ -64,6 +64,8 @@ class FireFacilityServiceTest {
     private FacFireFacilityFaultTimelineMapper timelineMapper;
     @Mock
     private FacFireFacilityOptionMapper optionMapper;
+    @Mock
+    private EmergencyService emergencyService;
 
     @InjectMocks
     private FireFacilityService service;

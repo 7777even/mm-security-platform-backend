@@ -1,6 +1,8 @@
 package com.sinopec.mmsecurity.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.sinopec.mmsecurity.dto.FireBrigadeList;
 import com.sinopec.mmsecurity.entity.FacBrigadeTeam;
 import com.sinopec.mmsecurity.mapper.FacBrigadeTeamMapper;
@@ -9,6 +11,8 @@ import com.sinopec.mmsecurity.mapper.FacRescueOptionMapper;
 import com.sinopec.mmsecurity.mapper.FacRescuePersonnelMapper;
 import com.sinopec.mmsecurity.mapper.FacRescueVehicleMapper;
 import com.sinopec.mmsecurity.security.DataScopeResolver;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,9 +48,22 @@ class RescueResourceAbacTest {
     private FacRescueOptionMapper optionMapper;
     @Mock
     private DataScopeResolver dataScopeResolver;
+    @Mock
+    private EmergencyService emergencyService;
 
     @InjectMocks
     private RescueResourceService service;
+
+    /**
+     * 纯 Mockito 不起 Spring，MyBatis-Plus 的 TableInfo 缓存未初始化，
+     * selfScope 用例解析 IN 列段的 lambda 列时报 "can not find lambda cache"。
+     * 全量套件下依赖其它 Spring 上下文测试类先初始化才碰巧通过；此处显式注入，单独跑也稳定。
+     */
+    @BeforeAll
+    static void initTableInfoCache() {
+        MapperBuilderAssistant assistant = new MapperBuilderAssistant(new MybatisConfiguration(), "test");
+        TableInfoHelper.initTableInfo(assistant, FacBrigadeTeam.class);
+    }
 
     private static FacBrigadeTeam team(String area) {
         FacBrigadeTeam t = new FacBrigadeTeam();

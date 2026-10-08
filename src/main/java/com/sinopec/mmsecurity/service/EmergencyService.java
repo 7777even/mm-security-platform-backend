@@ -55,7 +55,6 @@ import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrengthItem;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.entity.FacEmergencyCase;
-import com.sinopec.mmsecurity.entity.FacFireFacilityLedger;
 import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
 import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
 import com.sinopec.mmsecurity.entity.FacRescueEquipment;
@@ -80,7 +79,6 @@ import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthItemMapper;
-import com.sinopec.mmsecurity.mapper.FacFireFacilityLedgerMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCaseMapper;
 import lombok.RequiredArgsConstructor;
@@ -121,8 +119,6 @@ public class EmergencyService {
     private final SysEmergencyStrengthMapper strengthMapper;
     /** 应急力量明细参考表（应急场所/医疗机构等无真实台账类别的运营可维护名单）。 */
     private final SysEmergencyStrengthItemMapper strengthItemMapper;
-    /** 消防设施真实台账（V20 种子），复用为「消防设施」类别明细与计数真源。 */
-    private final FacFireFacilityLedgerMapper fireFacilityLedgerMapper;
     /** 应急力量台账（与 GET /rescue-resources/* 同源）——可聚合项的真源，保证两端同名项数字一致。 */
     private final FacRescuePersonnelMapper rescuePersonnelMapper;
     private final FacRescueEquipmentMapper rescueEquipmentMapper;
@@ -179,7 +175,7 @@ public class EmergencyService {
             EmergencyResource res = new EmergencyResource();
             res.setKind(r.getKind());
             // 可聚合项由管理端台账（GET /rescue-resources/*）实时计数覆盖，避免同一概念两套数字；
-            // ledger 源（应急专家/救援装备/应急车辆/救援队伍/消防设施）与参考表源（应急场所/医疗机构：
+            // ledger 源（应急专家/救援装备/应急车辆/救援队伍）与参考表源（应急场所/医疗机构：
             // sys_emergency_strength_item）均实时覆盖；仅 应急物资 为统计口径、沿用 sys_emergency_strength 人工维护值。
             Integer ledgerCount = strengthCountFromLedger(r.getKind());
             res.setCount(ledgerCount != null ? ledgerCount : r.getCount());
@@ -213,8 +209,6 @@ public class EmergencyService {
                 return rescueVehicleMapper.selectList(null).size();
             case "救援队伍":
                 return brigadeTeamMapper.selectList(null).size();
-            case "消防设施":
-                return fireFacilityLedgerMapper.selectList(null).size();
             case "应急场所":
             case "医疗机构":
                 // 与明细同源（sys_emergency_strength_item），计数随参考表行数实时一致，避免两套数字漂移
@@ -231,7 +225,7 @@ public class EmergencyService {
      * 应急力量各项的真实明细（取各源全量条目，前端按 20/页分页），供大屏点击资源类别就地展示。
      * ledger 源类别（应急专家/救援装备/应急车辆/救援队伍）取对应台账；
      * 应急场所/医疗机构 取运营参考表 {@code sys_emergency_strength_item}；
-     * 消防设施 取真实台账 {@code fac_fire_facility_ledger}。应急物资（统计口径）仍返回 {@code null}。
+     * 应急物资（统计口径）仍返回 {@code null}。
      */
     private List<StrengthItem> strengthItemsFromLedger(String kind) {
         if (kind == null) {
@@ -293,18 +287,6 @@ public class EmergencyService {
                             StrengthItem it = new StrengthItem();
                             it.setName(row.getName());
                             it.setMeta(row.getMeta());
-                            return it;
-                        })
-                        .collect(Collectors.toList());
-            case "消防设施":
-                return fireFacilityLedgerMapper
-                        .selectList(new LambdaQueryWrapper<FacFireFacilityLedger>()
-                                .orderByAsc(FacFireFacilityLedger::getSortNo))
-                        .stream()
-                        .map(f -> {
-                            StrengthItem it = new StrengthItem();
-                            it.setName(f.getFacilityName());
-                            it.setMeta(joinMeta(f.getLocationName(), f.getFacilityType()));
                             return it;
                         })
                         .collect(Collectors.toList());
@@ -1036,6 +1018,17 @@ public class EmergencyService {
                 .map(row -> readJson(row.getDetailJson(), NodeGuidance.class))
                 .collect(Collectors.toList()));
         return guidance;
+    }
+
+    /**
+     * 失效应急力量读穿缓存。
+     *
+     * <p>力量统计 7 类中 4 类（应急专家/救援队伍/救援装备/应急车辆）实时取自救援资源台账，
+     * 写侧（{@link RescueResourceService}）在增删改后调用本方法，保证大屏力量统计随写即时一致，
+     * 而不必等 5min TTL 兜底过期。</p>
+     */
+    public void invalidateStrengthCache() {
+        strengthCache.invalidateAll();
     }
 
     /** 失效参考配置缓存（供测试在用例间隔离，避免命中他例的桩数据）。 */

@@ -72,6 +72,9 @@ public class RescueResourceService {
     private static final String KV_CONSUMABLE = "CONSUMABLE";
     private static final String KV_DISPATCH_SUMMARY = "DISPATCH_SUMMARY";
 
+    /** 应急力量统计读穿缓存宿主（/emergency/strength 的 6 类计数取自本服务台账，写后须失效）。 */
+    private final EmergencyService emergencyService;
+
     private final FacRescueEquipmentMapper equipmentMapper;
     private final FacRescuePersonnelMapper personnelMapper;
     private final FacRescueOptionMapper optionMapper;
@@ -209,6 +212,7 @@ public class RescueResourceService {
         row.setId(nextPersonnelId());
         row.setSortNo(nextPersonnelSortNo());
         personnelMapper.insert(row);
+        emergencyService.invalidateStrengthCache();
         return toPersonnelItem(row);
     }
 
@@ -238,6 +242,7 @@ public class RescueResourceService {
             row.setDutyStatus(req.getDutyStatus());
         }
         personnelMapper.updateById(row);
+        emergencyService.invalidateStrengthCache();
         return toPersonnelItem(row);
     }
 
@@ -248,6 +253,7 @@ public class RescueResourceService {
             throw new BusinessException(ResultCode.NOT_FOUND, "救援人员不存在：id=" + id);
         }
         personnelMapper.deleteById(id);
+        emergencyService.invalidateStrengthCache();
     }
 
     /* ==================== 写侧：消防队伍（救援队伍） ==================== */
@@ -280,6 +286,7 @@ public class RescueResourceService {
         row.setId(nextBrigadeId());
         row.setSortNo(nextBrigadeSortNo());
         brigadeTeamMapper.insert(row);
+        emergencyService.invalidateStrengthCache();
         return toBrigadeTeams(Collections.singletonList(row)).get(0);
     }
 
@@ -324,6 +331,7 @@ public class RescueResourceService {
             row.setRescueVehicles(req.getRescueVehicles());
         }
         brigadeTeamMapper.updateById(row);
+        emergencyService.invalidateStrengthCache();
         return toBrigadeTeams(Collections.singletonList(row)).get(0);
     }
 
@@ -334,6 +342,7 @@ public class RescueResourceService {
             throw new BusinessException(ResultCode.NOT_FOUND, "消防队伍不存在：id=" + id);
         }
         brigadeTeamMapper.deleteById(id);
+        emergencyService.invalidateStrengthCache();
     }
 
     /* ==================== 写侧：救援车辆 ==================== */
@@ -362,6 +371,7 @@ public class RescueResourceService {
         row.setId(nextVehicleId());
         row.setSortNo(nextVehicleSortNo());
         vehicleMapper.insert(row);
+        emergencyService.invalidateStrengthCache();
         return toVehicleItems(Collections.singletonList(row)).get(0);
     }
 
@@ -374,6 +384,7 @@ public class RescueResourceService {
         }
         applyVehicleFields(row, req);
         vehicleMapper.updateById(row);
+        emergencyService.invalidateStrengthCache();
         return toVehicleItems(Collections.singletonList(row)).get(0);
     }
 
@@ -384,6 +395,7 @@ public class RescueResourceService {
             throw new BusinessException(ResultCode.NOT_FOUND, "救援车辆不存在：id=" + id);
         }
         vehicleMapper.deleteById(id);
+        emergencyService.invalidateStrengthCache();
     }
 
     /** 车辆字段局部赋值（create / update 共用；null 表示不覆盖，plate 由各方法单独处理）。 */
@@ -471,6 +483,7 @@ public class RescueResourceService {
         row.setId(nextEquipmentId());
         row.setSortNo(nextEquipmentSortNo());
         equipmentMapper.insert(row);
+        emergencyService.invalidateStrengthCache();
         return toEquipmentItem(row);
     }
 
@@ -483,6 +496,7 @@ public class RescueResourceService {
         }
         applyEquipmentFields(row, req);
         equipmentMapper.updateById(row);
+        emergencyService.invalidateStrengthCache();
         return toEquipmentItem(row);
     }
 
@@ -493,6 +507,7 @@ public class RescueResourceService {
             throw new BusinessException(ResultCode.NOT_FOUND, "救援装备不存在：id=" + id);
         }
         equipmentMapper.deleteById(id);
+        emergencyService.invalidateStrengthCache();
     }
 
     /** 装备字段局部赋值（create / update 共用；null 表示不覆盖，name 由各方法单独处理）。 */

@@ -80,6 +80,8 @@ public class FireFacilityService {
     private final FacFireFacilityFaultMapper faultMapper;
     private final FacFireFacilityFaultTimelineMapper timelineMapper;
     private final FacFireFacilityOptionMapper optionMapper;
+    /** 应急力量统计读穿缓存宿主（/emergency/strength 的「消防设施」计数取自本服务台账，写后须失效）。 */
+    private final EmergencyService emergencyService;
 
     /**
      * 分类监控卡片：按设施类型过滤，空值或「全部类型」返回全部 12 类。
@@ -255,15 +257,7 @@ public class FireFacilityService {
         FireFacilityLedgerResult result = new FireFacilityLedgerResult();
         result.setTypeOptions(typeOptions());
         result.setItems(rows.stream().map(row -> {
-            FireFacilityLedgerItem item = new FireFacilityLedgerItem();
-            item.setFacilityCode(row.getFacilityCode());
-            item.setFacilityName(row.getFacilityName());
-            item.setFacilityType(row.getFacilityType());
-            item.setLocation(row.getLocationName());
-            item.setDevice(row.getDeviceName());
-            item.setMaintainerName(row.getMaintainerName());
-            item.setMaintainerPhone(row.getMaintainerPhone());
-            item.setEnabled(row.getEnabledFlag());
+            FireFacilityLedgerItem item = toLedgerItem(row);
             item.setMaintenanceRecords(recordMap.getOrDefault(row.getId(), new ArrayList<>()));
             return item;
         }).collect(Collectors.toList()));
@@ -311,6 +305,7 @@ public class FireFacilityService {
         e.setEnabledFlag(req.getEnabled() != null ? req.getEnabled() : Boolean.TRUE);
         e.setSortNo(maxSort + 1);
         ledgerMapper.insert(e);
+        emergencyService.invalidateStrengthCache();
         return toLedgerItem(e);
     }
 
@@ -340,6 +335,7 @@ public class FireFacilityService {
         if (req.getMaintainerPhone() != null) e.setMaintainerPhone(req.getMaintainerPhone());
         if (req.getEnabled() != null) e.setEnabledFlag(req.getEnabled());
         ledgerMapper.updateById(e);
+        emergencyService.invalidateStrengthCache();
         return toLedgerItem(e);
     }
 
@@ -359,6 +355,7 @@ public class FireFacilityService {
         maintenanceMapper.delete(new LambdaQueryWrapper<FacFireFacilityMaintenance>()
                 .eq(FacFireFacilityMaintenance::getLedgerId, id));
         ledgerMapper.deleteById(id);
+        emergencyService.invalidateStrengthCache();
     }
 
     /**

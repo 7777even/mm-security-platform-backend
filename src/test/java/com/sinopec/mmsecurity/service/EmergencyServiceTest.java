@@ -31,7 +31,6 @@ import com.sinopec.mmsecurity.entity.FacRescuePersonnel;
 import com.sinopec.mmsecurity.entity.FacRescueVehicle;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrength;
 import com.sinopec.mmsecurity.entity.SysEmergencyStrengthItem;
-import com.sinopec.mmsecurity.entity.FacFireFacilityLedger;
 import com.sinopec.mmsecurity.entity.SysKnowledgeItem;
 import com.sinopec.mmsecurity.entity.FacEmergencyAssistStat;
 import com.sinopec.mmsecurity.dto.EmergencyAssistStatSummary;
@@ -54,7 +53,6 @@ import com.sinopec.mmsecurity.mapper.SysDutyMemberMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyPhoneMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthMapper;
 import com.sinopec.mmsecurity.mapper.SysEmergencyStrengthItemMapper;
-import com.sinopec.mmsecurity.mapper.FacFireFacilityLedgerMapper;
 import com.sinopec.mmsecurity.mapper.FacEmergencyCaseMapper;
 import com.sinopec.mmsecurity.mapper.SysKnowledgeItemMapper;
 import com.sinopec.mmsecurity.common.BusinessException;
@@ -76,6 +74,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -90,7 +89,6 @@ class EmergencyServiceTest {
     private final FacEmergencyAssistStatMapper assistStatMapper = mock(FacEmergencyAssistStatMapper.class);
     private final SysEmergencyStrengthMapper strengthMapper = mock(SysEmergencyStrengthMapper.class);
     private final SysEmergencyStrengthItemMapper strengthItemMapper = mock(SysEmergencyStrengthItemMapper.class);
-    private final FacFireFacilityLedgerMapper fireFacilityLedgerMapper = mock(FacFireFacilityLedgerMapper.class);
     private final FacRescuePersonnelMapper rescuePersonnelMapper = mock(FacRescuePersonnelMapper.class);
     private final FacRescueEquipmentMapper rescueEquipmentMapper = mock(FacRescueEquipmentMapper.class);
     private final FacRescueVehicleMapper rescueVehicleMapper = mock(FacRescueVehicleMapper.class);
@@ -117,7 +115,7 @@ class EmergencyServiceTest {
             mock(FacEmergencyGuidanceRosterMapper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final EmergencyService service = new EmergencyService(
-            alarmMapper, assistStatMapper, strengthMapper, strengthItemMapper, fireFacilityLedgerMapper,
+            alarmMapper, assistStatMapper, strengthMapper, strengthItemMapper,
             rescuePersonnelMapper, rescueEquipmentMapper, rescueVehicleMapper, brigadeTeamMapper,
             phoneMapper, knowledgeMapper, caseMapper, dutyMapper,
             dispatchPersonnelMapper, cmdMapper, commandRecordMapper, nodePhaseConfigMapper,
@@ -225,19 +223,9 @@ class EmergencyServiceTest {
     }
 
     @Test
-    void strength_fireFacilityAndMedicalItemsPopulated() {
+    void strength_medicalItemsPopulatedFromReferenceTable() {
         when(strengthMapper.selectList(null)).thenReturn(List.of(
-                strength("消防设施", 42, "Fire"),
                 strength("医疗机构", 3, "FirstAidKit")));
-        FacFireFacilityLedger f1 = new FacFireFacilityLedger();
-        f1.setFacilityName("1#泡沫站");
-        f1.setLocationName("中心控制室");
-        f1.setFacilityType("固定泡沫灭火设施");
-        FacFireFacilityLedger f2 = new FacFireFacilityLedger();
-        f2.setFacilityName("2#消防水炮");
-        f2.setLocationName("乙烯区");
-        f2.setFacilityType("消防水炮");
-        when(fireFacilityLedgerMapper.selectList(any())).thenReturn(List.of(f1, f2));
         SysEmergencyStrengthItem m1 = new SysEmergencyStrengthItem();
         m1.setKind("医疗机构");
         m1.setName("厂区医务室");
@@ -246,14 +234,8 @@ class EmergencyServiceTest {
 
         EmergencyStrength s = service.strength();
 
-        EmergencyResource fire = s.getResources().get(0);
-        assertEquals("消防设施", fire.getKind());
-        assertEquals(2, fire.getCount(), "消防设施计数由 fac_fire_facility_ledger 实时计数覆盖（取代手填 42）");
-        assertEquals(2, fire.getItems().size(), "消防设施从真实台账取明细");
-        assertEquals("1#泡沫站", fire.getItems().get(0).getName());
-        assertEquals("中心控制室 · 固定泡沫灭火设施", fire.getItems().get(0).getMeta());
-
-        EmergencyResource medical = s.getResources().get(1);
+        assertEquals(1, s.getResources().size());
+        EmergencyResource medical = s.getResources().get(0);
         assertEquals("医疗机构", medical.getKind());
         assertEquals(1, medical.getItems().size(), "医疗机构从参考表 sys_emergency_strength_item 取明细");
         assertEquals("厂区医务室", medical.getItems().get(0).getName());
@@ -691,6 +673,19 @@ class EmergencyServiceTest {
         verify(dutyMapper).selectList(null);
         verify(phoneMapper).selectList(null);
         verify(knowledgeMapper).selectList(null);
+    }
+
+    @Test
+    void invalidateStrengthCache_forcesRefetchAfterLedgerWrite() {
+        // 台账写入侧（RescueResourceService / FireFacilityService）在增删改后调用
+        // invalidateStrengthCache()：失效后再次 strength() 必须重新查表，拿到最新计数。
+        when(strengthMapper.selectList(null)).thenReturn(List.of(strength("应急专家", 47, "UserFilled")));
+
+        service.strength();
+        service.invalidateStrengthCache();
+        service.strength();
+
+        verify(strengthMapper, times(2)).selectList(null);
     }
 
     // ===== 知识库台账写侧（POST / PUT / DELETE） =====
