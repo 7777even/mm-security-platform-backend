@@ -2,6 +2,8 @@ package com.sinopec.mmsecurity.service;
 
 import com.sinopec.mmsecurity.dto.AuditEvent;
 import com.sinopec.mmsecurity.dto.AuditEventBatch;
+import com.sinopec.mmsecurity.dto.AuditLogItem;
+import com.sinopec.mmsecurity.dto.AuditLogPageResult;
 import com.sinopec.mmsecurity.dto.FieldReportItem;
 import com.sinopec.mmsecurity.common.BusinessException;
 import com.sinopec.mmsecurity.entity.FacAuditLog;
@@ -11,9 +13,12 @@ import com.sinopec.mmsecurity.mapper.FacFieldReportMapper;
 import com.sinopec.mmsecurity.security.AuthorizationService;
 import com.sinopec.mmsecurity.security.LoginUser;
 import com.sinopec.mmsecurity.security.UserContext;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -107,5 +112,62 @@ class UplinkServiceTest {
         assertEquals("zhang.san", item.getReporter(), "reporter 须被服务端重写为当前登录用户");
         verify(authz, times(1)).assertSelfOrAdmin("li.si");
         verify(facFieldReportMapper, times(1)).insert(any(FacFieldReport.class));
+    }
+
+    // ---------------------------------------------------------------- ③b 审计查询增强 + CSV 导出覆盖
+
+    @Test
+    void queryAudit_mapsResultAndPagination() {
+        FacAuditLog e1 = new FacAuditLog();
+        e1.setId(1L);
+        e1.setAction("login");
+        e1.setModule("ADMIN");
+        e1.setActor("admin");
+        e1.setEventAt(1717488000000L);
+        e1.setCreatedAt(LocalDateTime.of(2026, 9, 14, 10, 20, 0));
+        Page<FacAuditLog> page = new Page<>(1, 20, 5);
+        page.setRecords(List.of(e1));
+        when(mapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        AuditLogPageResult res = service.queryAudit(1, 20, "ADMIN", null, null, null, null);
+        assertEquals(5, res.getTotal());
+        assertEquals(1, res.getPage());
+        assertEquals(20, res.getSize());
+        assertEquals(1, res.getList().size());
+        assertEquals("admin", res.getList().get(0).getActor());
+        assertEquals("2026-09-14 10:20:00", res.getList().get(0).getCreatedAt());
+    }
+
+    @Test
+    void queryAudit_passesPaginationToMapper() {
+        Page<FacAuditLog> page = new Page<>(2, 10, 0);
+        page.setRecords(List.of());
+        when(mapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        long start = 1_700_000_000_000L;
+        long end = 1_800_000_000_000L;
+        AuditLogPageResult res = service.queryAudit(2, 10, "ADMIN", "login", "admin", start, end);
+        assertEquals(0, res.getTotal());
+        var pageCaptor = forClass(Page.class);
+        verify(mapper).selectPage(pageCaptor.capture(), any(LambdaQueryWrapper.class));
+        assertEquals(2, pageCaptor.getValue().getCurrent());
+        assertEquals(10, pageCaptor.getValue().getSize());
+    }
+
+    @Test
+    void exportAudit_returnsMappedItems() {
+        FacAuditLog e1 = new FacAuditLog();
+        e1.setId(1L);
+        e1.setAction("login");
+        e1.setActor("admin");
+        e1.setCreatedAt(LocalDateTime.now());
+        Page<FacAuditLog> page = new Page<>(1, 50_000, 1);
+        page.setRecords(List.of(e1));
+        when(mapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(page);
+
+        List<AuditLogItem> rows = service.exportAudit(50_000, null, null, null, null, null);
+        assertEquals(1, rows.size());
+        assertEquals("admin", rows.get(0).getActor());
+        assertEquals("login", rows.get(0).getAction());
     }
 }

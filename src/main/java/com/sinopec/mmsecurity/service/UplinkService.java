@@ -76,16 +76,15 @@ public class UplinkService {
 
     /**
      * 查询操作审计日志（fac_audit_log，只读）。
-     * 支持按模块 / 动作过滤，按事件时间倒序返回分页结果，供后台管理端审计日志页消费。
+     * 支持按模块 / 动作 / 操作人 / 事件时间范围过滤，按事件时间倒序返回分页结果，供后台管理端审计日志页消费。
+     *
+     * @param actor   操作提交人（服务端按登录态写入，此处按精确匹配过滤；null 不过滤）
+     * @param startAt 事件时间下界（epoch 毫秒，含）；null 不过滤
+     * @param endAt   事件时间上界（epoch 毫秒，含）；null 不过滤
      */
-    public AuditLogPageResult queryAudit(long page, long size, String module, String action) {
-        LambdaQueryWrapper<FacAuditLog> qw = new LambdaQueryWrapper<>();
-        if (module != null && !module.isBlank()) {
-            qw.eq(FacAuditLog::getModule, module);
-        }
-        if (action != null && !action.isBlank()) {
-            qw.eq(FacAuditLog::getAction, action);
-        }
+    public AuditLogPageResult queryAudit(
+            long page, long size, String module, String action, String actor, Long startAt, Long endAt) {
+        LambdaQueryWrapper<FacAuditLog> qw = buildAuditQuery(module, action, actor, startAt, endAt);
         qw.orderByDesc(FacAuditLog::getEventAt).orderByDesc(FacAuditLog::getId);
         IPage<FacAuditLog> p = auditLogMapper.selectPage(new Page<>(page, size), qw);
         AuditLogPageResult result = new AuditLogPageResult();
@@ -94,6 +93,43 @@ public class UplinkService {
         result.setPage(page);
         result.setSize(size);
         return result;
+    }
+
+    /**
+     * 导出审计日志（CSV，UTF-8 BOM）。过滤条件与 {@link #queryAudit} 一致，但返回全量命中行（上限 cap 防超大导出）。
+     * 服务端锚定身份：导出操作本身亦写入审计（便于追溯"谁导出了审计"）。
+     */
+    public List<AuditLogItem> exportAudit(
+            int limit, String module, String action, String actor, Long startAt, Long endAt) {
+        LambdaQueryWrapper<FacAuditLog> qw = buildAuditQuery(module, action, actor, startAt, endAt);
+        qw.orderByDesc(FacAuditLog::getEventAt).orderByDesc(FacAuditLog::getId);
+        return auditLogMapper
+                .selectPage(new Page<>(1, limit), qw)
+                .getRecords()
+                .stream()
+                .map(this::toAuditItem)
+                .collect(Collectors.toList());
+    }
+
+    private LambdaQueryWrapper<FacAuditLog> buildAuditQuery(
+            String module, String action, String actor, Long startAt, Long endAt) {
+        LambdaQueryWrapper<FacAuditLog> qw = new LambdaQueryWrapper<>();
+        if (module != null && !module.isBlank()) {
+            qw.eq(FacAuditLog::getModule, module);
+        }
+        if (action != null && !action.isBlank()) {
+            qw.eq(FacAuditLog::getAction, action);
+        }
+        if (actor != null && !actor.isBlank()) {
+            qw.eq(FacAuditLog::getActor, actor);
+        }
+        if (startAt != null) {
+            qw.ge(FacAuditLog::getEventAt, startAt);
+        }
+        if (endAt != null) {
+            qw.le(FacAuditLog::getEventAt, endAt);
+        }
+        return qw;
     }
 
     private AuditLogItem toAuditItem(FacAuditLog e) {
